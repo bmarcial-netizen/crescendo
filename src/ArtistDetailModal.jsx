@@ -101,13 +101,13 @@ const marqueeItems = {
         { label: "The OOZ", type: "album" },
         { label: "King Krule Press", type: "artist" },
     ],
-    "iann dior": [
+    "IAN": [
         { label: "RUNAWAY", type: "album" },
-        { label: "iann dior Live", type: "artist" },
+        { label: "IAN Live", type: "artist" },
         { label: "Lo-fi Diaries", type: "album" },
         { label: "A24 Signing", type: "artist" },
         { label: "Early Works", type: "album" },
-        { label: "iann dior Press", type: "artist" },
+        { label: "IAN Press", type: "artist" },
     ],
 };
 
@@ -164,7 +164,7 @@ const topTracks = {
         { title: "Love Jones", duration: "3:44", streams: "4.8M", album: "Genesis" },
         { title: "Paradise", duration: "3:58", streams: "3.1M", album: "Genesis" },
     ],
-    "iann dior": [
+    "IAN": [
         { title: "Mood", duration: "2:22", streams: "2.1B", album: "On to Better Things" },
         { title: "Sick and Tired", duration: "2:42", streams: "180M", album: "On to Better Things" },
         { title: "Shots in the Dark", duration: "3:08", streams: "95M", album: "On to Better Things" },
@@ -220,7 +220,7 @@ const topTracks = {
         { title: "BULLET", duration: "2:45", streams: "1.8M", album: "MID AIR" },
         { title: "SITUATIONS", duration: "3:22", streams: "1.2M", album: "Red Hand Akimbo" },
     ],
-    "Feng Suave": [
+    "FENG": [
         { title: "Sink into the Floor", duration: "3:35", streams: "8.5M", album: "So Much for Gardening" },
         { title: "People Watching", duration: "3:18", streams: "6.2M", album: "So Much for Gardening" },
         { title: "Venus Flytrap", duration: "4:01", streams: "4.1M", album: "Warping Youth" },
@@ -280,7 +280,7 @@ const recentReleases = {
         { title: "Genesis", type: "Album", year: "2023", tracks: 10, cover: null },
         { title: "Metro Vibes", type: "EP", year: "2022", tracks: 5, cover: null },
     ],
-    "iann dior": [
+    "IAN": [
         { title: "On to Better Things", type: "Album", year: "2022", tracks: 16, cover: null },
         { title: "Industry Plant", type: "Album", year: "2020", tracks: 17, cover: null },
         { title: "I'm Gone", type: "Album", year: "2019", tracks: 11, cover: null },
@@ -320,7 +320,7 @@ const recentReleases = {
         { title: "Red Hand Akimbo", type: "EP", year: "2022", tracks: 7, cover: null },
         { title: "BOY ANONYMOUS", type: "EP", year: "2021", tracks: 6, cover: null },
     ],
-    "Feng Suave": [
+    "FENG": [
         { title: "So Much for Gardening", type: "Album", year: "2023", tracks: 10, cover: null },
         { title: "Warping Youth", type: "EP", year: "2019", tracks: 6, cover: null },
         { title: "Venus Flytrap", type: "Single", year: "2018", tracks: 1, cover: null },

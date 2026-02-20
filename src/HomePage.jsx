@@ -569,7 +569,7 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
           }}>
                         {Array.from({ length: 12 }).map((_, i) => {
               const angle = 360 / 12 * i;
-              const artistNames = ["EsDeeKid", "beabadoobee", "jane remover", "malcolm todd", "2hollis", "Doechii", "Leon Thomas", "iann dior", "Men I Trust", "Snow Strippers", "JPEGMAFIA", "King Krule"];
+              const artistNames = ["EsDeeKid", "beabadoobee", "jane remover", "malcolm todd", "2hollis", "Doechii", "Leon Thomas", "IAN", "Men I Trust", "Snow Strippers", "JPEGMAFIA", "King Krule"];
               const tickers = ["ESDK", "BBDB", "JRJR", "MCTD", "HLLS", "DCHI", "LNTH", "IANN", "MNIT", "SNST", "JPEG", "KGKR"];
               const prices = ["$2.47", "$5.12", "$3.88", "$0.74", "$1.03", "$1.95", "$2.47", "$5.12", "$3.88", "$0.74", "$1.03", "$1.95"];
               const changes = ["+18.3%", "+7.2%", "+31.5%", "+4.8%", "-2.1%", "-5.4%", "+18.3%", "+7.2%", "+31.5%", "+4.8%", "-2.1%", "-5.4%"];

@@ -63,7 +63,7 @@ const TICKERS = {
   // Synthetic artists
   "Doechii": "DCHI",
   "Leon Thomas": "LNTH",
-  "iann dior": "IANN",
+  "IAN": "IANN",
   "Men I Trust": "MNIT",
   "Teezo Touchdown": "TZTO",
   "Snow Strippers": "SNST",
@@ -71,7 +71,7 @@ const TICKERS = {
   "JPEGMAFIA": "JPEG",
   "King Krule": "KGKR",
   "Paris Texas": "PRTX",
-  "Feng Suave": "FENG",
+  "FENG": "FENG",
   "Dave Blunts": "DVBL",
   "The Twolips": "TWLP",
 };
@@ -114,13 +114,13 @@ const newsArticles = [
   { id: 3, artist: "2hollis", headline: "New EP 'Phantom Thread' hits 2M streams in first week", category: "Releases", location: "Los Angeles, CA", year: "2026", up: true, description: "2hollis's surprise-dropped EP 'Phantom Thread' crossed two million combined streams in its first seven days, driven by the standout track 'Dissolve.' The project has been praised for its genre-blending production." },
   { id: 4, artist: "King Krule", headline: "Surprise album 'Concrete Garden' polarizes critics", category: "Releases", location: "London, UK", year: "2026", up: false, description: "King Krule's unannounced album 'Concrete Garden' arrived with no prior marketing, splitting critical opinion between those who see it as a bold evolution and others who find it inaccessible. Fan reception has been warmer, with several tracks trending on social platforms." },
   { id: 5, artist: "Men I Trust", headline: "Headlining Pitchfork Music Festival 2026", category: "Touring", location: "Chicago, IL", year: "2026", up: true, description: "Men I Trust have been announced as headliners for the 2026 Pitchfork Music Festival, marking their largest headline slot to date. The band will close out the Saturday night program." },
-  { id: 6, artist: "iann dior", headline: "Signs exclusive sync deal with A24 Films", category: "Business", location: "New York, NY", year: "2026", up: true, description: "iann dior has signed an exclusive synchronization licensing deal with A24, allowing the studio first-look access to his catalog for upcoming film and television projects. The deal is reportedly worth seven figures over three years." },
+  { id: 6, artist: "IAN", headline: "Signs exclusive sync deal with A24 Films", category: "Business", location: "New York, NY", year: "2026", up: true, description: "IAN has signed an exclusive synchronization licensing deal with A24, allowing the studio first-look access to his catalog for upcoming film and television projects. The deal is reportedly worth seven figures over three years." },
 ];
 
 const trendingSounds = [
   { id: 1, title: "Amber Light", artist: "malcolm todd", platform: "TikTok", uses: "1.2M", growth: "+340%", growthNum: 340, duration: "0:18", snippet: "♪ caught in the amber light, I don't wanna leave tonight...", priceImpact: +12.4, daysAgo: 2, tags: ["viral", "aesthetic"], wave: [3, 5, 4, 7, 9, 14, 18, 25, 38, 52, 71, 89] },
   { id: 2, title: "dissolve (slowed)", artist: "Men I Trust", platform: "Reels", uses: "842K", growth: "+580%", growthNum: 580, duration: "0:22", snippet: "♪ let me dissolve into the noise...", priceImpact: +8.7, daysAgo: 1, tags: ["slowed", "study"], wave: [2, 3, 5, 4, 8, 11, 19, 28, 44, 62, 78, 95] },
-  { id: 3, title: "RUNAWAY", artist: "iann dior", platform: "TikTok", uses: "2.4M", growth: "+120%", growthNum: 120, duration: "0:15", snippet: "♪ I been running, running, can't stop now...", priceImpact: +22.1, daysAgo: 5, tags: ["dance", "transition"], wave: [8, 15, 28, 45, 62, 78, 88, 92, 95, 90, 85, 82] },
+  { id: 3, title: "RUNAWAY", artist: "IAN", platform: "TikTok", uses: "2.4M", growth: "+120%", growthNum: 120, duration: "0:15", snippet: "♪ I been running, running, can't stop now...", priceImpact: +22.1, daysAgo: 5, tags: ["dance", "transition"], wave: [8, 15, 28, 45, 62, 78, 88, 92, 95, 90, 85, 82] },
   { id: 4, title: "Concrete Garden", artist: "King Krule", platform: "TikTok", uses: "390K", growth: "+1,200%", growthNum: 1200, duration: "0:20", snippet: "♪ flickering through the concrete garden...", priceImpact: +5.2, daysAgo: 0, tags: ["new", "sleeper"], wave: [1, 1, 2, 2, 3, 5, 8, 14, 25, 48, 72, 100] },
   { id: 5, title: "Pulse (remix)", artist: "Snow Strippers", platform: "Reels", uses: "678K", growth: "+95%", growthNum: 95, duration: "0:17", snippet: "♪ feel the pulse, feel it drop...", priceImpact: +3.8, daysAgo: 3, tags: ["remix", "gym"], wave: [12, 18, 25, 32, 38, 42, 48, 52, 58, 60, 62, 65] }
 ];

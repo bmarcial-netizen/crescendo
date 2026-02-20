@@ -106,7 +106,7 @@ const ARTIST_DEFS: ArtistDef[] = [
     synthetic: { baseListeners: 14_000_000, trendPct: 9, volatility: 0.010 },
   },
   {
-    symbol: 'IANN', name: 'iann dior',
+    symbol: 'IANN', name: 'IAN',
     email: 'ianndior@seed.crescendo.io',
     description: 'Pop-punk / hip-hop crossover artist. Chart-proven hitmaker.',
     revenueSharePct: '0.1000', sharesOutstanding: 1_000_000, maxShares: 2_000_000, basePrice: '1.0000',
@@ -162,7 +162,7 @@ const ARTIST_DEFS: ArtistDef[] = [
     synthetic: { baseListeners: 521_000, trendPct: 3.8, volatility: 0.025 },
   },
   {
-    symbol: 'FENG', name: 'Feng Suave',
+    symbol: 'FENG', name: 'FENG',
     email: 'fengsuave@seed.crescendo.io',
     description: 'Indie/neo-soul artist from the Netherlands. Smooth, chill vibes.',
     revenueSharePct: '0.1000', sharesOutstanding: 1_000_000, maxShares: 2_000_000, basePrice: '1.0000',

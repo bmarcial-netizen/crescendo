@@ -30,11 +30,11 @@ const notifications = [
   // Social / activity
   { id: 7, type: "social", title: "Snow Strippers dropped new content", desc: "4-night Brooklyn Steel residency announced — all dates sold out", time: "5h ago", read: false, icon: "music", artist: "Snow Strippers" },
   { id: 8, type: "social", title: "2hollis 'Phantom Thread' milestone", desc: "EP crossed 2M streams in first week", time: "8h ago", read: true, icon: "music", artist: "2hollis" },
-  { id: 9, type: "social", title: "iann dior signed A24 sync deal", desc: "Exclusive synchronization licensing deal reportedly worth 7 figures", time: "1d ago", read: true, icon: "social", artist: "iann dior" },
+  { id: 9, type: "social", title: "IAN signed A24 sync deal", desc: "Exclusive synchronization licensing deal reportedly worth 7 figures", time: "1d ago", read: true, icon: "social", artist: "IAN" },
   { id: 10, type: "social", title: "Men I Trust headlining Pitchfork 2026", desc: "Largest headline slot to date — closing Saturday night", time: "2d ago", read: true, icon: "music", artist: "Men I Trust" },
 
   // More price
-  { id: 11, type: "price", title: "iann dior dropped -5.4%", desc: "Gradual decline over 48h — consider adjusting stop-loss", time: "2d ago", read: true, icon: "down", artist: "iann dior" },
+  { id: 11, type: "price", title: "IAN dropped -5.4%", desc: "Gradual decline over 48h — consider adjusting stop-loss", time: "2d ago", read: true, icon: "down", artist: "IAN" },
   { id: 12, type: "trade", title: "Royalty payout received", desc: "$18.30 sync license royalty from Snow Strippers", time: "3d ago", read: true, icon: "royalty", artist: "Snow Strippers" },
 ];
 
