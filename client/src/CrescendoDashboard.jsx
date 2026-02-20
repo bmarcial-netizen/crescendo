@@ -31,12 +31,12 @@ const C = {
 };
 
 const artists = [
-  { id: 1, name: "Mira Voss", genre: "Indie Pop", price: 2.47, change: +18.3, volume: "42.1K", shares: 120, avgCost: 1.82, streams: "2.1M", emoji: "🎤" },
-  { id: 2, name: "KODA", genre: "Electronic", price: 5.12, change: +7.2, volume: "118K", shares: 45, avgCost: 4.30, streams: "8.4M", emoji: "🎹" },
-  { id: 3, name: "Solène", genre: "R&B / Soul", price: 3.88, change: +31.5, volume: "67.3K", shares: 200, avgCost: 2.10, streams: "5.2M", emoji: "🎵" },
-  { id: 4, name: "duskwave", genre: "Lo-fi", price: 0.74, change: +4.8, volume: "8.2K", shares: 500, avgCost: 0.55, streams: "1.4M", emoji: "🌊" },
-  { id: 5, name: "The Pale Moths", genre: "Alt Rock", price: 1.03, change: -2.1, volume: "15.8K", shares: 0, avgCost: 0, streams: "890K", emoji: "🎸" },
-  { id: 6, name: "Jax Rennick", genre: "Hip-Hop", price: 1.95, change: -5.4, volume: "31.0K", shares: 0, avgCost: 0, streams: "3.7M", emoji: "🎙️" },
+  { id: 1, name: "Mira Voss", genre: "Indie Pop", price: 2.47, change: +18.3, volume: "42.1K", shares: 120, avgCost: 1.82, streams: "2.1M", ticker: "VOSS" },
+  { id: 2, name: "KODA", genre: "Electronic", price: 5.12, change: +7.2, volume: "118K", shares: 45, avgCost: 4.30, streams: "8.4M", ticker: "KODA" },
+  { id: 3, name: "Solène", genre: "R&B / Soul", price: 3.88, change: +31.5, volume: "67.3K", shares: 200, avgCost: 2.10, streams: "5.2M", ticker: "SOLN" },
+  { id: 4, name: "duskwave", genre: "Lo-fi", price: 0.74, change: +4.8, volume: "8.2K", shares: 500, avgCost: 0.55, streams: "1.4M", ticker: "DSKW" },
+  { id: 5, name: "The Pale Moths", genre: "Alt Rock", price: 1.03, change: -2.1, volume: "15.8K", shares: 0, avgCost: 0, streams: "890K", ticker: "PLMH" },
+  { id: 6, name: "Jax Rennick", genre: "Hip-Hop", price: 1.95, change: -5.4, volume: "31.0K", shares: 0, avgCost: 0, streams: "3.7M", ticker: "JXRN" },
 ];
 
 const news = [
@@ -1127,8 +1127,8 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                               background: "rgba(255,255,255,0.15)",
                               border: "2px solid rgba(255,255,255,0.25)",
                               display: "flex", alignItems: "center", justifyContent: "center",
-                              fontSize: 18,
-                            }}>{a.emoji}</div>
+                              fontSize: 10, fontWeight: 800, letterSpacing: "0.05em", fontFamily: "monospace", color: "#fff",
+                            }}>{a.ticker}</div>
                             <div style={{
                               fontSize: 11, fontWeight: 700, fontFamily: "monospace",
                               color: a.change >= 0 ? "#A7F3D0" : "#FCA5A5",
@@ -1192,11 +1192,12 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                           width: 30, height: 30, borderRadius: "50%",
                           background: avatarColors[i % avatarColors.length],
                           display: "flex", alignItems: "center", justifyContent: "center",
-                          fontSize: 13, border: "2px solid #fff",
+                          fontSize: 9, fontWeight: 800, letterSpacing: "0.04em", fontFamily: "monospace", color: "#fff",
+                          border: "2px solid #fff",
                           marginLeft: i === 0 ? 0 : -8,
                           zIndex: 4 - i,
                           boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
-                        }}>{a.emoji}</div>
+                        }}>{a.ticker}</div>
                       ))}
                       {artists.length > 4 && (
                         <div style={{
@@ -1352,7 +1353,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
           const chartMax = Math.max(...chartData.map(d => d.v));
           const chartMin = Math.min(...chartData.map(d => d.v));
           const allocations = sorted.map((a, i) => ({
-            name: a.name, emoji: a.emoji, value: a.shares * a.price,
+            name: a.name, ticker: a.ticker, value: a.shares * a.price,
             color: avatarColors[i % avatarColors.length],
             pct: ((a.shares * a.price) / totalValue * 100).toFixed(1),
           }));
@@ -1393,7 +1394,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                       backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
                       fontSize: 12, fontWeight: 600,
                     }}>
-                      <span>{a.emoji}</span>
+                      <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.05em", color: C.primary, background: C.primarySoft, padding: "2px 6px", borderRadius: 4, fontFamily: "monospace" }}>{a.ticker}</span>
                       <span style={{ color: C.text, fontWeight: 700 }}>{a.name}</span>
                       <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: 11 }}>${a.price.toFixed(2)}</span>
                       <span style={{
@@ -1868,7 +1869,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                     {allocations.map((a, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <div style={{ width: 10, height: 10, borderRadius: 3, background: a.color, flexShrink: 0 }} />
-                        <div style={{ flex: 1, fontSize: 12, fontWeight: 500, color: C.text }}>{a.emoji} {a.name}</div>
+                        <div style={{ flex: 1, fontSize: 12, fontWeight: 500, color: C.text }}><span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.05em", color: C.primary, background: C.primarySoft, padding: "1px 5px", borderRadius: 3, fontFamily: "monospace", marginRight: 6 }}>{a.ticker}</span>{a.name}</div>
                         <div style={{ fontSize: 12, fontWeight: 600, fontFamily: "monospace", color: C.textSec }}>{a.pct}%</div>
                         <div style={{ fontSize: 12, fontWeight: 700, fontFamily: "monospace", color: C.text }}>${a.value.toFixed(0)}</div>
                       </div>
@@ -2050,7 +2051,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                     }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 16 }}>{a.emoji}</span>
+                          <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.05em", color: C.primary, background: C.primarySoft, padding: "2px 6px", borderRadius: 4, fontFamily: "monospace" }}>{a.ticker}</span>
                           <span style={{ fontWeight: 600, fontSize: 14 }}>{a.name}</span>
                         </div>
                         <span style={{ fontSize: 11, color: C.textMuted }}>{a.shares} shares</span>
@@ -2169,8 +2170,8 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                         width: 36, height: 36, borderRadius: 10,
                         background: "rgba(0,0,0,0.03)",
                         display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 16, border: "1px solid rgba(0,0,0,0.04)",
-                      }}>{a.emoji}</div>
+                        fontSize: 10, fontWeight: 800, letterSpacing: "0.04em", fontFamily: "monospace", color: C.primary, border: "1px solid rgba(0,0,0,0.04)",
+                      }}>{a.ticker}</div>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 600 }}>{a.name}</div>
                         <div style={{ fontSize: 11, color: C.textMuted }}>{a.genre}</div>
@@ -2296,7 +2297,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                         {sound.title}
                       </div>
                       <div style={{ fontSize: 12, color: C.primary, fontWeight: 600, marginBottom: 10 }}>
-                        {matchedArtist?.emoji} {sound.artist}
+                        {matchedArtist && <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.05em", color: C.primary, background: C.primarySoft, padding: "1px 5px", borderRadius: 3, fontFamily: "monospace", marginRight: 4 }}>{matchedArtist.ticker}</span>}{sound.artist}
                       </div>
 
                       {/* Wave visualization */}

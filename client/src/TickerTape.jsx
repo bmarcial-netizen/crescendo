@@ -15,7 +15,7 @@ export default function TickerTape({ holdings = [] }) {
   if (holdings.length === 0) return null;
 
   const items = holdings.map((a) => ({
-    emoji: a.emoji,
+    ticker: a.ticker,
     name: a.name,
     price: a.price.toFixed(2),
     change: a.change,
@@ -68,7 +68,7 @@ export default function TickerTape({ holdings = [] }) {
               borderRight: "1px solid rgba(0,0,0,0.04)",
             }}
           >
-            <span style={{ fontSize: 13 }}>{item.emoji}</span>
+            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.05em", color: item.change >= 0 ? C.green : C.red, background: item.change >= 0 ? "rgba(54,215,183,0.12)" : "rgba(239,68,68,0.12)", padding: "2px 6px", borderRadius: 4, fontFamily: "monospace" }}>{item.ticker}</span>
             <span
               style={{
                 fontSize: 12,

@@ -226,9 +226,9 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                             background: "rgba(255,255,255,0.8)",
                             border: "1px solid rgba(255,255,255,0.9)",
                             display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: 28,
+                            fontSize: 14, fontWeight: 800, letterSpacing: "0.05em", fontFamily: "monospace", color: "#4338CA",
                             boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
-                        }}>{artist.emoji}</div>
+                        }}>{artist.ticker}</div>
                         <div style={{ flex: 1 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 2 }}>
                                 <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.03em", margin: 0 }}>
@@ -364,7 +364,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                                     >
                                         <option value="">Compare...</option>
                                         {otherArtists.map(a => (
-                                            <option key={a.id} value={a.id}>{a.emoji} {a.name}</option>
+                                            <option key={a.id} value={a.id}>{a.ticker} — {a.name}</option>
                                         ))}
                                     </select>
                                 )}
