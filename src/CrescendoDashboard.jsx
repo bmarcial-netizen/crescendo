@@ -1445,52 +1445,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
               borderRadius: "50%", background: C.primary, border: "2px solid #fff"
             }} />
           </div>
-          {isLoggedIn ? (
-            <div style={{ position: "relative" }}>
-              <div style={{
-                width: 38, height: 38, borderRadius: 12,
-                background: `linear-gradient(135deg, ${C.accent}90, ${C.primary}50)`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 14, fontWeight: 700, color: C.text,
-                border: showProfile || showUserMenu ? `2px solid ${C.primary}` : "1px solid rgba(255,255,255,0.8)",
-                cursor: "pointer",
-                transition: "all 0.2s",
-              }}
-                onClick={() => setShowUserMenu(!showUserMenu)}
-              >{user?.initials || '?'}</div>
-              {showUserMenu && (
-                <>
-                  <div onClick={() => setShowUserMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 199 }} />
-                  <div style={{
-                    position: "absolute", top: 46, right: 0, zIndex: 200,
-                    width: 220, borderRadius: 14,
-                    background: "rgba(255,255,255,0.95)",
-                    backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-                    border: "1px solid rgba(0,0,0,0.08)",
-                    boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-                    overflow: "hidden",
-                  }}>
-                    <div style={{ padding: "14px 16px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{user?.name || 'User'}</div>
-                      <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{user?.email || ''}</div>
-                    </div>
-                    <div
-                      onClick={() => { setShowUserMenu(false); navigate('profile'); }}
-                      style={{ padding: "12px 16px", fontSize: 13, fontWeight: 500, color: C.text, cursor: "pointer", transition: "background 0.15s" }}
-                      onMouseEnter={e => e.currentTarget.style.background = "rgba(0,0,0,0.04)"}
-                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                    >My Account</div>
-                    <div
-                      onClick={() => { setShowUserMenu(false); onLogout(); }}
-                      style={{ padding: "12px 16px", fontSize: 13, fontWeight: 500, color: "#EF4444", cursor: "pointer", borderTop: "1px solid rgba(0,0,0,0.06)", transition: "background 0.15s" }}
-                      onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.05)"}
-                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                    >Sign Out</div>
-                  </div>
-                </>
-              )}
-            </div>
-          ) : (
+          {!isLoggedIn && (
             <>
               <div style={{
                 width: 38, height: 38, borderRadius: 12,
