@@ -1,0 +1,1191 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Crescendo API",
+    "description": "Music artist revenue-share investment platform. Users invest in artists via real revenue-share rights, powered by a double-entry ledger, Chartmetric-driven pricing, and Stripe Connect payouts.\n\n## Auth\nRegister → Login → use the returned JWT as `Authorization: Bearer <token>`.\nAdmin role grants access to all endpoints. Investor/artist roles are scoped.\n\n## Rate Limits\n- Auth endpoints: 20 requests / 15 minutes per IP\n- Trade endpoints: 60 requests / 1 minute per IP\n- All other endpoints: 200 requests / 1 minute per IP\n\nRate limit headers (`RateLimit-*`) are returned on every response (draft-7 standard).\n\n## Idempotency\nTrade buy/sell accept an `Idempotency-Key` header. If the same key is re-sent within 24 hours, the cached response is returned.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    { "url": "https://crescendo-production-1231.up.railway.app", "description": "Railway production" },
+    { "url": "http://localhost:3000", "description": "Local development" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT returned from /api/auth/login or /api/auth/register"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string", "example": "VALIDATION_ERROR" },
+              "message": { "type": "string", "example": "Invalid input" },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": { "type": "string" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "email": { "type": "string", "format": "email" },
+          "role": { "type": "string", "enum": ["investor", "artist", "admin"] },
+          "displayName": { "type": "string", "nullable": true }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "user": { "$ref": "#/components/schemas/User" },
+          "token": { "type": "string", "description": "JWT token (24h expiry)" }
+        }
+      },
+      "Artist": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "userId": { "type": "string", "format": "uuid" },
+          "stageName": { "type": "string" },
+          "bio": { "type": "string", "nullable": true },
+          "spotifyArtistId": { "type": "string", "nullable": true },
+          "sharesOutstanding": { "type": "integer" },
+          "maxShares": { "type": "integer" },
+          "revenueSharePct": { "type": "string", "example": "0.10" },
+          "basePrice": { "type": "string", "example": "1.0000" },
+          "currentPrice": { "type": "string", "example": "1.2500" },
+          "currentBid": { "type": "string", "example": "1.1875" },
+          "currentAsk": { "type": "string", "example": "1.3125" },
+          "circuitBreakerStatus": { "type": "string", "enum": ["closed", "tripped"] }
+        }
+      },
+      "ArtistListItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "stageName": { "type": "string" },
+          "bio": { "type": "string", "nullable": true },
+          "sharesOutstanding": { "type": "integer" },
+          "maxShares": { "type": "integer" },
+          "revenueSharePct": { "type": "string" },
+          "currentPrice": { "type": "string" },
+          "currentBid": { "type": "string" },
+          "currentAsk": { "type": "string" },
+          "circuitBreakerStatus": { "type": "string", "enum": ["closed", "tripped"] }
+        }
+      },
+      "PriceQuote": {
+        "type": "object",
+        "properties": {
+          "artistId": { "type": "string", "format": "uuid" },
+          "mid": { "type": "number" },
+          "bid": { "type": "number" },
+          "ask": { "type": "number" },
+          "spreadBps": { "type": "integer" }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "userId": { "type": "string", "format": "uuid" },
+          "artistId": { "type": "string", "format": "uuid" },
+          "side": { "type": "string", "enum": ["buy", "sell"] },
+          "quantity": { "type": "integer" },
+          "pricePerShare": { "type": "string" },
+          "totalAmount": { "type": "string" },
+          "spreadAmount": { "type": "string" },
+          "status": { "type": "string", "enum": ["filled", "rejected", "cancelled"] },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Candle": {
+        "type": "object",
+        "properties": {
+          "startTime": { "type": "string", "format": "date-time" },
+          "open": { "type": "string" },
+          "high": { "type": "string" },
+          "low": { "type": "string" },
+          "close": { "type": "string" },
+          "volume": { "type": "integer" },
+          "tradeCount": { "type": "integer" }
+        }
+      },
+      "Position": {
+        "type": "object",
+        "properties": {
+          "artistId": { "type": "string", "format": "uuid" },
+          "stageName": { "type": "string" },
+          "sharesHeld": { "type": "integer" },
+          "avgCostBasis": { "type": "string" },
+          "currentPrice": { "type": "string" },
+          "currentBid": { "type": "string" },
+          "currentAsk": { "type": "string" },
+          "marketValue": { "type": "string" },
+          "totalCost": { "type": "string" },
+          "unrealizedPnL": { "type": "string" }
+        }
+      },
+      "WalletBalance": {
+        "type": "object",
+        "properties": {
+          "balance": { "type": "string" },
+          "accountName": { "type": "string" }
+        }
+      },
+      "RoyaltyStatement": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "artistId": { "type": "string", "format": "uuid" },
+          "periodStart": { "type": "string", "format": "date" },
+          "periodEnd": { "type": "string", "format": "date" },
+          "totalRoyalties": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "DividendDistribution": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "royaltyStatementId": { "type": "string", "format": "uuid" },
+          "totalDistributable": { "type": "string" },
+          "dividendPerShare": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "DividendPayment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "distributionId": { "type": "string", "format": "uuid" },
+          "userId": { "type": "string", "format": "uuid" },
+          "sharesHeld": { "type": "integer" },
+          "amountPaid": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "RiskControls": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "artistId": { "type": "string", "format": "uuid", "nullable": true },
+          "isGlobal": { "type": "boolean" },
+          "maxPositionShares": { "type": "integer" },
+          "maxPositionPct": { "type": "string" },
+          "dailyTradeCapShares": { "type": "integer" },
+          "dailyTradeCapUsd": { "type": "string" },
+          "cooldownMinutes": { "type": "integer" },
+          "circuitBreakerThresholdPct": { "type": "string" },
+          "spreadBps": { "type": "integer" }
+        }
+      },
+      "ShareIssuanceEvent": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "artistId": { "type": "string", "format": "uuid" },
+          "sharesIssued": { "type": "integer" },
+          "pricePerShare": { "type": "string" },
+          "sharesOutstandingAfter": { "type": "integer" },
+          "issuedBy": { "type": "string", "format": "uuid" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health + DB connectivity",
+        "tags": ["System"],
+        "responses": {
+          "200": {
+            "description": "Healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "enum": ["ok"] },
+                    "timestamp": { "type": "string", "format": "date-time" },
+                    "database": {
+                      "type": "object",
+                      "properties": {
+                        "connected": { "type": "boolean" },
+                        "latencyMs": { "type": "number" },
+                        "version": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database unreachable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "enum": ["degraded"] },
+                    "timestamp": { "type": "string", "format": "date-time" },
+                    "database": {
+                      "type": "object",
+                      "properties": {
+                        "connected": { "type": "boolean", "enum": [false] },
+                        "latencyMs": { "type": "number", "nullable": true },
+                        "version": { "type": "string", "nullable": true }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/api/auth/register": {
+      "post": {
+        "summary": "Register a new user",
+        "tags": ["Auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "minLength": 6 },
+                  "role": { "type": "string", "enum": ["investor", "artist", "admin"], "default": "investor" },
+                  "displayName": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created + JWT",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResponse" } } }
+          },
+          "400": { "description": "Validation error or email already taken", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "429": { "description": "Rate limited (20 req / 15 min)" }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Login and get JWT",
+        "tags": ["Auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthResponse" } } }
+          },
+          "401": { "description": "Invalid credentials", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "429": { "description": "Rate limited (20 req / 15 min)" }
+        }
+      }
+    },
+
+    "/api/artists": {
+      "post": {
+        "summary": "Create artist profile",
+        "tags": ["Artists"],
+        "security": [{ "bearerAuth": [] }],
+        "description": "Requires artist role. Creates a new artist profile linked to the authenticated user.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["stageName"],
+                "properties": {
+                  "stageName": { "type": "string" },
+                  "bio": { "type": "string" },
+                  "spotifyArtistId": { "type": "string" },
+                  "maxShares": { "type": "integer", "default": 100000 },
+                  "revenueSharePct": { "type": "number", "default": 0.10, "description": "Decimal fraction, e.g. 0.10 = 10%" },
+                  "basePrice": { "type": "number", "default": 1.0 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Artist created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Artist" } } } },
+          "400": { "description": "stageName missing or profile already exists" },
+          "401": { "description": "Missing or invalid token" },
+          "403": { "description": "Requires artist role" }
+        }
+      }
+    },
+    "/api/artists/{id}": {
+      "get": {
+        "summary": "Get artist by ID",
+        "tags": ["Artists"],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Artist details", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Artist" } } } },
+          "404": { "description": "Artist not found" }
+        }
+      },
+      "patch": {
+        "summary": "Update artist profile",
+        "tags": ["Artists"],
+        "security": [{ "bearerAuth": [] }],
+        "description": "Owner or admin can update. Only provided fields are changed.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "stageName": { "type": "string" },
+                  "bio": { "type": "string" },
+                  "spotifyArtistId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Updated artist", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Artist" } } } },
+          "403": { "description": "Not authorized" },
+          "404": { "description": "Artist not found" }
+        }
+      }
+    },
+    "/api/artists/{id}/issue-shares": {
+      "post": {
+        "summary": "Issue new shares (admin)",
+        "tags": ["Artists"],
+        "security": [{ "bearerAuth": [] }],
+        "description": "Admin only. Increases sharesOutstanding. Fails if it would exceed maxShares.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["quantity"],
+                "properties": {
+                  "quantity": { "type": "integer", "minimum": 1 },
+                  "pricePerShare": { "type": "number", "description": "Defaults to current price if omitted" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Shares issued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "event": { "$ref": "#/components/schemas/ShareIssuanceEvent" },
+                    "sharesOutstanding": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Would exceed maxShares" },
+          "404": { "description": "Artist not found" }
+        }
+      }
+    },
+    "/api/artists/{id}/stripe/onboard": {
+      "post": {
+        "summary": "Start Stripe Connect onboarding",
+        "tags": ["Artists"],
+        "security": [{ "bearerAuth": [] }],
+        "description": "Creates a Stripe Express connected account and returns an onboarding URL. Requires artist role (owner) or admin.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "returnUrl": { "type": "string", "format": "uri", "default": "http://localhost:3000/stripe/return" },
+                  "refreshUrl": { "type": "string", "format": "uri", "default": "http://localhost:3000/stripe/refresh" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Onboarding link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accountId": { "type": "string" },
+                    "onboardingUrl": { "type": "string", "format": "uri" }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "description": "Not authorized" },
+          "404": { "description": "Artist not found" }
+        }
+      }
+    },
+
+    "/api/market/artists": {
+      "get": {
+        "summary": "List all artists with prices",
+        "tags": ["Market"],
+        "description": "Public endpoint. Returns all artists with current mid/bid/ask prices.",
+        "responses": {
+          "200": {
+            "description": "Artist list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "artists": { "type": "array", "items": { "$ref": "#/components/schemas/ArtistListItem" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/market/artists/{id}/quote": {
+      "get": {
+        "summary": "Bid/ask price quote",
+        "tags": ["Market"],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Current quote", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PriceQuote" } } } },
+          "404": { "description": "Artist not found" }
+        }
+      }
+    },
+    "/api/market/artists/{id}/traction-history": {
+      "get": {
+        "summary": "Traction index snapshots (last 30)",
+        "tags": ["Market"],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": {
+            "description": "Snapshot history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "artist": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string", "format": "uuid" },
+                        "stageName": { "type": "string" }
+                      }
+                    },
+                    "snapshots": { "type": "array", "items": { "type": "object" } }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Artist not found" }
+        }
+      }
+    },
+    "/api/market/artists/{id}/candles": {
+      "get": {
+        "summary": "OHLCV price candles",
+        "tags": ["Market"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "interval", "in": "query", "schema": { "type": "string", "default": "1h", "enum": ["1h", "1d"] } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 100, "maximum": 500 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Candle data (chronological)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "artistId": { "type": "string", "format": "uuid" },
+                    "interval": { "type": "string" },
+                    "candles": { "type": "array", "items": { "$ref": "#/components/schemas/Candle" } }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Artist not found" }
+        }
+      }
+    },
+    "/api/market/artists/{id}/earnings-band": {
+      "get": {
+        "summary": "Estimated royalty earnings range",
+        "tags": ["Market"],
+        "description": "Returns low/base/high earnings projections per share with implied yield based on current price.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": {
+            "description": "Earnings band",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "artistId": { "type": "string", "format": "uuid" },
+                    "stageName": { "type": "string" },
+                    "currentPrice": { "type": "number" },
+                    "revenueSharePct": { "type": "number" },
+                    "sharesOutstanding": { "type": "integer" },
+                    "annualizedEarningsPerShare": {
+                      "type": "object",
+                      "properties": {
+                        "low": { "type": "number" },
+                        "base": { "type": "number" },
+                        "high": { "type": "number" }
+                      }
+                    },
+                    "impliedYield": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "low": { "type": "number" },
+                        "base": { "type": "number" },
+                        "high": { "type": "number" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Artist not found" }
+        }
+      }
+    },
+
+    "/api/trade/buy": {
+      "post": {
+        "summary": "Buy shares",
+        "tags": ["Trading"],
+        "security": [{ "bearerAuth": [] }],
+        "description": "Executes at the ask price. Runs all risk checks (position cap, daily cap, cooldown, circuit breaker, price band) inside a single Postgres transaction.",
+        "parameters": [{ "name": "Idempotency-Key", "in": "header", "schema": { "type": "string", "format": "uuid" }, "description": "Optional. Prevents duplicate execution within 24h." }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["artistId", "quantity"],
+                "properties": {
+                  "artistId": { "type": "string", "format": "uuid" },
+                  "quantity": { "type": "integer", "minimum": 1 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Order filled", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Order" } } } },
+          "400": { "description": "Missing fields" },
+          "401": { "description": "Missing or invalid token" },
+          "422": { "description": "Insufficient funds, risk limit, or price band violation", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "423": { "description": "Circuit breaker tripped" },
+          "429": { "description": "Cooldown active or rate limited (60 req / min)" }
+        }
+      }
+    },
+    "/api/trade/sell": {
+      "post": {
+        "summary": "Sell shares",
+        "tags": ["Trading"],
+        "security": [{ "bearerAuth": [] }],
+        "description": "Executes at the bid price. Requires sufficient position.",
+        "parameters": [{ "name": "Idempotency-Key", "in": "header", "schema": { "type": "string", "format": "uuid" }, "description": "Optional. Prevents duplicate execution within 24h." }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["artistId", "quantity"],
+                "properties": {
+                  "artistId": { "type": "string", "format": "uuid" },
+                  "quantity": { "type": "integer", "minimum": 1 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Order filled", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Order" } } } },
+          "400": { "description": "No position or insufficient shares" },
+          "422": { "description": "Risk limit or price band violation" },
+          "429": { "description": "Cooldown active or rate limited (60 req / min)" }
+        }
+      }
+    },
+    "/api/trade/history": {
+      "get": {
+        "summary": "Trade history for current user",
+        "tags": ["Trading"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Order history (newest first)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "orders": { "type": "array", "items": { "$ref": "#/components/schemas/Order" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/api/investor/balance": {
+      "get": {
+        "summary": "Wallet balance",
+        "tags": ["Investor"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Current balance", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/WalletBalance" } } } }
+        }
+      }
+    },
+    "/api/investor/deposit": {
+      "post": {
+        "summary": "Deposit funds",
+        "tags": ["Investor"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["amount"],
+                "properties": {
+                  "amount": { "type": "number", "minimum": 0.01, "description": "USD amount to deposit" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Deposit recorded, returns new balance", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/WalletBalance" } } } }
+        }
+      }
+    },
+    "/api/investor/withdraw": {
+      "post": {
+        "summary": "Withdraw funds",
+        "tags": ["Investor"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["amount"],
+                "properties": {
+                  "amount": { "type": "number", "minimum": 0.01, "description": "USD amount to withdraw" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Withdrawal recorded, returns new balance", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/WalletBalance" } } } },
+          "422": { "description": "Insufficient funds" }
+        }
+      }
+    },
+    "/api/investor/portfolio": {
+      "get": {
+        "summary": "Holdings with P&L",
+        "tags": ["Investor"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "All positions with market value and unrealized P&L",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "positions": { "type": "array", "items": { "$ref": "#/components/schemas/Position" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/investor/orders": {
+      "get": {
+        "summary": "Order history (investor view)",
+        "tags": ["Investor"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "All orders for the current user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "orders": { "type": "array", "items": { "$ref": "#/components/schemas/Order" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/api/royalties/upload": {
+      "post": {
+        "summary": "Upload royalty CSV",
+        "tags": ["Royalties"],
+        "security": [{ "bearerAuth": [] }],
+        "description": "Admin only. Parses a CSV file with columns: artist_id, period_start, period_end, total_royalties.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": { "type": "string", "format": "binary", "description": "CSV file (max 5 MB)" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Statements created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statements": { "type": "array", "items": { "$ref": "#/components/schemas/RoyaltyStatement" } }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "CSV file required or invalid format" },
+          "413": { "description": "File exceeds 5 MB limit" }
+        }
+      }
+    },
+    "/api/royalties": {
+      "get": {
+        "summary": "List all royalty statements",
+        "tags": ["Royalties"],
+        "security": [{ "bearerAuth": [] }],
+        "description": "Admin only. Returns all royalty statements ordered by creation date (newest first).",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statements": { "type": "array", "items": { "$ref": "#/components/schemas/RoyaltyStatement" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/royalties/{statementId}/distribute": {
+      "post": {
+        "summary": "Distribute dividends for a royalty statement",
+        "tags": ["Royalties"],
+        "security": [{ "bearerAuth": [] }],
+        "description": "Admin only. Calculates dividendPerShare = (totalRoyalties * revenueSharePct) / sharesOutstanding, then credits each holder's wallet via the double-entry ledger.",
+        "parameters": [{ "name": "statementId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "201": { "description": "Distribution created with per-holder payments" },
+          "400": { "description": "Already distributed or no shares outstanding" }
+        }
+      }
+    },
+    "/api/royalties/{statementId}/distributions": {
+      "get": {
+        "summary": "List distributions for a statement",
+        "tags": ["Royalties"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "statementId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "distributions": { "type": "array", "items": { "$ref": "#/components/schemas/DividendDistribution" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/royalties/distributions/{distributionId}/payments": {
+      "get": {
+        "summary": "List payments for a distribution",
+        "tags": ["Royalties"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "distributionId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "payments": { "type": "array", "items": { "$ref": "#/components/schemas/DividendPayment" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/api/admin/run-traction-index": {
+      "post": {
+        "summary": "Recompute traction index for all artists",
+        "tags": ["Admin"],
+        "security": [{ "bearerAuth": [] }],
+        "description": "Admin only. Re-reads latest metric snapshots and recomputes traction scores and prices for every artist.",
+        "responses": { "200": { "description": "Computed scores and updated prices per artist" } }
+      }
+    },
+    "/api/admin/traction-index/update": {
+      "post": {
+        "summary": "Update traction index for one artist (legacy)",
+        "tags": ["Admin"],
+        "security": [{ "bearerAuth": [] }],
+        "description": "Admin only. Manually set component scores. If Spotify scores are omitted and the artist has a spotifyArtistId, they are fetched automatically.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["artistId"],
+                "properties": {
+                  "artistId": { "type": "string", "format": "uuid" },
+                  "albumVelocity": { "type": "number", "minimum": 0, "maximum": 100 },
+                  "catalogSize": { "type": "number", "minimum": 0, "maximum": 100 },
+                  "revenueGrowth": { "type": "number", "minimum": 0, "maximum": 100 },
+                  "socialFollowers": { "type": "number", "minimum": 0, "maximum": 100 },
+                  "externalPopularity": { "type": "number", "minimum": 0, "maximum": 100 }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Updated snapshot with new price" } }
+      }
+    },
+    "/api/admin/risk-controls/{artistId}": {
+      "put": {
+        "summary": "Update risk controls for an artist",
+        "tags": ["Admin"],
+        "security": [{ "bearerAuth": [] }],
+        "description": "Admin only. Creates or updates per-artist risk controls. Only provided fields are changed.",
+        "parameters": [{ "name": "artistId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "maxPositionShares": { "type": "integer" },
+                  "maxPositionPct": { "type": "number" },
+                  "dailyTradeCapShares": { "type": "integer" },
+                  "dailyTradeCapUsd": { "type": "number" },
+                  "cooldownMinutes": { "type": "integer" },
+                  "circuitBreakerThresholdPct": { "type": "number" },
+                  "spreadBps": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Updated controls", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RiskControls" } } } },
+          "201": { "description": "Created controls (first time)" }
+        }
+      }
+    },
+    "/api/admin/risk-controls": {
+      "put": {
+        "summary": "Update global risk controls",
+        "tags": ["Admin"],
+        "security": [{ "bearerAuth": [] }],
+        "description": "Admin only. Updates the global (default) risk controls. Requires seed to have been run.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "maxPositionShares": { "type": "integer" },
+                  "maxPositionPct": { "type": "number" },
+                  "dailyTradeCapShares": { "type": "integer" },
+                  "dailyTradeCapUsd": { "type": "number" },
+                  "cooldownMinutes": { "type": "integer" },
+                  "circuitBreakerThresholdPct": { "type": "number" },
+                  "spreadBps": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Updated global controls", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RiskControls" } } } },
+          "404": { "description": "Global controls not found — run seed first" }
+        }
+      }
+    },
+    "/api/admin/circuit-breaker/{artistId}/reset": {
+      "post": {
+        "summary": "Reset circuit breaker",
+        "tags": ["Admin"],
+        "security": [{ "bearerAuth": [] }],
+        "description": "Admin only. Sets circuit breaker status back to 'closed', re-enabling trading for the artist.",
+        "parameters": [{ "name": "artistId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Artist with reset circuit breaker", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Artist" } } } },
+          "404": { "description": "Artist not found" }
+        }
+      }
+    },
+    "/api/admin/ledger/integrity": {
+      "get": {
+        "summary": "Verify debits equal credits",
+        "tags": ["Admin"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Integrity report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "integrity": {
+                      "type": "object",
+                      "properties": {
+                        "netBalance": { "type": "string", "description": "Should be '0' if ledger is balanced" },
+                        "isBalanced": { "type": "boolean" },
+                        "totalEntries": { "type": "integer" }
+                      }
+                    },
+                    "accounts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": { "type": "string" },
+                          "accountType": { "type": "string" },
+                          "balance": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/demo/reset": {
+      "post": {
+        "summary": "Reset demo state",
+        "description": "Admin only. Wipes all transactional data (orders, positions, candles, dividends, ledger entries), preserves artists and risk controls, resets prices to base, reruns traction index. Idempotent.",
+        "tags": ["Admin"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Reset complete with step log",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "enum": ["reset_complete"] },
+                    "steps": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "step": { "type": "string" },
+                          "detail": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/metrics/chartmetric-snapshot": {
+      "post": {
+        "summary": "Upload metric snapshot (JSON)",
+        "tags": ["Admin"],
+        "security": [{ "bearerAuth": [] }],
+        "description": "Admin only. Insert a single metric snapshot and recompute traction index.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["artistId", "metrics"],
+                "properties": {
+                  "artistId": { "type": "string", "format": "uuid" },
+                  "capturedAt": { "type": "string", "format": "date-time" },
+                  "metrics": { "type": "object", "description": "Key-value pairs e.g. { spotifyMonthlyListeners: 500000, tiktokFollowers: 120000 }" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Snapshot inserted, traction index recomputed" } }
+      }
+    },
+    "/api/admin/metrics/chartmetric-upload": {
+      "post": {
+        "summary": "Upload metrics CSV",
+        "tags": ["Admin"],
+        "security": [{ "bearerAuth": [] }],
+        "description": "Admin only. Bulk upload metric snapshots from a CSV file (max 5 MB).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": { "type": "string", "format": "binary", "description": "CSV file (max 5 MB)" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Per-artist results with error reporting" } }
+      }
+    },
+    "/api/admin/metrics/artist/{id}/latest": {
+      "get": {
+        "summary": "Get latest metric snapshot for an artist",
+        "tags": ["Admin"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Latest metric snapshot" }
+        }
+      }
+    },
+    "/api/stripe/webhook": {
+      "post": {
+        "summary": "Stripe webhook receiver",
+        "tags": ["Stripe"],
+        "description": "Receives Stripe events with raw body + signature verification. Deduplicates events. Handles account.updated for onboarding completion.",
+        "parameters": [{ "name": "stripe-signature", "in": "header", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "description": "Raw Stripe event payload" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Event processed" },
+          "400": { "description": "Missing signature or verification failed" }
+        }
+      }
+    }
+  }
+}

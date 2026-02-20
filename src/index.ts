@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { config } from './config';
 import { errorHandler } from './middleware/errorHandler';
+import { authLimiter, tradeLimiter, generalLimiter } from './middleware/rateLimit';
 import { db } from './db';
 import { sql } from 'drizzle-orm';
 
@@ -18,41 +19,63 @@ import stripeRoutes from './routes/stripe.routes';
 
 const app = express();
 
-// CORS
-app.use(cors());
+// CORS — allow configured origins, reject others
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Allow requests with no origin (curl, mobile apps, server-to-server)
+      if (!origin) return callback(null, true);
+      if (config.corsOrigins.includes(origin)) return callback(null, true);
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
+    },
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
+    exposedHeaders: ['RateLimit-Limit', 'RateLimit-Remaining', 'RateLimit-Reset'],
+  }),
+);
 
 // Stripe webhook needs raw body — register BEFORE express.json()
-app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json', limit: '1mb' }));
 
-// JSON body parser for everything else
-app.use(express.json());
+// JSON body parser with size limit
+app.use(express.json({ limit: '1mb' }));
+
+// General rate limit on all API routes
+app.use('/api', generalLimiter);
 
 // Health check with DB connectivity
 app.get('/health', async (_req, res) => {
-  let dbStatus = 'ok';
+  let dbConnected = false;
   let dbLatencyMs: number | null = null;
+  let dbVersion: string | null = null;
 
   try {
     const start = Date.now();
-    await db.execute(sql`SELECT 1`);
+    const rows = await db.execute(sql`SELECT version()`);
     dbLatencyMs = Date.now() - start;
+    dbConnected = true;
+    dbVersion = (rows as { version: string }[])[0]?.version ?? null;
   } catch {
-    dbStatus = 'unreachable';
+    // DB unreachable
   }
 
-  const healthy = dbStatus === 'ok';
-  res.status(healthy ? 200 : 503).json({
-    status: healthy ? 'ok' : 'degraded',
+  res.status(dbConnected ? 200 : 503).json({
+    status: dbConnected ? 'ok' : 'degraded',
     timestamp: new Date().toISOString(),
-    database: { status: dbStatus, latencyMs: dbLatencyMs },
+    database: { connected: dbConnected, latencyMs: dbLatencyMs, version: dbVersion },
   });
 });
 
-// Routes
-app.use('/api/auth', authRoutes);
+// OpenAPI spec
+app.get('/api/docs', (_req, res) => {
+  res.sendFile('openapi.json', { root: '.' });
+});
+
+// Routes with targeted rate limiting
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/artists', artistRoutes);
 app.use('/api/investor', investorRoutes);
-app.use('/api/trade', tradeRoutes);
+app.use('/api/trade', tradeLimiter, tradeRoutes);
 app.use('/api/market', marketRoutes);
 app.use('/api/royalties', royaltyRoutes);
 app.use('/api/admin', adminRoutes);
