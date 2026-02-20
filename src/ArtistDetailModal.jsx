@@ -25,8 +25,18 @@ const C = {
     textMuted: "#94A3B8",
 };
 
-// Avatar helper
+// ─── Artist images map — real photos for artists that have them ───
+const artistImages = {
+    "2hollis": "/artists/2Hollis.jpg",
+    "beabadoobee": "/artists/beabadobee.jpeg",
+    "JPEGMAFIA": "/artists/jpegmafia.jpeg",
+    "Men I Trust": "/artists/menitrust.jpg",
+    "Teezo Touchdown": "/artists/teezotouchdown.jpeg",
+};
+
+// Avatar helper (uses real photo if available)
 function avatarUrl(name, size = 64) {
+    if (artistImages[name]) return artistImages[name];
     const colors = ["1E40AF", "38BDF8", "0EA5E9", "3B82F6", "60A5FA", "1D4ED8"];
     const idx = name.length % colors.length;
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=${size}&background=${colors[idx]}&color=fff&bold=true&format=svg`;
@@ -48,15 +58,6 @@ function generateOrderBook(bid, ask) {
     }
     return { bids, asks };
 }
-
-// ─── Artist images map (placeholder keys — swap with real uploaded images) ───
-const artistImages = {
-    "2hollis": "/artists/2Hollis.jpg",
-    "beabadoobee": "/artists/beabadobee.jpeg",
-    "JPEGMAFIA": "/artists/jpegmafia.jpeg",
-    "Men I Trust": "/artists/menitrust.jpg",
-    "Teezo Touchdown": "/artists/teezotouchdown.jpeg",
-};
 
 // ─── Marquee items per artist (swap src with real images: drop into public/artists/) ───
 const marqueeItems = {

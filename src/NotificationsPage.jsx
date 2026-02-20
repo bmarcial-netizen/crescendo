@@ -38,7 +38,16 @@ const notifications = [
   { id: 12, type: "trade", title: "Royalty payout received", desc: "$18.30 sync license royalty from Snow Strippers", time: "3d ago", read: true, icon: "royalty", artist: "Snow Strippers" },
 ];
 
+const artistImages = {
+  "2hollis": "/artists/2Hollis.jpg",
+  "beabadoobee": "/artists/beabadobee.jpeg",
+  "JPEGMAFIA": "/artists/jpegmafia.jpeg",
+  "Men I Trust": "/artists/menitrust.jpg",
+  "Teezo Touchdown": "/artists/teezotouchdown.jpeg",
+};
+
 function avatarUrl(name, size = 64) {
+  if (artistImages[name]) return artistImages[name];
   const colors = ["1E40AF", "38BDF8", "0EA5E9", "3B82F6", "60A5FA", "1D4ED8"];
   const idx = name.length % colors.length;
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=${size}&background=${colors[idx]}&color=fff&bold=true&format=svg`;
@@ -219,7 +228,7 @@ export default function NotificationsPage({ setSelectedArtist, artists, fadeIn }
                       onMouseEnter={e => e.currentTarget.style.opacity = "0.7"}
                       onMouseLeave={e => e.currentTarget.style.opacity = "1"}
                     >
-                      <img src={avatarUrl(n.artist, 32)} alt="" style={{ width: 14, height: 14, borderRadius: 4 }} />
+                      <img src={avatarUrl(n.artist, 32)} alt="" style={{ width: 14, height: 14, borderRadius: 4, objectFit: "cover" }} />
                       {n.artist}
                     </span>
                   )}

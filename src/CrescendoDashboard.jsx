@@ -35,8 +35,18 @@ const C = {
   blob3: "radial-gradient(circle, rgba(59,130,246,0.30) 0%, transparent 70%)"
 };
 
-// Helper to generate avatar URL from artist name
+// Artist images map — real photos for artists that have them
+const artistImages = {
+  "2hollis": "/artists/2Hollis.jpg",
+  "beabadoobee": "/artists/beabadobee.jpeg",
+  "JPEGMAFIA": "/artists/jpegmafia.jpeg",
+  "Men I Trust": "/artists/menitrust.jpg",
+  "Teezo Touchdown": "/artists/teezotouchdown.jpeg",
+};
+
+// Helper to generate avatar URL from artist name (uses real photo if available)
 function avatarUrl(name, size = 64) {
+  if (artistImages[name]) return artistImages[name];
   const colors = ["1E40AF", "38BDF8", "0EA5E9", "3B82F6", "60A5FA", "1D4ED8"];
   const idx = name.length % colors.length;
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=${size}&background=${colors[idx]}&color=fff&bold=true&format=svg`;
@@ -539,7 +549,7 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                     <img
                       src={avatarUrl(a.name, 52)} alt={a.name}
-                      style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid rgba(0,0,0,0.05)" }}
+                      style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid rgba(0,0,0,0.05)", objectFit: "cover" }}
                     />
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -678,7 +688,7 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
                         onMouseEnter={e => e.currentTarget.style.background = "rgba(0,0,0,0.04)"}
                         onMouseLeave={e => e.currentTarget.style.background = "rgba(0,0,0,0.02)"}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                            <img src={avatarUrl(a.name, 44)} alt={a.name} style={{ width: 24, height: 24, borderRadius: 6 }} />
+                            <img src={avatarUrl(a.name, 44)} alt={a.name} style={{ width: 24, height: 24, borderRadius: 6, objectFit: "cover" }} />
                             <span style={{
                               padding: "1px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700,
                               background: aUp ? C.greenSoft : C.redSoft,
@@ -781,7 +791,7 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
                 <img
                   src={avatarUrl(selected.name, 44)} alt={selected.name}
                   onClick={() => setSelectedArtist(selected)}
-                  style={{ width: 22, height: 22, borderRadius: 6, cursor: "pointer" }}
+                  style={{ width: 22, height: 22, borderRadius: 6, cursor: "pointer", objectFit: "cover" }}
                 />
                 {selected.symbol && (
                   <span style={{
@@ -954,7 +964,7 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
           <Card key={a.id} style={{ padding: 14, cursor: "pointer" }} hover>
             <div onClick={() => openDetail(artists.indexOf(a))}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                <img src={avatarUrl(a.name, 44)} alt={a.name} style={{ width: 22, height: 22, borderRadius: 6 }} />
+                <img src={avatarUrl(a.name, 44)} alt={a.name} style={{ width: 22, height: 22, borderRadius: 6, objectFit: "cover" }} />
                 <span style={{
                   padding: "1px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700,
                   background: a.change >= 0 ? C.greenSoft : C.redSoft,
@@ -1015,7 +1025,7 @@ function NewsPage({ C, fadeIn, Card }) {
           </h1>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
-            <img src={avatarUrl(selectedArticle.artist, 64)} alt={selectedArticle.artist} style={{ width: 32, height: 32, borderRadius: 10 }} />
+            <img src={avatarUrl(selectedArticle.artist, 64)} alt={selectedArticle.artist} style={{ width: 32, height: 32, borderRadius: 10, objectFit: "cover" }} />
             <span style={{ fontSize: 15, fontWeight: 700 }}>{selectedArticle.artist}</span>
             <div style={{
               marginLeft: 8, display: "flex", alignItems: "center", gap: 4,
@@ -1079,7 +1089,7 @@ function NewsPage({ C, fadeIn, Card }) {
           onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
           <img src={avatarUrl(article.artist, 72)} alt={article.artist} style={{
             width: 36, height: 36, borderRadius: 8,
-            border: "1px solid rgba(30,64,175,0.1)"
+            border: "1px solid rgba(30,64,175,0.1)", objectFit: "cover"
           }} />
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "-0.01em" }}><span style={{ fontSize: 11, fontWeight: 700, color: article.up ? "#38BDF8" : "#EF4444", fontFamily: "monospace", marginRight: 6 }}>{getTicker(article.artist)}</span>{article.artist}</div>
@@ -1151,7 +1161,7 @@ function RoyaltiesPage({ C, fadeIn, Card }) {
                 borderBottom: i < royaltyPayments.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none",
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <img src={avatarUrl(r.artist, 64)} alt={r.artist} style={{ width: 32, height: 32, borderRadius: 8 }} />
+                  <img src={avatarUrl(r.artist, 64)} alt={r.artist} style={{ width: 32, height: 32, borderRadius: 8, objectFit: "cover" }} />
                   <span style={{ fontSize: 14, fontWeight: 600 }}><span style={{ fontSize: 10, fontWeight: 700, color: "#38BDF8", fontFamily: "monospace", marginRight: 5 }}>{getTicker(r.artist)}</span>{r.artist}</span>
                 </div>
                 <span style={{ fontSize: 14, fontWeight: 700, color: C.green }}>${r.amount.toFixed(2)}</span>
@@ -1990,7 +2000,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                     }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <img src={avatarUrl(a.name, 32)} alt={a.name} style={{ width: 16, height: 16, borderRadius: 4 }} />
+                          <img src={avatarUrl(a.name, 32)} alt={a.name} style={{ width: 16, height: 16, borderRadius: 4, objectFit: "cover" }} />
                           <span style={{ fontWeight: 600, fontSize: 14 }}><span style={{ fontSize: 10, fontWeight: 700, color: gain >= 0 ? "#38BDF8" : "#EF4444", fontFamily: "monospace", marginRight: 5 }}>{a.ticker || getTicker(a.name)}</span>{a.name}</span>
                         </div>
                         <span style={{ fontSize: 11, color: C.textMuted }}>{a.shares} shares</span>
@@ -2114,7 +2124,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <img src={avatarUrl(a.name, 72)} alt={a.name} style={{
                         width: 36, height: 36, borderRadius: 10,
-                        border: "1px solid rgba(0,0,0,0.04)"
+                        border: "1px solid rgba(0,0,0,0.04)", objectFit: "cover"
                       }} />
                       <div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -2186,7 +2196,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                         borderBottom: i < Math.min(liveTradeHistory.length, 10) - 1 ? "1px solid rgba(0,0,0,0.04)" : "none",
                       }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <img src={avatarUrl(tArtistName, 48)} alt={tArtistName} style={{ width: 28, height: 28, borderRadius: 8 }} />
+                          <img src={avatarUrl(tArtistName, 48)} alt={tArtistName} style={{ width: 28, height: 28, borderRadius: 8, objectFit: "cover" }} />
                           <span style={{ fontSize: 13, fontWeight: 600 }}>
                             {tSymbol && <span style={{
                               padding: "1px 5px", borderRadius: 4, fontSize: 10, fontWeight: 700,
@@ -2240,7 +2250,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                       borderBottom: i < royaltyPayments.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none",
                     }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <img src={avatarUrl(r.artist, 48)} alt={r.artist} style={{ width: 28, height: 28, borderRadius: 8 }} />
+                        <img src={avatarUrl(r.artist, 48)} alt={r.artist} style={{ width: 28, height: 28, borderRadius: 8, objectFit: "cover" }} />
                         <span style={{ fontSize: 13, fontWeight: 600 }}><span style={{ fontSize: 10, fontWeight: 700, color: "#38BDF8", fontFamily: "monospace", marginRight: 5 }}>{getTicker(r.artist)}</span>{r.artist}</span>
                       </div>
                       <span style={{ fontSize: 13, fontWeight: 700, color: C.green }}>${r.amount.toFixed(2)}</span>
@@ -2329,7 +2339,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
 
                       {/* Artist info */}
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                        <img src={avatarUrl(rec.name, 48)} alt={rec.name} style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid rgba(0,0,0,0.04)" }} />
+                        <img src={avatarUrl(rec.name, 48)} alt={rec.name} style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid rgba(0,0,0,0.04)", objectFit: "cover" }} />
                         <div style={{ flex: 1 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                             <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-0.01em" }}>{rec.name}</span>
@@ -2597,7 +2607,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                           const fullArtist = artists.find(ar => ar.id === a.id);
                           if (fullArtist) setSelectedArtist(fullArtist);
                         }} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                          <img src={avatarUrl(a.name, 72)} alt={a.name} style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid rgba(0,0,0,0.04)" }} />
+                          <img src={avatarUrl(a.name, 72)} alt={a.name} style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid rgba(0,0,0,0.04)", objectFit: "cover" }} />
                           <div>
                             <div style={{ fontSize: 14, fontWeight: 600 }}>{a.name}</div>
                             <div style={{ fontSize: 11, color: C.textMuted }}>{a.genre}</div>
