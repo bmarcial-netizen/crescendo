@@ -6,25 +6,25 @@ import EarningsBand from "./EarningsBand";
 // ─── Artist Detail / Invest Modal ─── glassmorphic slide-in panel ───
 
 const C = {
-    bg: "#EAF0FA",
+    bg: "#E8EEF8",
     card: "rgba(255,255,255,0.72)",
     border: "rgba(255,255,255,0.9)",
     shadow: "0 2px 24px rgba(0,0,0,0.04), 0 0 0 1px rgba(255,255,255,0.8)",
-    primary: "#4338CA",
-    accent: "#50E3C2",
-    accentDark: "#2CB59E",
-    green: "#36D7B7",
-    greenSoft: "rgba(54,215,183,0.1)",
+    primary: "#1E40AF",
+    accent: "#38BDF8",
+    accentDark: "#0EA5E9",
+    green: "#38BDF8",
+    greenSoft: "rgba(56,189,248,0.1)",
     red: "#EF4444",
     redSoft: "rgba(239,68,68,0.1)",
     text: "#0F172A",
-    textSec: "#64748B",
+    textSec: "#475569",
     textMuted: "#94A3B8",
 };
 
 // Avatar helper
 function avatarUrl(name, size = 64) {
-    const colors = ["4338CA", "50E3C2", "36D7B7", "5B6AE8", "8B5CF6", "F59E0B"];
+    const colors = ["1E40AF", "38BDF8", "0EA5E9", "3B82F6", "60A5FA", "1D4ED8"];
     const idx = name.length % colors.length;
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=${size}&background=${colors[idx]}&color=fff&bold=true&format=svg`;
 }

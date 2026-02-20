@@ -5,12 +5,12 @@ import { useState, useEffect, useRef, useCallback } from "react";
 // Cursor: full-viewport crosshair lines like Studio Dialect
 
 const COLORS = {
-  bg: "#0D1117",
-  bgLight: "#C8CCD4",
-  accent: "#50E3C2",
-  accentDark: "#2CB59E",
-  primary: "#4338CA",
-  blue: "#5B6AE8",
+  bg: "#060B18",
+  bgLight: "#E2E8F0",
+  accent: "#38BDF8",
+  accentDark: "#0EA5E9",
+  primary: "#1E40AF",
+  blue: "#3B82F6",
   text: "#F0F2F5",
   textMuted: "rgba(240,242,245,0.45)",
   textDark: "#0F172A",

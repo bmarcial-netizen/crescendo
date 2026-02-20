@@ -3,15 +3,15 @@ import { Eye, EyeOff } from "lucide-react";
 import * as api from "./api";
 
 const C = {
-  primary: "#4338CA",
-  blue: "#5B6AE8",
-  accent: "#50E3C2",
-  accentDark: "#2CB59E",
-  green: "#36D7B7",
+  primary: "#1E40AF",
+  blue: "#3B82F6",
+  accent: "#38BDF8",
+  accentDark: "#0EA5E9",
+  green: "#38BDF8",
   text: "#0F172A",
-  textSec: "#64748B",
+  textSec: "#475569",
   textMuted: "#94A3B8",
-  bg: "#0D1117",
+  bg: "#060B18",
 };
 
 export default function AuthModal({ isOpen, onClose, onAuth, initialMode = "signup" }) {
@@ -147,14 +147,14 @@ export default function AuthModal({ isOpen, onClose, onAuth, initialMode = "sign
             position: "absolute", inset: "-40%",
             background: `
               conic-gradient(from 180deg at 50% 50%,
-                ${C.primary} 0deg,
-                #7C3AED 50deg,
+                #060B18 0deg,
+                ${C.primary} 50deg,
                 ${C.accent} 100deg,
-                #A855F7 150deg,
+                #1E3A5F 150deg,
                 ${C.blue} 200deg,
                 ${C.accent}CC 250deg,
-                #7C3AED 300deg,
-                ${C.primary} 360deg
+                #0C1E3A 300deg,
+                #060B18 360deg
               )`,
             zIndex: 0,
             filter: "blur(60px)",
@@ -180,7 +180,7 @@ export default function AuthModal({ isOpen, onClose, onAuth, initialMode = "sign
           <div className="auth-blob auth-blob-3" style={{
             position: "absolute", width: 160, height: 160,
             borderRadius: "40% 60% 70% 30% / 40% 50% 60% 50%",
-            background: `linear-gradient(225deg, ${C.accent}45 0%, #A855F740 50%, transparent 80%)`,
+            background: `linear-gradient(225deg, ${C.blue}60 0%, ${C.primary}40 50%, transparent 80%)`,
             top: "40%", left: "-8%",
             filter: "blur(3px)",
             zIndex: 1,
@@ -221,10 +221,9 @@ export default function AuthModal({ isOpen, onClose, onAuth, initialMode = "sign
               margin: 0,
               ...textAnimStyle(2),
             }}>
-              Invest in<br />
-              the artists<br />
-              you put your<br />
-              faith in
+              Your investments<br />
+              today, the<br />
+              artists' tomorrow.
             </h2>
             <p style={{
               fontSize: 11, color: "rgba(255,255,255,0.5)",

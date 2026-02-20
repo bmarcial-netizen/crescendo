@@ -10,31 +10,31 @@ import * as api from "./api";
 // ─── Crescendo Dashboard ─── glassmorphic light mode, neon blob accents ───
 
 const C = {
-  bg: "#EAF0FA",
+  bg: "#E8EEF8",
   card: "rgba(255,255,255,0.72)",
   cardSolid: "#FFFFFF",
   border: "rgba(255,255,255,0.9)",
   shadow: "0 2px 24px rgba(0,0,0,0.04), 0 0 0 1px rgba(255,255,255,0.8)",
   shadowHover: "0 4px 32px rgba(0,0,0,0.07), 0 0 0 1px rgba(255,255,255,0.9)",
-  primary: "#4338CA",
-  primarySoft: "rgba(67,56,202,0.08)",
-  accent: "#50E3C2",
-  accentDark: "#2CB59E",
-  green: "#36D7B7",
-  greenSoft: "rgba(54,215,183,0.1)",
+  primary: "#1E40AF",
+  primarySoft: "rgba(30,64,175,0.08)",
+  accent: "#38BDF8",
+  accentDark: "#0EA5E9",
+  green: "#38BDF8",
+  greenSoft: "rgba(56,189,248,0.1)",
   red: "#EF4444",
   redSoft: "rgba(239,68,68,0.1)",
   text: "#0F172A",
-  textSec: "#64748B",
+  textSec: "#475569",
   textMuted: "#94A3B8",
-  blob1: "radial-gradient(circle, rgba(80,227,194,0.50) 0%, transparent 70%)",
-  blob2: "radial-gradient(circle, rgba(67,56,202,0.35) 0%, transparent 70%)",
-  blob3: "radial-gradient(circle, rgba(91,106,232,0.30) 0%, transparent 70%)"
+  blob1: "radial-gradient(circle, rgba(56,189,248,0.45) 0%, transparent 70%)",
+  blob2: "radial-gradient(circle, rgba(30,64,175,0.35) 0%, transparent 70%)",
+  blob3: "radial-gradient(circle, rgba(59,130,246,0.30) 0%, transparent 70%)"
 };
 
 // Helper to generate avatar URL from artist name
 function avatarUrl(name, size = 64) {
-  const colors = ["4338CA", "50E3C2", "36D7B7", "5B6AE8", "8B5CF6", "F59E0B"];
+  const colors = ["1E40AF", "38BDF8", "0EA5E9", "3B82F6", "60A5FA", "1D4ED8"];
   const idx = name.length % colors.length;
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=${size}&background=${colors[idx]}&color=fff&bold=true&format=svg`;
 }
@@ -149,7 +149,7 @@ function SupplyMeter({ outstanding, max, compact = false }) {
 // Status pill for trade history
 function StatusPill({ status }) {
   const styles = {
-    filled: { bg: "rgba(54,215,183,0.12)", color: "#36D7B7", label: "Filled" },
+    filled: { bg: "rgba(56,189,248,0.12)", color: "#38BDF8", label: "Filled" },
     pending: { bg: "rgba(245,158,11,0.12)", color: "#F59E0B", label: "Pending" },
     cancelled: { bg: "rgba(239,68,68,0.1)", color: "#EF4444", label: "Cancelled" },
   };
@@ -305,19 +305,19 @@ function CandlestickChart({ candles, w = 720, h = 380 }) {
         const isHovered = hover && hover.idx === i;
         return (
           <g key={i}>
-            <line x1={x} y1={toY(c.high)} x2={x} y2={toY(c.low)} stroke={isUp ? "#36D7B7" : "#EF4444"} strokeWidth={isHovered ? 2 : 1} />
-            <rect x={x - barW / 2} y={bodyTop} width={barW} height={bodyH} rx={1} fill={isUp ? "#36D7B7" : "#EF4444"} opacity={isHovered ? 1 : 0.9} />
+            <line x1={x} y1={toY(c.high)} x2={x} y2={toY(c.low)} stroke={isUp ? "#38BDF8" : "#EF4444"} strokeWidth={isHovered ? 2 : 1} />
+            <rect x={x - barW / 2} y={bodyTop} width={barW} height={bodyH} rx={1} fill={isUp ? "#38BDF8" : "#EF4444"} opacity={isHovered ? 1 : 0.9} />
           </g>
         );
       })}
-      <line x1={50} y1={lastY} x2={w} y2={lastY} stroke="#4338CA" strokeWidth="1" strokeDasharray="4,4" opacity={0.5} />
-      <rect x={0} y={lastY - 10} width={52} height={20} rx={4} fill="#4338CA" />
+      <line x1={50} y1={lastY} x2={w} y2={lastY} stroke="#1E40AF" strokeWidth="1" strokeDasharray="4,4" opacity={0.5} />
+      <rect x={0} y={lastY - 10} width={52} height={20} rx={4} fill="#1E40AF" />
       <text x={26} y={lastY + 4} fontSize="9" fill="white" textAnchor="middle" fontFamily="monospace">{lastCandle.close.toFixed(2)}</text>
       {hover && hc &&
         <g>
-          <line x1={hcX} y1={20} x2={hcX} y2={h - 20} stroke="rgba(67,56,202,0.4)" strokeWidth="1" strokeDasharray="3,3" />
-          <line x1={50} y1={hover.mouseY} x2={w} y2={hover.mouseY} stroke="rgba(67,56,202,0.4)" strokeWidth="1" strokeDasharray="3,3" />
-          <rect x={0} y={hover.mouseY - 10} width={52} height={20} rx={4} fill="rgba(67,56,202,0.7)" />
+          <line x1={hcX} y1={20} x2={hcX} y2={h - 20} stroke="rgba(30,64,175,0.4)" strokeWidth="1" strokeDasharray="3,3" />
+          <line x1={50} y1={hover.mouseY} x2={w} y2={hover.mouseY} stroke="rgba(30,64,175,0.4)" strokeWidth="1" strokeDasharray="3,3" />
+          <rect x={0} y={hover.mouseY - 10} width={52} height={20} rx={4} fill="rgba(30,64,175,0.7)" />
           <text x={26} y={hover.mouseY + 4} fontSize="9" fill="white" textAnchor="middle" fontFamily="monospace">
             {(allLow + (1 - (hover.mouseY - 20) / (h - 40)) * range).toFixed(2)}
           </text>
@@ -331,10 +331,10 @@ function CandlestickChart({ candles, w = 720, h = 380 }) {
               <g>
                 <rect x={tx} y={ty} width={tooltipW} height={tooltipH} rx={8} fill="rgba(15,23,42,0.92)" />
                 <text x={tx + 10} y={ty + 16} fontSize="10" fontWeight="700" fill="#fff" fontFamily="monospace">OHLC Data</text>
-                <text x={tx + 10} y={ty + 32} fontSize="9" fill="#94A3B8" fontFamily="monospace">O: <tspan fill={isUp ? "#36D7B7" : "#EF4444"}>{hc.open.toFixed(4)}</tspan></text>
+                <text x={tx + 10} y={ty + 32} fontSize="9" fill="#94A3B8" fontFamily="monospace">O: <tspan fill={isUp ? "#38BDF8" : "#EF4444"}>{hc.open.toFixed(4)}</tspan></text>
                 <text x={tx + 10} y={ty + 46} fontSize="9" fill="#94A3B8" fontFamily="monospace">H: <tspan fill="#fff">{hc.high.toFixed(4)}</tspan></text>
                 <text x={tx + 10} y={ty + 60} fontSize="9" fill="#94A3B8" fontFamily="monospace">L: <tspan fill="#fff">{hc.low.toFixed(4)}</tspan></text>
-                <text x={tx + 10} y={ty + 74} fontSize="9" fill="#94A3B8" fontFamily="monospace">C: <tspan fill={isUp ? "#36D7B7" : "#EF4444"}>{hc.close.toFixed(4)}</tspan></text>
+                <text x={tx + 10} y={ty + 74} fontSize="9" fill="#94A3B8" fontFamily="monospace">C: <tspan fill={isUp ? "#38BDF8" : "#EF4444"}>{hc.close.toFixed(4)}</tspan></text>
               </g>
             );
           })()}
@@ -359,7 +359,7 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
   const lastPrice = candles[candles.length - 1]?.close || selected.price;
   const execPrice = (lastPrice * parseFloat(amount || 1)).toFixed(2);
   const riskLevel = leverage <= 25 ? "Low Risk" : leverage <= 60 ? "Med Risk" : "High Risk";
-  const riskColor = leverage <= 25 ? "#36D7B7" : leverage <= 60 ? "#F59E0B" : "#EF4444";
+  const riskColor = leverage <= 25 ? "#38BDF8" : leverage <= 60 ? "#F59E0B" : "#EF4444";
 
   return (
     <div style={fadeIn(0.1)}>
@@ -385,7 +385,7 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
               </div>
               <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
                 <span style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1 }}>{lastPrice.toFixed(2)}</span>
-                <span style={{ fontSize: 15, fontWeight: 600, color: selected.change >= 0 ? "#36D7B7" : "#EF4444" }}>
+                <span style={{ fontSize: 15, fontWeight: 600, color: selected.change >= 0 ? "#38BDF8" : "#EF4444" }}>
                   {selected.change >= 0 ? "▲" : "▼"} {Math.abs(selected.change)}%
                 </span>
               </div>
@@ -408,7 +408,7 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
                 <button key={t} onClick={() => !isTripped && setTradeTab(t)} disabled={isTripped} style={{
                   padding: "10px 0", borderRadius: 14, border: "none", fontSize: 13, fontWeight: 700,
                   cursor: isTripped ? "not-allowed" : "pointer", fontFamily: "'Inter', sans-serif", letterSpacing: "0.04em",
-                  background: tradeTab === t ? t === "BUY" ? C.accent : "#4338CA" : "transparent",
+                  background: tradeTab === t ? t === "BUY" ? C.accent : "#1E40AF" : "transparent",
                   color: tradeTab === t ? (t === "BUY" ? "#0F172A" : "#fff") : "#94A3B8", transition: "all 0.2s",
                   opacity: isTripped ? 0.5 : 1
                 }}>{t}</button>
@@ -418,16 +418,16 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
 
           <Card style={{ padding: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-              <span style={{ fontSize: 12, color: "#64748B", fontWeight: 600 }}>Amount</span>
+              <span style={{ fontSize: 12, color: "#475569", fontWeight: 600 }}>Amount</span>
               <span style={{ fontSize: 11, color: "#94A3B8" }}>USD ▾</span>
             </div>
             <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 8 }}>{amount}</div>
             <div style={{ display: "flex", gap: 5 }}>
               {["1.00", "2.00", "5.00", "10.00", "15.00"].map((v) =>
                 <button key={v} onClick={() => setAmount(v)} style={{
-                  padding: "4px 8px", borderRadius: 8, border: `1px solid ${amount === v ? "#4338CA" : "rgba(0,0,0,0.06)"}`,
+                  padding: "4px 8px", borderRadius: 8, border: `1px solid ${amount === v ? "#1E40AF" : "rgba(0,0,0,0.06)"}`,
                   fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "monospace",
-                  background: amount === v ? "rgba(67,56,202,0.08)" : "transparent", color: amount === v ? "#4338CA" : "#64748B"
+                  background: amount === v ? "rgba(30,64,175,0.08)" : "transparent", color: amount === v ? "#1E40AF" : "#475569"
                 }}>{v}</button>
               )}
             </div>
@@ -435,11 +435,11 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
 
           <Card style={{ padding: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-              <span style={{ fontSize: 12, color: "#64748B", fontWeight: 600 }}>Leverage</span>
+              <span style={{ fontSize: 12, color: "#475569", fontWeight: 600 }}>Leverage</span>
               <span style={{ fontSize: 12, fontWeight: 600, color: riskColor }}>{riskLevel}</span>
             </div>
             <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 6 }}>{leverage}x</div>
-            <input type="range" min="1" max="100" value={leverage} onChange={(e) => setLeverage(Number(e.target.value))} style={{ width: "100%", accentColor: "#4338CA" }} />
+            <input type="range" min="1" max="100" value={leverage} onChange={(e) => setLeverage(Number(e.target.value))} style={{ width: "100%", accentColor: "#1E40AF" }} />
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#94A3B8", marginTop: 2, fontFamily: "monospace" }}>
               {["0", "25", "50", "75", "100"].map((v) => <span key={v}>{v}</span>)}
             </div>
@@ -447,30 +447,30 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
 
           <Card style={{ padding: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-              <span style={{ fontSize: 12, color: "#64748B", fontWeight: 600 }}>Stop Loss</span>
+              <span style={{ fontSize: 12, color: "#475569", fontWeight: 600 }}>Stop Loss</span>
               <span style={{ fontSize: 11, color: "#94A3B8" }}>USD ▾</span>
             </div>
             <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>0</div>
             <div style={{ display: "flex", gap: 5 }}>
               {["0%", "-10%", "-25%", "-50%", "-75%"].map((v) =>
                 <button key={v} onClick={() => setStopLoss(v)} style={{
-                  padding: "4px 9px", borderRadius: 20, border: `1px solid ${stopLoss === v ? "#4338CA" : "rgba(0,0,0,0.06)"}`,
+                  padding: "4px 9px", borderRadius: 20, border: `1px solid ${stopLoss === v ? "#1E40AF" : "rgba(0,0,0,0.06)"}`,
                   fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "monospace",
-                  background: stopLoss === v ? "rgba(67,56,202,0.08)" : "transparent", color: stopLoss === v ? "#4338CA" : "#64748B"
+                  background: stopLoss === v ? "rgba(30,64,175,0.08)" : "transparent", color: stopLoss === v ? "#1E40AF" : "#475569"
                 }}>{v}</button>
               )}
             </div>
           </Card>
 
           <Card style={{ padding: 14 }}>
-            <div style={{ fontSize: 12, color: "#64748B", fontWeight: 600, marginBottom: 4 }}>Take Profit</div>
+            <div style={{ fontSize: 12, color: "#475569", fontWeight: 600, marginBottom: 4 }}>Take Profit</div>
             <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 8 }}>{takeProfit}</div>
             <div style={{ display: "flex", gap: 5 }}>
               {["25%", "50%", "100%", "300%", "900%"].map((v) =>
                 <button key={v} onClick={() => setTakeProfit(v)} style={{
-                  padding: "4px 9px", borderRadius: 20, border: `1px solid ${takeProfit === v ? "#4338CA" : "rgba(0,0,0,0.06)"}`,
+                  padding: "4px 9px", borderRadius: 20, border: `1px solid ${takeProfit === v ? "#1E40AF" : "rgba(0,0,0,0.06)"}`,
                   fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "monospace",
-                  background: takeProfit === v ? "rgba(67,56,202,0.08)" : "transparent", color: takeProfit === v ? "#4338CA" : "#64748B"
+                  background: takeProfit === v ? "rgba(30,64,175,0.08)" : "transparent", color: takeProfit === v ? "#1E40AF" : "#475569"
                 }}>{v}</button>
               )}
             </div>
@@ -482,9 +482,9 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
             style={{
               width: "100%", padding: "13px 0", borderRadius: 14, border: "none", fontSize: 15, fontWeight: 700,
               cursor: isTripped ? "not-allowed" : "pointer", fontFamily: "'Inter', sans-serif",
-              background: isTripped ? "rgba(0,0,0,0.1)" : (tradeTab === "BUY" ? "#4338CA" : "#EF4444"),
-              color: isTripped ? C.textMuted : "#fff",
-              boxShadow: isTripped ? "none" : `0 4px 16px ${tradeTab === "BUY" ? "#4338CA" : "#EF4444"}40`,
+              background: isTripped ? "rgba(0,0,0,0.1)" : (tradeTab === "BUY" ? C.accent : C.primary),
+              color: isTripped ? C.textMuted : (tradeTab === "BUY" ? "#0F172A" : "#fff"),
+              boxShadow: isTripped ? "none" : `0 4px 16px ${tradeTab === "BUY" ? C.accent : C.primary}40`,
               opacity: isTripped ? 0.6 : 1
             }}>
             {isTripped ? "Trading Halted" : `Place ${tradeTab === "BUY" ? "Buy" : "Sell"}`}
@@ -493,7 +493,7 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
           <Card style={{ padding: 14 }}>
             {[["Execution price", execPrice], ["Spread", "0%"], ["Slippage", "--"], ["Notional value", `${amount} USD`], ["Platform fee", "0 USD (0.023%)"], ["Daily limit", "10,000 USD"]].map(([l, v]) =>
               <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 12 }}>
-                <span style={{ color: "#64748B" }}>{l}</span>
+                <span style={{ color: "#475569" }}>{l}</span>
                 <span style={{ fontWeight: 600, fontFamily: "monospace", fontSize: 11 }}>{v}</span>
               </div>
             )}
@@ -512,7 +512,7 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
                   border: "1px solid rgba(0,0,0,0.05)"
                 }} />
                 <span style={{ fontSize: 12, fontWeight: 600 }}>{a.name}/USD</span>
-                <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 600, color: a.change >= 0 ? "#36D7B7" : "#EF4444" }}>
+                <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 600, color: a.change >= 0 ? "#38BDF8" : "#EF4444" }}>
                   {a.change >= 0 ? "▲" : "▼"} {Math.abs(a.change)}%
                 </span>
               </div>
@@ -629,7 +629,7 @@ function NewsPage({ C, fadeIn, Card }) {
           onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
           <img src={avatarUrl(article.artist, 72)} alt={article.artist} style={{
             width: 36, height: 36, borderRadius: 8,
-            border: "1px solid rgba(67,56,202,0.1)"
+            border: "1px solid rgba(30,64,175,0.1)"
           }} />
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "-0.01em" }}>{article.artist}</div>
@@ -764,7 +764,7 @@ function DepositModal({ isOpen, onClose }) {
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
               <div style={{
                 width: 40, height: 40, borderRadius: 12,
-                background: `linear-gradient(135deg, ${C.primary}, #5B6AE8)`,
+                background: `linear-gradient(135deg, ${C.primary}, #3B82F6)`,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}><DollarSign size={20} color="#fff" /></div>
               <div>
@@ -1227,9 +1227,9 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
                   padding: "10px 20px", borderRadius: 12, border: "none",
                   fontSize: 13, fontWeight: 700, cursor: "pointer",
                   fontFamily: "'Inter', sans-serif",
-                  background: `linear-gradient(135deg, #635BFF, #7C3AED)`,
+                  background: C.primary,
                   color: "#fff",
-                  boxShadow: "0 4px 16px rgba(99,91,255,0.3)"
+                  boxShadow: `0 4px 16px ${C.primary}30`
                 }}>
                 <DollarSign size={16} /> Deposit
               </button>
@@ -1297,12 +1297,12 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
                       }} />
                       <div style={{
                         position: "absolute", width: 80, height: 80, borderRadius: "50%",
-                        background: "radial-gradient(circle, rgba(67,56,202,0.4) 0%, rgba(67,56,202,0.1) 60%, transparent 80%)",
+                        background: "radial-gradient(circle, rgba(30,64,175,0.4) 0%, rgba(30,64,175,0.1) 60%, transparent 80%)",
                         bottom: 30, left: "35%", filter: "blur(6px)"
                       }} />
                       <div style={{
                         position: "absolute", width: 60, height: 60, borderRadius: "50%",
-                        background: "radial-gradient(circle, rgba(54,215,183,0.4) 0%, transparent 70%)",
+                        background: "radial-gradient(circle, rgba(56,189,248,0.4) 0%, transparent 70%)",
                         bottom: 50, right: "30%", filter: "blur(5px)"
                       }} />
                       {portfolioHoldings.map((a, i) => {
@@ -1312,7 +1312,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
                           { left: "12%", top: 0 },
                           { right: "12%", top: 0 }
                         ];
-                        const colors = [C.accent, "#5B6AE8", C.primary, C.green];
+                        const colors = [C.accent, "#3B82F6", C.primary, C.green];
                         return (
                           <div key={a.id} onClick={() => guardedClick(() => setSelectedArtist(a))} style={{ position: "absolute", ...positions[i], textAlign: "center", cursor: "pointer" }}>
                             <div style={{
@@ -1389,7 +1389,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
                       </div>
 
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
-                        {[C.accent, "#5B6AE8", C.primary].map((c, i) =>
+                        {[C.accent, "#3B82F6", C.primary].map((c, i) =>
                           <div key={i} style={{
                             width: 28 - i * 4, height: 28 - i * 4, borderRadius: "50%",
                             background: `radial-gradient(circle, ${c}90 0%, ${c}30 70%)`,
@@ -1612,7 +1612,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
                       <span style={{
                         display: "inline-flex", alignItems: "center", gap: 4,
                         padding: "3px 10px", borderRadius: 99, fontSize: 11, fontWeight: 600,
-                        background: "linear-gradient(135deg, rgba(80,227,194,0.15), rgba(67,56,202,0.15))",
+                        background: "linear-gradient(135deg, rgba(80,227,194,0.15), rgba(30,64,175,0.15))",
                         color: C.primary, border: `1px solid ${C.primary}18`
                       }}>
                         <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: C.accent, animation: "pulse 2s infinite" }} /> LIVE
@@ -1652,7 +1652,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
                       <div style={{
                         position: "absolute", top: -20, right: -20, width: 80, height: 80, borderRadius: "50%",
                         background: isExplosive ?
-                          "radial-gradient(circle, rgba(67,56,202,0.25) 0%, transparent 70%)" :
+                          "radial-gradient(circle, rgba(30,64,175,0.25) 0%, transparent 70%)" :
                           "radial-gradient(circle, rgba(80,227,194,0.25) 0%, transparent 70%)",
                         filter: "blur(10px)", pointerEvents: "none"
                       }} />
@@ -1660,7 +1660,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
                         <span style={{
                           padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600,
-                          background: sound.platform === "TikTok" ? "#00000010" : "linear-gradient(135deg, rgba(67,56,202,0.08), rgba(80,227,194,0.08))",
+                          background: sound.platform === "TikTok" ? "#00000010" : "linear-gradient(135deg, rgba(30,64,175,0.08), rgba(80,227,194,0.08))",
                           color: sound.platform === "TikTok" ? C.text : C.primary,
                           border: `1px solid ${sound.platform === "TikTok" ? "rgba(0,0,0,0.06)" : C.primary + "18"}`
                         }}>
@@ -1815,7 +1815,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
               padding: "10px 24px", borderRadius: 10, border: "none",
               fontSize: 13, fontWeight: 700, cursor: "pointer",
               fontFamily: "'Inter', sans-serif",
-              background: `linear-gradient(135deg, ${C.primary}, #5B6AE8)`,
+              background: `linear-gradient(135deg, ${C.primary}, #3B82F6)`,
               color: "#fff", whiteSpace: "nowrap",
               boxShadow: `0 4px 16px ${C.primary}40`
             }}>
