@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "vite build && node scripts/bundle-api.mjs",
+  "buildCommand": "npm run build && node scripts/bundle-api.mjs",
   "outputDirectory": "dist",
   "functions": {
     "api/index.mjs": {
