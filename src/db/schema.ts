@@ -400,3 +400,28 @@ export const dailyTradeTracking = pgTable('daily_trade_tracking', {
 }, (table) => [
   uniqueIndex('idx_daily_tracking_user_artist_date').on(table.userId, table.artistId, table.tradeDate),
 ]);
+
+// ── Earnings Model Parameters ────────────────────────────────────────────────
+
+export const earningsModelParams = pgTable('earnings_model_params', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  version: varchar('version', { length: 20 }).notNull().unique(),
+  isActive: boolean('is_active').notNull().default(true),
+
+  streamsPerListenerLow: decimal('streams_per_listener_low', { precision: 8, scale: 4 }).notNull().default('2.5'),
+  streamsPerListenerBase: decimal('streams_per_listener_base', { precision: 8, scale: 4 }).notNull().default('4.0'),
+  streamsPerListenerHigh: decimal('streams_per_listener_high', { precision: 8, scale: 4 }).notNull().default('6.0'),
+
+  usdPerStreamLow: decimal('usd_per_stream_low', { precision: 10, scale: 6 }).notNull().default('0.002500'),
+  usdPerStreamBase: decimal('usd_per_stream_base', { precision: 10, scale: 6 }).notNull().default('0.003300'),
+  usdPerStreamHigh: decimal('usd_per_stream_high', { precision: 10, scale: 6 }).notNull().default('0.004200'),
+
+  popularityMidpoint: decimal('popularity_midpoint', { precision: 6, scale: 2 }).notNull().default('50'),
+  popularityMaxAdjustment: decimal('popularity_max_adjustment', { precision: 6, scale: 4 }).notNull().default('0.3000'),
+
+  fanConversionMidpoint: decimal('fan_conversion_midpoint', { precision: 10, scale: 6 }).notNull().default('0.050000'),
+  fanConversionMaxAdjustment: decimal('fan_conversion_max_adjustment', { precision: 6, scale: 4 }).notNull().default('0.1500'),
+
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});

@@ -1,9 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { artists, tractionIndexSnapshots } from '../db/schema';
+import { artists, tractionIndexSnapshots, artistMetricSnapshots, earningsModelParams } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { getPriceQuote } from '../services/pricing.service';
 import { NotFoundError } from '../utils/errors';
+import { estimateEarningsBand, DEFAULT_PARAMS, EarningsModelParams } from '../model/earningsEstimator';
 
 const router = Router();
 
@@ -46,6 +47,96 @@ router.get('/artists/:id/traction-history', async (req: Request, res: Response) 
     .limit(30);
 
   res.json({ artist: { id: artist.id, stageName: artist.stageName }, snapshots });
+});
+
+// Get earnings band estimate for an artist (public)
+router.get('/artists/:id/earnings-band', async (req: Request, res: Response) => {
+  const artistId = req.params.id as string;
+
+  const [artist] = await db.select().from(artists).where(eq(artists.id, artistId)).limit(1);
+  if (!artist) throw new NotFoundError('Artist not found');
+
+  // Get latest metric snapshot for this artist
+  const [snapshot] = await db
+    .select()
+    .from(artistMetricSnapshots)
+    .where(eq(artistMetricSnapshots.artistId, artistId))
+    .orderBy(desc(artistMetricSnapshots.capturedAt))
+    .limit(1);
+
+  const listeners = snapshot?.spotifyMonthlyListeners
+    ? parseFloat(snapshot.spotifyMonthlyListeners)
+    : null;
+  const popularity = snapshot?.spotifyPopularity
+    ? parseFloat(snapshot.spotifyPopularity)
+    : null;
+  const fanConversion = snapshot?.fanConversionRate
+    ? parseFloat(snapshot.fanConversionRate)
+    : null;
+
+  // Try to load active model params from DB, fall back to defaults
+  let modelParams: EarningsModelParams = DEFAULT_PARAMS;
+  try {
+    const [dbParams] = await db
+      .select()
+      .from(earningsModelParams)
+      .where(eq(earningsModelParams.isActive, true))
+      .orderBy(desc(earningsModelParams.updatedAt))
+      .limit(1);
+
+    if (dbParams) {
+      modelParams = {
+        streamsPerListenerLow: parseFloat(dbParams.streamsPerListenerLow),
+        streamsPerListenerBase: parseFloat(dbParams.streamsPerListenerBase),
+        streamsPerListenerHigh: parseFloat(dbParams.streamsPerListenerHigh),
+        usdPerStreamLow: parseFloat(dbParams.usdPerStreamLow),
+        usdPerStreamBase: parseFloat(dbParams.usdPerStreamBase),
+        usdPerStreamHigh: parseFloat(dbParams.usdPerStreamHigh),
+        popularityMidpoint: parseFloat(dbParams.popularityMidpoint),
+        popularityMaxAdjustment: parseFloat(dbParams.popularityMaxAdjustment),
+        fanConversionMidpoint: parseFloat(dbParams.fanConversionMidpoint),
+        fanConversionMaxAdjustment: parseFloat(dbParams.fanConversionMaxAdjustment),
+      };
+    }
+  } catch {
+    // DB params table may not exist yet; use defaults
+  }
+
+  const revSharePct = parseFloat(artist.revenueSharePct);
+  const sharesOutstanding = artist.sharesOutstanding;
+  const currentPrice = parseFloat(artist.currentPrice);
+
+  const result = estimateEarningsBand(
+    {
+      spotifyMonthlyListeners: listeners,
+      spotifyPopularity: popularity,
+      fanConversionRate: fanConversion,
+      revenueSharePct: revSharePct,
+      sharesOutstanding,
+    },
+    modelParams,
+  );
+
+  // Compute implied yield if we have a price
+  if (currentPrice > 0 && result.annualizedEarningsPerShare.base > 0) {
+    result.impliedYield = {
+      low: Math.round((result.annualizedEarningsPerShare.low / currentPrice) * 10000) / 10000,
+      base: Math.round((result.annualizedEarningsPerShare.base / currentPrice) * 10000) / 10000,
+      high: Math.round((result.annualizedEarningsPerShare.high / currentPrice) * 10000) / 10000,
+    };
+  }
+
+  res.json({
+    artistId: artist.id,
+    stageName: artist.stageName,
+    currentPrice,
+    revenueSharePct: revSharePct,
+    sharesOutstanding,
+    snapshotUsed: snapshot
+      ? { id: snapshot.id, capturedAt: snapshot.capturedAt, source: snapshot.source }
+      : null,
+    ...result,
+  });
 });
 
 export default router;
