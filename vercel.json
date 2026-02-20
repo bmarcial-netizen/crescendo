@@ -2,11 +2,6 @@
   "version": 2,
   "buildCommand": "npm run build && node scripts/bundle-api.mjs",
   "outputDirectory": "dist",
-  "functions": {
-    "api/index.mjs": {
-      "maxDuration": 30
-    }
-  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/health", "destination": "/api" },

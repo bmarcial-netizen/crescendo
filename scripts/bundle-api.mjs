@@ -6,7 +6,7 @@
 import { build } from 'esbuild';
 
 await build({
-  entryPoints: ['api/entry.ts'],
+  entryPoints: ['server/entry.ts'],
   bundle: true,
   platform: 'node',
   target: 'node18',
