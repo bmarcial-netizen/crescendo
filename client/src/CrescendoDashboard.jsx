@@ -507,7 +507,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
             background: `linear-gradient(135deg, ${C.primary}, #5B6AE8)`,
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: 15, fontWeight: 800, color: "#fff",
-          }}>C</div>
+          }}>&lt;</div>
           <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.03em", color: C.text }}>Crescendo</span>
         </div>
 

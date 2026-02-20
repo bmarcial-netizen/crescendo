@@ -231,7 +231,7 @@ export default function AuthModal({ isOpen, onClose, onAuth, initialMode = "sign
                             fontSize: 20, fontWeight: 900, color: "#fff",
                             marginBottom: 16,
                             boxShadow: `0 4px 20px ${C.primary}40`,
-                        }}>C</div>
+                        }}>&lt;</div>
                         <h2 style={{
                             fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em",
                             marginBottom: 6,

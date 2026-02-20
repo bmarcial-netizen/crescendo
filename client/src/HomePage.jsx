@@ -236,7 +236,7 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
                         background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.blue})`,
                         display: "flex", alignItems: "center", justifyContent: "center",
                         fontSize: 13, fontWeight: 900, color: "#fff",
-                    }}>C</div>
+                    }}>&lt;</div>
                     <span ref={headerTextRef} style={{
                         fontSize: 15, fontWeight: 800, letterSpacing: "0.12em",
                         textTransform: "uppercase", color: COLORS.text,
@@ -526,7 +526,7 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
                         {Array.from({ length: 12 }).map((_, i) => {
                             const angle = (360 / 12) * i;
                             const artistNames = ["Mira Voss", "KODA", "Solène", "duskwave", "The Pale Moths", "Jax Rennick"];
-                            const emojis = ["🎤", "🎹", "🎵", "🌊", "🎸", "🎙️"];
+                            const tickers = ["VOSS", "KODA", "SOLN", "DSKW", "PLMH", "JXRN"];
                             const prices = ["$2.47", "$5.12", "$3.88", "$0.74", "$1.03", "$1.95"];
                             const changes = ["+18.3%", "+7.2%", "+31.5%", "+4.8%", "-2.1%", "-5.4%"];
                             const idx = i % 6;
@@ -547,7 +547,12 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
                                     backfaceVisibility: "hidden",
                                 }}>
                                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                        <span style={{ fontSize: 18 }}>{emojis[idx]}</span>
+                                        <span style={{
+                                            fontSize: 10, fontWeight: 800, letterSpacing: "0.05em",
+                                            color: isUp ? COLORS.accent : "#EF4444",
+                                            background: isUp ? "rgba(52,211,153,0.12)" : "rgba(239,68,68,0.12)",
+                                            padding: "2px 6px", borderRadius: 4, fontFamily: "monospace",
+                                        }}>{tickers[idx]}</span>
                                         <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{artistNames[idx]}</span>
                                     </div>
                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
@@ -763,7 +768,7 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
                             fontWeight: 900, letterSpacing: "-0.04em",
                             lineHeight: 1, textTransform: "uppercase", marginBottom: 8,
                         }}>
-                            HELLO@<br />CRESCENDO.IO
+                            TONICA@<br />CRESCENDO.IO
                         </h2>
                         <p style={{
                             fontFamily: "monospace", fontSize: 13,
@@ -843,7 +848,7 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
                                     background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.blue})`,
                                     display: "flex", alignItems: "center", justifyContent: "center",
                                     fontSize: 10, fontWeight: 900, color: "#fff",
-                                }}>C</div>
+                                }}>&lt;</div>
                                 <span style={{
                                     fontSize: 13, fontWeight: 800, letterSpacing: "0.12em",
                                     textTransform: "uppercase",
