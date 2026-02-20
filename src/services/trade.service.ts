@@ -20,6 +20,7 @@ import {
   BadRequestError,
   PriceBandError,
 } from '../utils/errors';
+import { config } from '../config';
 
 export async function executeBuy(userId: string, artistId: string, quantity: number) {
   if (quantity <= 0) throw new BadRequestError('Quantity must be positive');
@@ -51,13 +52,27 @@ export async function executeBuy(userId: string, artistId: string, quantity: num
 
     // Get wallet and check balance
     const walletName = `user:${userId}:wallet`;
-    const [wallet] = await tx
+    let [wallet] = await tx
       .select()
       .from(ledgerAccounts)
       .where(eq(ledgerAccounts.name, walletName))
       .limit(1);
 
     if (!wallet) throw new NotFoundError('Wallet not found');
+
+    // Auto-credit wallets stuck at $0 (users registered before starting balance was wired up)
+    if (parseFloat(wallet.balance) === 0) {
+      await tx
+        .update(ledgerAccounts)
+        .set({ balance: config.defaultStartingBalance })
+        .where(eq(ledgerAccounts.id, wallet.id));
+      [wallet] = await tx
+        .select()
+        .from(ledgerAccounts)
+        .where(eq(ledgerAccounts.id, wallet.id))
+        .limit(1);
+    }
+
     if (parseFloat(wallet.balance) < totalCost) {
       throw new InsufficientFundsError(`Need $${totalCost.toFixed(4)}, have $${wallet.balance}`);
     }

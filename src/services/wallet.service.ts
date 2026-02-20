@@ -3,22 +3,24 @@ import { ledgerAccounts } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { createDoubleEntry, getUserWalletAccount, getPlatformAccount } from './ledger.service';
 import { NotFoundError, InsufficientFundsError, BadRequestError } from '../utils/errors';
+import { config } from '../config';
 
 /**
  * Ensure the user has a wallet account; create one if missing.
+ * New wallets are created with the default starting balance.
  * Returns the wallet row.
  */
 async function ensureWallet(userId: string) {
   let wallet = await getUserWalletAccount(userId);
   if (!wallet) {
-    // Auto-create wallet for users that don't have one yet
+    // Auto-create wallet with starting balance for users that don't have one yet
     const [created] = await db
       .insert(ledgerAccounts)
       .values({
         name: `user:${userId}:wallet`,
         accountType: 'liability',
         userId,
-        balance: '0',
+        balance: config.defaultStartingBalance,
       })
       .onConflictDoNothing()
       .returning();
@@ -50,7 +52,19 @@ async function ensurePlatformCash() {
 }
 
 export async function getBalance(userId: string) {
-  const wallet = await ensureWallet(userId);
+  let wallet = await ensureWallet(userId);
+
+  // If wallet is at exactly $0 and has no ledger entries, grant starting balance.
+  // This catches users who registered before the starting balance was wired up,
+  // or whose wallet was auto-created with $0.
+  if (parseFloat(wallet.balance) === 0) {
+    await db
+      .update(ledgerAccounts)
+      .set({ balance: config.defaultStartingBalance })
+      .where(eq(ledgerAccounts.id, wallet.id));
+    wallet = (await getUserWalletAccount(userId))!;
+  }
+
   return { balance: wallet.balance, accountId: wallet.id };
 }
 

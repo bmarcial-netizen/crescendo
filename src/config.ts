@@ -48,7 +48,7 @@ const corsOrigins: string[] = [
 
 // ── Trading defaults ─────────────────────────────────────────────────────────
 
-const defaultStartingBalance = '1000.0000';
+const defaultStartingBalance = '1500.0000';
 
 // ── Export ───────────────────────────────────────────────────────────────────
 

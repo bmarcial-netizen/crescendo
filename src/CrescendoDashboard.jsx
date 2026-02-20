@@ -1073,7 +1073,7 @@ function NewsPage({ C, fadeIn, Card }) {
             alignItems: "center", padding: "16px 20px",
             borderTop: "1px solid rgba(0,0,0,0.06)",
             cursor: "pointer", transition: "background 0.15s",
-            borderRadius: 0
+            borderRadius: 10
           }}
           onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.5)"}
           onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>

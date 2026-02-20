@@ -424,7 +424,7 @@ export default function AuthModal({ isOpen, onClose, onAuth, initialMode = "sign
               {/* Submit */}
               <button type="submit" disabled={loading} className="auth-submit-btn" style={{
                 width: "100%", padding: "14px 0",
-                borderRadius: 0, border: "none",
+                borderRadius: 12, border: "none",
                 fontSize: 12, fontWeight: 700, cursor: loading ? "wait" : "pointer",
                 fontFamily: "monospace",
                 letterSpacing: "0.12em",
