@@ -520,6 +520,7 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
                         {Array.from({ length: 12 }).map((_, i) => {
               const angle = 360 / 12 * i;
               const artistNames = ["2hollis", "Snow Strippers", "Esdeekid", "Doechii", "Ian", "Feng", "King Krule", "The Tulips", "Malcom Todd", "JPEGMAFIA", "Men I Trust", "Matt Maltese"];
+              const tickers = ["HLLS", "SNWS", "ESDK", "DCHI", "IANN", "FENG", "KRKL", "TULP", "MTOD", "JPEG", "MNIT", "MMLT"];
               const prices = ["$2.47", "$5.12", "$3.88", "$0.74", "$1.03", "$1.95", "$2.47", "$5.12", "$3.88", "$0.74", "$1.03", "$1.95"];
               const changes = ["+18.3%", "+7.2%", "+31.5%", "+4.8%", "-2.1%", "-5.4%", "+18.3%", "+7.2%", "+31.5%", "+4.8%", "-2.1%", "-5.4%"];
               const isUp = !changes[i].startsWith("-");
@@ -538,7 +539,8 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
                   justifyContent: "space-between",
                   backfaceVisibility: "hidden"
                 }}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                        <span style={{ fontSize: 9, fontWeight: 700, color: isUp ? "#38BDF8" : "#EF4444", fontFamily: "monospace", letterSpacing: "0.05em" }}>{tickers[i]}</span>
                                         <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{artistNames[i]}</span>
                                     </div>
                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
@@ -658,6 +660,7 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
                       marginBottom: 16
                     }}>LIVE MARKET PREVIEW</div>
                                         {["Solène", "KODA", "Mira Voss"].map((name, i) => {
+                      const previewTickers = ["SOLN", "KODA", "MRVS"];
                       const prices = ["$3.88", "$5.12", "$2.47"];
                       const pcts = ["+31.5%", "+7.2%", "+18.3%"];
                       return (
@@ -667,7 +670,7 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
                           borderBottom: i < 2 ? `1px solid ${COLORS.primary}12` : "none"
                         }}>
                                                     <div>
-                                                        <div style={{ fontSize: 15, fontWeight: 700 }}>{name}</div>
+                                                        <div style={{ fontSize: 15, fontWeight: 700 }}><span style={{ fontSize: 10, fontWeight: 700, color: COLORS.accentDark, fontFamily: "monospace", marginRight: 6 }}>{previewTickers[i]}</span>{name}</div>
                                                         <div style={{ fontSize: 12, color: COLORS.textDarkMuted }}>
                                                             {["R&B / Soul", "Electronic", "Indie Pop"][i]}
                                                         </div>

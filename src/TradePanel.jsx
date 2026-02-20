@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import * as api from "./api";
+import { getTicker } from "./CrescendoDashboard";
 
 const C = {
   primary: "#4338CA",
@@ -55,7 +56,7 @@ export default function TradePanel({ artist, onTradeComplete, balance }) {
       } else {
         await api.sellShares(artist.id, qty);
       }
-      setSuccess(`${side === "buy" ? "Bought" : "Sold"} ${qty} shares of ${artist.stageName || artist.name} @ $${price.toFixed(4)}`);
+      setSuccess(`${side === "buy" ? "Bought" : "Sold"} ${qty} shares of ${artist.stageName || artist.name} (${artist.ticker || getTicker(artist.stageName || artist.name)}) @ $${price.toFixed(4)}`);
       setQuantity("");
       if (onTradeComplete) onTradeComplete();
     } catch (err) {
@@ -77,7 +78,7 @@ export default function TradePanel({ artist, onTradeComplete, balance }) {
     }}>
       {/* Artist header */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{artist?.stageName || artist?.name || "Select Artist"}</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{artist && <span style={{ fontSize: 11, fontWeight: 700, color: (artist.change ?? 0) >= 0 ? "#38BDF8" : "#EF4444", fontFamily: "monospace", marginRight: 6 }}>{artist.ticker || getTicker(artist.stageName || artist.name)}</span>}{artist?.stageName || artist?.name || "Select Artist"}</div>
         <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>
           {quote ? `Bid: $${quote.bid.toFixed(4)} · Ask: $${quote.ask.toFixed(4)} · Spread: ${spread}%` : quoteLoading ? "Loading quote..." : ""}
         </div>

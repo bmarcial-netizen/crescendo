@@ -4,6 +4,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import * as api from "./api";
 import EarningsBand from "./EarningsBand";
 import { formatNumber, formatPctChange, GENRE_MAP } from "./colors";
+import { getTicker } from "./CrescendoDashboard";
 
 // ─── Artist Detail / Invest Modal ─── glassmorphic slide-in panel ───
 
@@ -534,7 +535,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                                     }}>{artist.symbol}</span>
                                 )}
                                 <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.03em", margin: 0 }}>
-                                    {artist.name}
+                                    <span style={{ fontSize: 14, fontWeight: 700, color: isUp ? "#38BDF8" : "#EF4444", fontFamily: "monospace", marginRight: 8 }}>{artist.ticker || getTicker(artist.name)}</span>{artist.name}
                                 </h1>
                                 <span style={{
                                     padding: "3px 10px", borderRadius: 8, fontSize: 11, fontWeight: 600,
@@ -1059,7 +1060,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                         }} />
 
                         <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 18, letterSpacing: "-0.02em" }}>
-                            Trade {artist.name}
+                            Trade <span style={{ fontSize: 13, fontWeight: 700, color: isUp ? "#38BDF8" : "#EF4444", fontFamily: "monospace" }}>{artist.ticker || getTicker(artist.name)}</span> {artist.name}
                         </div>
 
                         {/* Buy / Sell Toggle */}
@@ -1257,7 +1258,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                                             Order Placed!
                                         </div>
                                         <div style={{ fontSize: 13, color: C.textSec, marginTop: 4 }}>
-                                            {orderType === "buy" ? "Bought" : "Sold"} {quantity} share{quantity !== 1 ? "s" : ""} of {artist.name}
+                                            {orderType === "buy" ? "Bought" : "Sold"} {quantity} share{quantity !== 1 ? "s" : ""} of <span style={{ fontWeight: 700, color: orderType === "buy" ? "#38BDF8" : "#EF4444", fontFamily: "monospace" }}>{artist.ticker || getTicker(artist.name)}</span> {artist.name}
                                         </div>
                                     </div>
                                 ) : (
@@ -1268,7 +1269,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                                             border: `1px solid ${orderType === "buy" ? C.green : C.red}20`,
                                             fontSize: 13, color: C.textSec, textAlign: "center", lineHeight: 1.3,
                                         }}>
-                                            Confirm: {orderType === "buy" ? "Buy" : "Sell"} <strong>{quantity}</strong> share{quantity !== 1 ? "s" : ""} of <strong>{artist.name}</strong> for <strong>${totalCost.toFixed(2)}</strong>
+                                            Confirm: {orderType === "buy" ? "Buy" : "Sell"} <strong>{quantity}</strong> share{quantity !== 1 ? "s" : ""} of <strong><span style={{ color: orderType === "buy" ? "#38BDF8" : "#EF4444", fontFamily: "monospace" }}>{artist.ticker || getTicker(artist.name)}</span> {artist.name}</strong> for <strong>${totalCost.toFixed(2)}</strong>
                                         </div>
                                         <div style={{ display: "flex", gap: 10 }}>
                                             <button

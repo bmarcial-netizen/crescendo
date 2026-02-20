@@ -40,13 +40,36 @@ function avatarUrl(name, size = 64) {
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=${size}&background=${colors[idx]}&color=fff&bold=true&format=svg`;
 }
 
+// Ticker lookup — maps artist name → 4-letter stock abbreviation
+const TICKERS = {
+  "2hollis": "HLLS",
+  "Snow Strippers": "SNWS",
+  "Malcom Todd": "MTOD",
+  "Men I Trust": "MNIT",
+  "King Krule": "KRKL",
+  "Ian": "IANN",
+  "Esdeekid": "ESDK",
+  "Doechii": "DCHI",
+  "Feng": "FENG",
+  "The Tulips": "TULP",
+  "JPEGMAFIA": "JPEG",
+  "Matt Maltese": "MMLT",
+  "Solène": "SOLN",
+  "KODA": "KODA",
+  "Mira Voss": "MRVS",
+};
+
+export function getTicker(name) {
+  return TICKERS[name] || name.replace(/[^A-Z0-9]/gi, "").slice(0, 4).toUpperCase();
+}
+
 const mockArtists = [
-  { id: 1, name: "2hollis", genre: "Experimental Hip-Hop", price: 2.47, change: +18.3, volume: "42.1K", shares: 120, avgCost: 1.82, streams: "2.1M", bio: "Experimental hip-hop artist blending ambient production with raw lyricism.", sharesOutstanding: 8500, maxShares: 15000, revenueSharePct: 12, circuitBreakerStatus: "normal" },
-  { id: 2, name: "Snow Strippers", genre: "Electronic / Post-Punk", price: 5.12, change: +7.2, volume: "118K", shares: 45, avgCost: 4.30, streams: "8.4M", bio: "Brooklyn-based duo fusing industrial electronics with post-punk energy.", sharesOutstanding: 14200, maxShares: 20000, revenueSharePct: 8, circuitBreakerStatus: "normal" },
-  { id: 3, name: "Malcom Todd", genre: "R&B / Soul", price: 3.88, change: +31.5, volume: "67.3K", shares: 200, avgCost: 2.10, streams: "5.2M", bio: "Austin-based R&B vocalist crafting intimate, genre-bending soul music.", sharesOutstanding: 11000, maxShares: 18000, revenueSharePct: 15, circuitBreakerStatus: "normal" },
-  { id: 4, name: "Men I Trust", genre: "Dream Pop", price: 4.74, change: +4.8, volume: "88.2K", shares: 500, avgCost: 3.55, streams: "14.4M", bio: "Montreal trio known for lush, cinematic dream pop and understated cool.", sharesOutstanding: 4000, maxShares: 25000, revenueSharePct: 5, circuitBreakerStatus: "normal" },
-  { id: 5, name: "King Krule", genre: "Art Rock / Jazz", price: 3.03, change: -2.1, volume: "15.8K", shares: 0, avgCost: 0, streams: "8.9M", bio: "South London polymath blending jazz, punk, and spoken word into raw sonic landscapes.", sharesOutstanding: 6200, maxShares: 12000, revenueSharePct: 10, circuitBreakerStatus: "tripped" },
-  { id: 6, name: "Ian", genre: "Lo-fi R&B", price: 1.95, change: -5.4, volume: "31.0K", shares: 0, avgCost: 0, streams: "3.7M", bio: "Chicago-based lo-fi R&B artist resonating with Gen-Z through organic, bedroom-produced tracks.", sharesOutstanding: 9800, maxShares: 16000, revenueSharePct: 11, circuitBreakerStatus: "normal" }
+  { id: 1, name: "2hollis", ticker: "HLLS", genre: "Experimental Hip-Hop", price: 2.47, change: +18.3, volume: "42.1K", shares: 120, avgCost: 1.82, streams: "2.1M", bio: "Experimental hip-hop artist blending ambient production with raw lyricism.", sharesOutstanding: 8500, maxShares: 15000, revenueSharePct: 12, circuitBreakerStatus: "normal" },
+  { id: 2, name: "Snow Strippers", ticker: "SNWS", genre: "Electronic / Post-Punk", price: 5.12, change: +7.2, volume: "118K", shares: 45, avgCost: 4.30, streams: "8.4M", bio: "Brooklyn-based duo fusing industrial electronics with post-punk energy.", sharesOutstanding: 14200, maxShares: 20000, revenueSharePct: 8, circuitBreakerStatus: "normal" },
+  { id: 3, name: "Malcom Todd", ticker: "MTOD", genre: "R&B / Soul", price: 3.88, change: +31.5, volume: "67.3K", shares: 200, avgCost: 2.10, streams: "5.2M", bio: "Austin-based R&B vocalist crafting intimate, genre-bending soul music.", sharesOutstanding: 11000, maxShares: 18000, revenueSharePct: 15, circuitBreakerStatus: "normal" },
+  { id: 4, name: "Men I Trust", ticker: "MNIT", genre: "Dream Pop", price: 4.74, change: +4.8, volume: "88.2K", shares: 500, avgCost: 3.55, streams: "14.4M", bio: "Montreal trio known for lush, cinematic dream pop and understated cool.", sharesOutstanding: 4000, maxShares: 25000, revenueSharePct: 5, circuitBreakerStatus: "normal" },
+  { id: 5, name: "King Krule", ticker: "KRKL", genre: "Art Rock / Jazz", price: 3.03, change: -2.1, volume: "15.8K", shares: 0, avgCost: 0, streams: "8.9M", bio: "South London polymath blending jazz, punk, and spoken word into raw sonic landscapes.", sharesOutstanding: 6200, maxShares: 12000, revenueSharePct: 10, circuitBreakerStatus: "tripped" },
+  { id: 6, name: "Ian", ticker: "IANN", genre: "Lo-fi R&B", price: 1.95, change: -5.4, volume: "31.0K", shares: 0, avgCost: 0, streams: "3.7M", bio: "Chicago-based lo-fi R&B artist resonating with Gen-Z through organic, bedroom-produced tracks.", sharesOutstanding: 9800, maxShares: 16000, revenueSharePct: 11, circuitBreakerStatus: "normal" }
 ];
 
 // Mock trade history
@@ -424,7 +447,7 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
           background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
           color: C.red, fontSize: 13, fontWeight: 600
         }}>
-          <AlertTriangle size={18} /> Trading paused for {selected.name} — circuit breaker active
+          <AlertTriangle size={18} /> Trading paused for <span style={{ fontFamily: "monospace", fontWeight: 700 }}>{selected.symbol || getTicker(selected.name)}</span> {selected.name} — circuit breaker active
         </div>
       )}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 16, marginBottom: 16 }}>
@@ -450,7 +473,7 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
                   style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em", textTransform: "uppercase", cursor: "pointer", transition: "color 0.2s" }}
                   onMouseEnter={e => e.target.style.color = C.primary}
                   onMouseLeave={e => e.target.style.color = C.text}
-                >{selected.name} / USD</span>
+                ><span style={{ fontSize: 11, fontWeight: 700, color: selected.change >= 0 ? "#38BDF8" : "#EF4444", fontFamily: "monospace", marginRight: 6 }}>{selected.ticker || getTicker(selected.name)}</span>{selected.name} / USD</span>
               </div>
               <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
                 <span style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1 }}>${displayPrice.toFixed(2)}</span>
@@ -608,7 +631,7 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
                   style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "color 0.2s" }}
                   onMouseEnter={e => e.target.style.color = C.primary}
                   onMouseLeave={e => e.target.style.color = C.text}
-                >{a.name}</span>
+                ><span style={{ fontWeight: 700, color: a.change >= 0 ? C.green : C.red, fontFamily: "monospace", marginRight: 4, fontSize: 11 }}>{a.symbol || getTicker(a.name)}</span>{a.name}</span>
                 <button
                   onClick={(e) => { e.stopPropagation(); toggleWatchlist(a.id); }}
                   style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", fontSize: 14, padding: 0 }}
@@ -735,7 +758,7 @@ function NewsPage({ C, fadeIn, Card }) {
             border: "1px solid rgba(30,64,175,0.1)"
           }} />
           <div>
-            <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "-0.01em" }}>{article.artist}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "-0.01em" }}><span style={{ fontSize: 11, fontWeight: 700, color: article.up ? "#38BDF8" : "#EF4444", fontFamily: "monospace", marginRight: 6 }}>{getTicker(article.artist)}</span>{article.artist}</div>
             <div style={{ fontSize: 12, color: C.textSec, marginTop: 2, lineHeight: 1.3 }}>{article.headline}</div>
           </div>
           <span style={{ fontSize: 13, color: C.textSec }}>{article.category}</span>
@@ -805,7 +828,7 @@ function RoyaltiesPage({ C, fadeIn, Card }) {
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <img src={avatarUrl(r.artist, 64)} alt={r.artist} style={{ width: 32, height: 32, borderRadius: 8 }} />
-                  <span style={{ fontSize: 14, fontWeight: 600 }}>{r.artist}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600 }}><span style={{ fontSize: 10, fontWeight: 700, color: "#38BDF8", fontFamily: "monospace", marginRight: 5 }}>{getTicker(r.artist)}</span>{r.artist}</span>
                 </div>
                 <span style={{ fontSize: 14, fontWeight: 700, color: C.green }}>${r.amount.toFixed(2)}</span>
                 <span style={{ fontSize: 13, color: C.textSec }}>{r.type}</span>
@@ -1061,6 +1084,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
       id: a.id,
       name: a.stageName || a.name || 'Unknown',
       symbol,
+      ticker: getTicker(a.stageName || a.name || ""),
       genre: GENRE_MAP[symbol] || a.genre || "Music",
       price: a.currentPrice || 0,
       change: a.change24h || 0,
@@ -1493,7 +1517,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                               background: colors[i], margin: "0 auto 4px",
                               boxShadow: `0 0 8px ${colors[i]}60`
                             }} />
-                            <div style={{ fontSize: 11, color: C.textMuted }}>{a.name}</div>
+                            <div style={{ fontSize: 11, fontWeight: 700, fontFamily: "monospace", color: a.change >= 0 ? "#38BDF8" : "#EF4444" }}>{a.ticker || getTicker(a.name)}</div>
                             <div style={{ fontSize: 15, fontWeight: 700 }}>${(a.shares * a.price).toFixed(0)}</div>
                           </div>
                         );
@@ -1546,7 +1570,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <img src={avatarUrl(a.name, 32)} alt={a.name} style={{ width: 16, height: 16, borderRadius: 4 }} />
-                          <span style={{ fontWeight: 600, fontSize: 14 }}>{a.name}</span>
+                          <span style={{ fontWeight: 600, fontSize: 14 }}><span style={{ fontSize: 10, fontWeight: 700, color: gain >= 0 ? "#38BDF8" : "#EF4444", fontFamily: "monospace", marginRight: 5 }}>{a.ticker || getTicker(a.name)}</span>{a.name}</span>
                         </div>
                         <span style={{ fontSize: 11, color: C.textMuted }}>{a.shares} shares</span>
                       </div>
@@ -1722,7 +1746,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                     }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <img src={avatarUrl(t.artist, 48)} alt={t.artist} style={{ width: 28, height: 28, borderRadius: 8 }} />
-                        <span style={{ fontSize: 13, fontWeight: 600 }}>{t.artist}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}><span style={{ fontSize: 10, fontWeight: 700, color: t.type === "Buy" ? "#38BDF8" : "#EF4444", fontFamily: "monospace", marginRight: 5 }}>{getTicker(t.artist)}</span>{t.artist}</span>
                       </div>
                       <span style={{ fontSize: 12, fontWeight: 600, color: t.type === "Buy" ? C.green : C.red }}>{t.type}</span>
                       <span style={{ fontSize: 12, fontFamily: "monospace" }}>{t.qty}</span>
@@ -1768,7 +1792,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                     }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <img src={avatarUrl(r.artist, 48)} alt={r.artist} style={{ width: 28, height: 28, borderRadius: 8 }} />
-                        <span style={{ fontSize: 13, fontWeight: 600 }}>{r.artist}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}><span style={{ fontSize: 10, fontWeight: 700, color: "#38BDF8", fontFamily: "monospace", marginRight: 5 }}>{getTicker(r.artist)}</span>{r.artist}</span>
                       </div>
                       <span style={{ fontSize: 13, fontWeight: 700, color: C.green }}>${r.amount.toFixed(2)}</span>
                       <span style={{ fontSize: 12, color: C.textSec }}>{r.type}</span>
@@ -1864,7 +1888,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                       </div>
                       <div style={{ fontSize: 12, color: C.primary, fontWeight: 600, marginBottom: 10, display: "flex", alignItems: "center", gap: 4 }}>
                         {matchedArtist && <img src={avatarUrl(sound.artist, 32)} alt="" style={{ width: 14, height: 14, borderRadius: 4 }} />}
-                        {sound.artist}
+                        <span style={{ fontSize: 10, fontWeight: 700, color: sound.priceImpact >= 0 ? "#38BDF8" : "#EF4444", fontFamily: "monospace", marginRight: 5 }}>{getTicker(sound.artist)}</span>{sound.artist}
                       </div>
 
                       <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 32, marginBottom: 10 }}>
@@ -1956,7 +1980,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                   }} />
                   <div>
                     <div style={{ fontSize: 13, lineHeight: 1.3 }}>
-                      <span style={{ fontWeight: 600, color: C.primary }}>{n.artist}</span>
+                      <span style={{ fontWeight: 600, color: C.primary }}><span style={{ fontSize: 10, fontWeight: 700, color: n.up ? "#38BDF8" : "#EF4444", fontFamily: "monospace", marginRight: 5 }}>{getTicker(n.artist)}</span>{n.artist}</span>
                       <span style={{ color: C.textSec }}> — {n.text}</span>
                     </div>
                     <div style={{ fontSize: 11, color: C.textMuted, marginTop: 3 }}>{n.time} ago</div>
