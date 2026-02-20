@@ -7,12 +7,19 @@ import { eq, sql } from 'drizzle-orm';
 import { updateArtistPrice } from '../services/pricing.service';
 import { getArtistAlbums, computeAlbumVelocityScore, computeCatalogSizeScore } from '../services/spotify.service';
 import { NotFoundError, BadRequestError } from '../utils/errors';
+import { runTractionIndexForAll } from '../services/tractionIndex.service';
 
 const router = Router();
 
 router.use(requireAuth('admin'));
 
-// Trigger traction index update for an artist
+// Recompute Chartmetric-driven Traction Index for all artists
+router.post('/run-traction-index', async (_req: AuthRequest, res: Response) => {
+  const result = await runTractionIndexForAll();
+  res.json(result);
+});
+
+// Trigger legacy traction index update for an artist
 router.post('/traction-index/update', async (req: AuthRequest, res: Response) => {
   const { artistId, albumVelocity, catalogSize, revenueGrowth, socialFollowers, externalPopularity } = req.body;
 

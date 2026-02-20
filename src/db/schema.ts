@@ -59,6 +59,12 @@ export const snapshotSourceEnum = pgEnum('snapshot_source', [
   'manual',
 ]);
 
+export const metricSourceEnum = pgEnum('metric_source', [
+  'chartmetric_manual',
+  'spotify_api',
+  'admin_manual',
+]);
+
 // ── Users ──────────────────────────────────────────────────────────────────
 
 export const users = pgTable('users', {
@@ -176,16 +182,77 @@ export const orders = pgTable('orders', {
 export const tractionIndexSnapshots = pgTable('traction_index_snapshots', {
   id: uuid('id').primaryKey().defaultRandom(),
   artistId: uuid('artist_id').notNull().references(() => artists.id),
+
+  // Legacy component scores (kept for backward compat)
   albumVelocityScore: decimal('album_velocity_score', { precision: 6, scale: 2 }).notNull().default('0'),
   catalogSizeScore: decimal('catalog_size_score', { precision: 6, scale: 2 }).notNull().default('0'),
   revenueGrowthScore: decimal('revenue_growth_score', { precision: 6, scale: 2 }).notNull().default('0'),
   socialFollowersScore: decimal('social_followers_score', { precision: 6, scale: 2 }).notNull().default('0'),
   externalPopularityScore: decimal('external_popularity_score', { precision: 6, scale: 2 }).notNull().default('0'),
+
+  // Chartmetric-driven model scores
+  stageScore: decimal('stage_score', { precision: 6, scale: 2 }),
+  followersScore: decimal('followers_score', { precision: 6, scale: 2 }),
+  fanConversionModifier: decimal('fan_conversion_modifier', { precision: 8, scale: 6 }),
+  listenerFollowerModifier: decimal('listener_follower_modifier', { precision: 8, scale: 6 }),
+  metricSnapshotId: uuid('metric_snapshot_id').references(() => artistMetricSnapshots.id),
+  tractionDebugJson: jsonb('traction_debug_json'),
+
   tractionScore: decimal('traction_score', { precision: 6, scale: 2 }).notNull(),
   computedPrice: decimal('computed_price', { precision: 12, scale: 4 }).notNull(),
   computedAt: timestamp('computed_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   index('idx_traction_artist').on(table.artistId),
+]);
+
+// ── Artist Metric Snapshots ────────────────────────────────────────────────
+
+export const artistMetricSnapshots = pgTable('artist_metric_snapshots', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  artistId: uuid('artist_id').notNull().references(() => artists.id),
+  source: metricSourceEnum('source').notNull(),
+  capturedAt: timestamp('captured_at', { withTimezone: true }).notNull(),
+  metricsJson: jsonb('metrics_json').notNull(),
+
+  // Spotify
+  spotifyMonthlyListeners: decimal('spotify_monthly_listeners', { precision: 18, scale: 0 }),
+  spotifyFollowers: decimal('spotify_followers', { precision: 18, scale: 0 }),
+  spotifyPopularity: decimal('spotify_popularity', { precision: 6, scale: 2 }),
+  spotifyListenerToFollowerRatio: decimal('spotify_listener_to_follower_ratio', { precision: 10, scale: 6 }),
+
+  // Playlist / reach
+  playlistReach: decimal('playlist_reach', { precision: 18, scale: 0 }),
+  playlistCount: decimal('playlist_count', { precision: 18, scale: 0 }),
+
+  // Derived conversion ratios
+  fanConversionRate: decimal('fan_conversion_rate', { precision: 10, scale: 6 }),
+  reachFollowersRatio: decimal('reach_followers_ratio', { precision: 10, scale: 6 }),
+
+  // TikTok
+  tiktokFollowers: decimal('tiktok_followers', { precision: 18, scale: 0 }),
+  tiktokLikes: decimal('tiktok_likes', { precision: 18, scale: 0 }),
+  tiktokTopViews: decimal('tiktok_top_views', { precision: 18, scale: 0 }),
+
+  // Instagram
+  instagramFollowers: decimal('instagram_followers', { precision: 18, scale: 0 }),
+
+  // YouTube
+  youtubeSubscribers: decimal('youtube_subscribers', { precision: 18, scale: 0 }),
+  youtubeChannelViews: decimal('youtube_channel_views', { precision: 18, scale: 0 }),
+
+  // Radio / Shazam
+  shazamTotal: decimal('shazam_total', { precision: 18, scale: 0 }),
+  airplaySpins: decimal('airplay_spins', { precision: 18, scale: 0 }),
+
+  // Songstats / misc
+  songstatsScore: decimal('songstats_score', { precision: 10, scale: 4 }),
+  chartmetricScore: decimal('chartmetric_score', { precision: 10, scale: 4 }),
+
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('idx_metric_snapshots_artist_source_captured')
+    .on(table.artistId, table.source, table.capturedAt),
+  index('idx_metric_snapshots_artist').on(table.artistId),
 ]);
 
 // ── Royalty Statements ─────────────────────────────────────────────────────

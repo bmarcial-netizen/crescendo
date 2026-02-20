@@ -11,6 +11,7 @@ import tradeRoutes from './routes/trade.routes';
 import marketRoutes from './routes/market.routes';
 import royaltyRoutes from './routes/royalty.routes';
 import adminRoutes from './routes/admin.routes';
+import metricsRoutes from './routes/metrics.routes';
 import stripeRoutes from './routes/stripe.routes';
 
 const app = express();
@@ -37,6 +38,7 @@ app.use('/api/trade', tradeRoutes);
 app.use('/api/market', marketRoutes);
 app.use('/api/royalties', royaltyRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/admin/metrics', metricsRoutes);
 app.use('/api/stripe', stripeRoutes);
 
 // Error handler (must be last)
