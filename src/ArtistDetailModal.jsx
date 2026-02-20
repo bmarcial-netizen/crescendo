@@ -52,6 +52,58 @@ function generateOrderBook(bid, ask) {
 // ─── Artist images map (placeholder keys — swap with real uploaded images) ───
 const artistImages = {};
 
+// ─── Marquee items per artist (swap src with real images: drop into public/artists/) ───
+const marqueeItems = {
+    "2hollis": [
+        { label: "Phantom Thread", type: "album" },
+        { label: "2hollis Live", type: "artist" },
+        { label: "Vapor Trail", type: "album" },
+        { label: "Studio Session", type: "artist" },
+        { label: "Early Works", type: "album" },
+        { label: "2hollis Press", type: "artist" },
+    ],
+    "Snow Strippers": [
+        { label: "Neon Vein", type: "album" },
+        { label: "Snow Strippers Live", type: "artist" },
+        { label: "Wired", type: "album" },
+        { label: "Brooklyn Show", type: "artist" },
+        { label: "Debut EP", type: "album" },
+        { label: "Snow Strippers Press", type: "artist" },
+    ],
+    "malcolm todd": [
+        { label: "Soft Focus", type: "album" },
+        { label: "malcolm todd Live", type: "artist" },
+        { label: "Velvet", type: "album" },
+        { label: "SXSW 2026", type: "artist" },
+        { label: "Early Demos", type: "album" },
+        { label: "malcolm todd Press", type: "artist" },
+    ],
+    "Men I Trust": [
+        { label: "Headroom", type: "album" },
+        { label: "Men I Trust Live", type: "artist" },
+        { label: "Untourable Album", type: "album" },
+        { label: "Pitchfork 2026", type: "artist" },
+        { label: "Oncle Jazz", type: "album" },
+        { label: "Men I Trust Press", type: "artist" },
+    ],
+    "King Krule": [
+        { label: "Concrete Garden", type: "album" },
+        { label: "King Krule Live", type: "artist" },
+        { label: "Space Heavy", type: "album" },
+        { label: "London Show", type: "artist" },
+        { label: "The OOZ", type: "album" },
+        { label: "King Krule Press", type: "artist" },
+    ],
+    "iann dior": [
+        { label: "RUNAWAY", type: "album" },
+        { label: "iann dior Live", type: "artist" },
+        { label: "Lo-fi Diaries", type: "album" },
+        { label: "A24 Signing", type: "artist" },
+        { label: "Early Works", type: "album" },
+        { label: "iann dior Press", type: "artist" },
+    ],
+};
+
 // ─── Top Tracks per artist (keys must match DB stageName exactly) ───
 const topTracks = {
     // Original 5 (real data artists)
@@ -412,8 +464,59 @@ function InteractiveTractionChart({ data, width = "100%", height = 120 }) {
     );
 }
 
+// ─── Marquee Component ───
+function ArtistMarquee({ artistName }) {
+    const items = marqueeItems[artistName] || marqueeItems["Steve Lacy"] || [];
+    if (!items.length) return null;
+    // Gradient colors for placeholder album/artist art
+    const gradients = [
+        "linear-gradient(135deg, #1E40AF, #38BDF8)",
+        "linear-gradient(135deg, #0F172A, #1E40AF)",
+        "linear-gradient(135deg, #38BDF8, #0EA5E9)",
+        "linear-gradient(135deg, #1D4ED8, #60A5FA)",
+        "linear-gradient(135deg, #0F172A, #38BDF8)",
+        "linear-gradient(135deg, #3B82F6, #1E40AF)",
+    ];
+    // Duplicate items for seamless loop
+    const duped = [...items, ...items];
+    return (
+        <div style={{ overflow: "hidden", marginBottom: 20, marginLeft: -32, marginRight: -32, position: "relative" }}>
+            <style>{`
+                @keyframes marqueeScroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+            `}</style>
+            {/* Fade edges */}
+            <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 40, zIndex: 2, background: "linear-gradient(90deg, rgba(240,243,250,0.97), transparent)", pointerEvents: "none" }} />
+            <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 40, zIndex: 2, background: "linear-gradient(270deg, rgba(240,243,250,0.97), transparent)", pointerEvents: "none" }} />
+            <div style={{
+                display: "flex", gap: 12,
+                animation: "marqueeScroll 20s linear infinite",
+                width: "max-content",
+            }}>
+                {duped.map((item, i) => (
+                    <div key={i} style={{
+                        width: 120, height: 120, borderRadius: item.type === "artist" ? 60 : 14,
+                        background: gradients[i % gradients.length],
+                        display: "flex", alignItems: "flex-end", justifyContent: "center",
+                        overflow: "hidden", flexShrink: 0, position: "relative",
+                        boxShadow: "0 2px 12px rgba(0,0,0,0.1)",
+                        border: "1px solid rgba(255,255,255,0.3)",
+                    }}>
+                        <span style={{
+                            fontSize: 10, fontWeight: 600, color: "#fff",
+                            padding: "4px 8px 6px", textAlign: "center",
+                            width: "100%",
+                            background: "linear-gradient(transparent, rgba(0,0,0,0.5))",
+                            letterSpacing: "0.02em",
+                        }}>{item.label}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 export default function ArtistDetailModal({ artist, onClose, allNews, trendingSounds, isLoggedIn, auth, onTradeComplete }) {
-    const [orderType, setOrderType] = useState("buy");
+    const [orderType, setOrderType] = useState(artist?._defaultSell ? "sell" : "buy");
     const [orderMode, setOrderMode] = useState("market");
     const [qty, setQty] = useState("");
     const [limitPrice, setLimitPrice] = useState(artist?.price?.toFixed(2) || "");
@@ -434,6 +537,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
     useEffect(() => {
         if (artist) {
             requestAnimationFrame(() => setVisible(true));
+            setOrderType(artist._defaultSell ? "sell" : "buy");
             setQty("");
             setShowConfirm(false);
             setOrderPlaced(false);
@@ -715,6 +819,9 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                             {artist.bio}
                         </div>
                     )}
+
+                    {/* ─── MARQUEE ─── */}
+                    <ArtistMarquee artistName={artist.name} />
 
                     {/* ─── PRICE CHART ─── */}
                     <div style={{

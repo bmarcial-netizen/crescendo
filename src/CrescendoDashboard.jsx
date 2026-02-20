@@ -1453,8 +1453,10 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
   }, [isLoggedIn]);
 
   // Map live artists to display format — use real API data, genre map for known symbols
+  // Merge portfolio positions so ArtistDetailModal can show "Your Position"
   const artists = liveArtists ? liveArtists.map((a) => {
     const symbol = a.symbol || a.stageName?.replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase() || '';
+    const position = livePortfolio?.find(p => p.artistId === a.id);
     return {
       id: a.id,
       name: a.stageName || a.name || 'Unknown',
@@ -1464,8 +1466,8 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
       price: a.currentPrice || 0,
       change: a.change24h || 0,
       volume: a.volume24h || "0",
-      shares: 0,
-      avgCost: 0,
+      shares: position ? position.sharesHeld : 0,
+      avgCost: position ? position.avgCostBasis : 0,
       streams: a.streams || "0",
       bio: a.bio || "",
       sharesOutstanding: a.sharesOutstanding || 0,
@@ -1549,6 +1551,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
         @keyframes float2 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-25px,15px); } }
         @keyframes float3 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(15px,25px); } }
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .drag-scroll::-webkit-scrollbar { display: none; }
       `}</style>
 
       <Blob style={{ width: 350, height: 350, top: -60, right: 80, background: C.blob1, animation: "float1 12s ease-in-out infinite" }} />
@@ -1997,13 +2000,24 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                       </div>
 
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
-                        {[C.accent, "#3B82F6", C.primary].map((c, i) =>
-                          <div key={i} style={{
-                            width: 28 - i * 4, height: 28 - i * 4, borderRadius: "50%",
-                            background: `radial-gradient(circle, ${c}90 0%, ${c}30 70%)`,
-                            filter: "blur(0.5px)"
-                          }} />
-                        )}
+                        <button onClick={() => {
+                          const fullArtist = artists.find(ar => ar.id === a.id);
+                          if (fullArtist) setSelectedArtist(fullArtist);
+                        }} style={{
+                          padding: "5px 14px", borderRadius: 8, border: "none",
+                          fontSize: 11, fontWeight: 700, cursor: "pointer",
+                          fontFamily: "monospace", letterSpacing: "0.04em",
+                          background: C.greenSoft, color: C.green,
+                        }}>BUY</button>
+                        <button onClick={() => {
+                          const fullArtist = artists.find(ar => ar.id === a.id);
+                          if (fullArtist) setSelectedArtist({ ...fullArtist, _defaultSell: true });
+                        }} style={{
+                          padding: "5px 14px", borderRadius: 8, border: "none",
+                          fontSize: 11, fontWeight: 700, cursor: "pointer",
+                          fontFamily: "monospace", letterSpacing: "0.04em",
+                          background: C.redSoft, color: C.red,
+                        }}>SELL</button>
                         <div style={{
                           marginLeft: "auto",
                           fontSize: 22, fontWeight: 700, color: C.text
@@ -2216,7 +2230,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
             </Card>
           </div>
 
-          {/* Trending Sounds */}
+          {/* You Might Like — recommended artists with mini candlestick charts */}
           <div style={{ marginBottom: 20, ...fadeIn(0.38) }}>
             <Card style={{ padding: 0, overflow: "hidden" }}>
               <div style={{ padding: "24px 24px 0 24px" }}>
@@ -2233,138 +2247,129 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                         <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: C.accent, animation: "pulse 2s infinite" }} /> LIVE
                       </span>
                     </div>
-                    <p style={{ fontSize: 13, color: C.textSec }}>Songs gaining traction on TikTok & Reels — early signals for price movement</p>
+                    <p style={{ fontSize: 13, color: C.textSec }}>Artists trending across your taste profile — tap to explore</p>
                   </div>
-                  <TabPill options={["All", "TikTok", "Reels"]} active="All" onChange={() => {}} />
                 </div>
               </div>
 
-              <div style={{
-                display: "flex", gap: 14, padding: "16px 24px 24px 24px",
-                overflowX: "auto", scrollSnapType: "x mandatory"
-              }}>
-                {trendingSounds.map((sound) => {
-                  const isExplosive = sound.growthNum >= 500;
-                  const isNew = sound.daysAgo === 0;
-                  const matchedArtist = artists.find((a) => a.name === sound.artist);
-                  const waveMax = Math.max(...sound.wave);
+              {/* Drag-scrollable row */}
+              <div
+                className="drag-scroll"
+                ref={(el) => { el && (el._dragState = el._dragState || { down: false, didDrag: false, startX: 0, scrollL: 0 }); }}
+                onMouseDown={(e) => { const el = e.currentTarget; el._dragState.down = true; el._dragState.didDrag = false; el._dragState.startX = e.pageX - el.offsetLeft; el._dragState.scrollL = el.scrollLeft; el.style.cursor = "grabbing"; el.style.userSelect = "none"; }}
+                onMouseMove={(e) => { const el = e.currentTarget; if (!el._dragState.down) return; e.preventDefault(); el._dragState.didDrag = true; const x = e.pageX - el.offsetLeft; el.scrollLeft = el._dragState.scrollL - (x - el._dragState.startX); }}
+                onMouseUp={(e) => { e.currentTarget._dragState.down = false; e.currentTarget.style.cursor = "grab"; e.currentTarget.style.userSelect = ""; }}
+                onMouseLeave={(e) => { e.currentTarget._dragState.down = false; e.currentTarget.style.cursor = "grab"; e.currentTarget.style.userSelect = ""; }}
+                style={{
+                  display: "flex", gap: 14, padding: "16px 24px 24px 24px",
+                  overflowX: "auto", scrollSnapType: "x mandatory",
+                  cursor: "grab", scrollbarWidth: "none", msOverflowStyle: "none",
+                  WebkitOverflowScrolling: "touch"
+                }}>
+                {recommendedArtists.map((rec) => {
+                  const isHot = rec.change >= 20;
+                  const ohlc = rec.ohlc;
+                  // Mini candlestick chart dimensions
+                  const chartW = 224;
+                  const chartH = 64;
+                  const pad = 4;
+                  const allVals = ohlc.flatMap((c) => [c.h, c.l]);
+                  const minP = Math.min(...allVals);
+                  const maxP = Math.max(...allVals);
+                  const range = maxP - minP || 0.01;
+                  const barW = (chartW - pad * 2) / ohlc.length;
+                  const yScale = (v) => chartH - pad - ((v - minP) / range) * (chartH - pad * 2);
 
                   return (
-                    <div key={sound.id} style={{
-                      minWidth: 260, maxWidth: 260, scrollSnapAlign: "start",
-                      borderRadius: 16, padding: 18, position: "relative", overflow: "hidden",
-                      background: "rgba(255,255,255,0.55)",
-                      backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-                      border: "1px solid rgba(255,255,255,0.8)",
-                      boxShadow: "0 2px 16px rgba(0,0,0,0.03)",
-                      transition: "transform 0.25s, box-shadow 0.25s",
-                      cursor: "pointer",
-                      flex: "0 0 auto"
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(0,0,0,0.08)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 2px 16px rgba(0,0,0,0.03)"; }}>
+                    <div key={rec.id}
+                      onClick={(e) => { const row = e.currentTarget.parentElement; if (row._dragState && row._dragState.didDrag) return; setSelectedArtist(rec); }}
+                      style={{
+                        minWidth: 260, maxWidth: 260, scrollSnapAlign: "start",
+                        borderRadius: 16, padding: 18, position: "relative", overflow: "hidden",
+                        background: "rgba(255,255,255,0.55)",
+                        backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+                        border: "1px solid rgba(255,255,255,0.8)",
+                        boxShadow: "0 2px 16px rgba(0,0,0,0.03)",
+                        transition: "transform 0.25s, box-shadow 0.25s",
+                        cursor: "pointer", flex: "0 0 auto"
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(0,0,0,0.08)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 2px 16px rgba(0,0,0,0.03)"; }}>
 
                       <div style={{
                         position: "absolute", top: -20, right: -20, width: 80, height: 80, borderRadius: "50%",
-                        background: isExplosive ?
-                          "radial-gradient(circle, rgba(30,64,175,0.25) 0%, transparent 70%)" :
-                          "radial-gradient(circle, rgba(80,227,194,0.25) 0%, transparent 70%)",
+                        background: isHot
+                          ? "radial-gradient(circle, rgba(30,64,175,0.25) 0%, transparent 70%)"
+                          : "radial-gradient(circle, rgba(56,189,248,0.25) 0%, transparent 70%)",
                         filter: "blur(10px)", pointerEvents: "none"
                       }} />
 
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                        <span style={{
-                          padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600,
-                          background: sound.platform === "TikTok" ? "#00000010" : "linear-gradient(135deg, rgba(30,64,175,0.08), rgba(80,227,194,0.08))",
-                          color: sound.platform === "TikTok" ? C.text : C.primary,
-                          border: `1px solid ${sound.platform === "TikTok" ? "rgba(0,0,0,0.06)" : C.primary + "18"}`
-                        }}>
-                          {sound.platform === "TikTok" ? "♪ TikTok" : "◎ Reels"}
-                        </span>
-                        {isNew &&
-                          <span style={{
-                            padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600,
-                            background: `${C.accent}30`, color: C.accentDark, border: `1px solid ${C.accent}40`
-                          }}>NEW TODAY</span>
-                        }
-                        {isExplosive &&
-                          <span style={{
-                            padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600,
-                            background: `${C.primary}12`, color: C.primary, border: `1px solid ${C.primary}18`
-                          }}>🚀 EXPLOSIVE</span>
-                        }
+                      {/* Artist info */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                        <img src={avatarUrl(rec.name, 48)} alt={rec.name} style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid rgba(0,0,0,0.04)" }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-0.01em" }}>{rec.name}</span>
+                            {isHot && <span style={{ padding: "1px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: `${C.primary}15`, color: C.primary }}>HOT</span>}
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 1 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: C.accent, fontFamily: "monospace" }}>{rec.ticker}</span>
+                            <span style={{ fontSize: 10, color: C.textMuted }}>{rec.genre}</span>
+                          </div>
+                        </div>
                       </div>
 
-                      <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "-0.01em", marginBottom: 2, lineHeight: 1.3 }}>
-                        {sound.title}
-                      </div>
-                      <div style={{ fontSize: 12, color: C.primary, fontWeight: 600, marginBottom: 10, display: "flex", alignItems: "center", gap: 4 }}>
-                        {matchedArtist && <img src={avatarUrl(sound.artist, 32)} alt="" style={{ width: 14, height: 14, borderRadius: 4 }} />}
-                        <span style={{ fontSize: 10, fontWeight: 700, color: sound.priceImpact >= 0 ? "#38BDF8" : "#EF4444", fontFamily: "monospace", marginRight: 5 }}>{getTicker(sound.artist)}</span>{sound.artist}
-                      </div>
+                      {/* Mini candlestick chart */}
+                      <svg width={chartW} height={chartH} style={{ display: "block", marginBottom: 12, borderRadius: 8, background: "rgba(0,0,0,0.02)" }}>
+                        {ohlc.map((candle, ci) => {
+                          const bull = candle.c >= candle.o;
+                          const color = bull ? C.accent : "#EF4444";
+                          const x = pad + ci * barW + barW / 2;
+                          const bodyTop = yScale(Math.max(candle.o, candle.c));
+                          const bodyBot = yScale(Math.min(candle.o, candle.c));
+                          const bodyH = Math.max(bodyBot - bodyTop, 1);
+                          return (
+                            <g key={ci}>
+                              <line x1={x} x2={x} y1={yScale(candle.h)} y2={yScale(candle.l)} stroke={color} strokeWidth={1} strokeOpacity={0.6} />
+                              <rect x={x - barW * 0.3} y={bodyTop} width={barW * 0.6} height={bodyH} fill={color} rx={1} />
+                            </g>
+                          );
+                        })}
+                      </svg>
 
-                      <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 32, marginBottom: 10 }}>
-                        {sound.wave.map((v, wi) =>
-                          <div key={wi} style={{
-                            flex: 1, borderRadius: 2,
-                            height: `${v / waveMax * 100}%`,
-                            background: v === waveMax ?
-                              isExplosive ? C.primary : C.accent :
-                              `linear-gradient(180deg, ${isExplosive ? C.primary + "40" : C.accent + "40"}, ${isExplosive ? C.primary + "15" : C.accent + "15"})`,
-                            transition: "height 0.3s"
-                          }} />
-                        )}
-                      </div>
-
+                      {/* Price + change */}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                         <div>
-                          <div style={{ fontSize: 11, color: C.textMuted }}>Uses</div>
-                          <div style={{ fontSize: 16, fontWeight: 700 }}>{sound.uses}</div>
-                        </div>
-                        <div style={{ textAlign: "center" }}>
-                          <div style={{ fontSize: 11, color: C.textMuted }}>Growth</div>
-                          <div style={{
-                            fontSize: 14, fontWeight: 700,
-                            color: isExplosive ? C.primary : C.green
-                          }}>{sound.growth}</div>
+                          <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em" }}>${rec.price.toFixed(2)}</div>
+                          <div style={{ fontSize: 11, color: C.textMuted }}>per share</div>
                         </div>
                         <div style={{ textAlign: "right" }}>
-                          <div style={{ fontSize: 11, color: C.textMuted }}>Price Impact</div>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: C.green }}>+{sound.priceImpact}%</div>
+                          <div style={{
+                            fontSize: 14, fontWeight: 700,
+                            color: rec.change >= 0 ? C.green : "#EF4444"
+                          }}>{rec.change >= 0 ? "+" : ""}{rec.change}%</div>
+                          <div style={{ fontSize: 11, color: C.textMuted }}>{rec.volume} vol</div>
                         </div>
                       </div>
 
-                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                        {sound.tags.map((tag) =>
-                          <span key={tag} style={{
-                            padding: "2px 8px", borderRadius: 6, fontSize: 10,
-                            background: "rgba(0,0,0,0.03)", color: C.textMuted,
-                            fontWeight: 500, border: "1px solid rgba(0,0,0,0.04)"
-                          }}>#{tag}</span>
-                        )}
+                      {/* Stats row */}
+                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 12 }}>
+                        <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, background: "rgba(0,0,0,0.03)", color: C.textMuted, fontWeight: 500, border: "1px solid rgba(0,0,0,0.04)" }}>{rec.streams} streams</span>
+                        <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, background: "rgba(0,0,0,0.03)", color: C.textMuted, fontWeight: 500, border: "1px solid rgba(0,0,0,0.04)" }}>{rec.revenueSharePct}% royalty</span>
+                      </div>
+
+                      {/* Invest CTA */}
+                      <div style={{
+                        padding: "8px 0", borderTop: "1px solid rgba(0,0,0,0.04)",
+                        display: "flex", justifyContent: "space-between", alignItems: "center"
+                      }}>
+                        <span style={{ fontSize: 12, color: C.textSec }}>{rec.sharesOutstanding.toLocaleString()} / {rec.maxShares.toLocaleString()} shares</span>
                         <span style={{
-                          padding: "2px 8px", borderRadius: 6, fontSize: 10,
-                          background: "rgba(0,0,0,0.03)", color: C.textMuted,
-                          fontWeight: 500, border: "1px solid rgba(0,0,0,0.04)"
-                        }}>{sound.duration}</span>
-                      </div>
-
-                      {matchedArtist &&
-                        <div style={{
-                          marginTop: 12, padding: "8px 0", borderTop: "1px solid rgba(0,0,0,0.04)",
-                          display: "flex", justifyContent: "space-between", alignItems: "center"
+                          padding: "5px 14px", borderRadius: 8, fontSize: 11, fontWeight: 600,
+                          background: C.primary, color: "#fff", cursor: "pointer"
                         }}>
-                          <span style={{ fontSize: 12, color: C.textSec }}>
-                            Share price: <span style={{ fontWeight: 700, color: C.text }}>${matchedArtist.price.toFixed(2)}</span>
-                          </span>
-                          <span style={{
-                            padding: "5px 14px", borderRadius: 8, fontSize: 11, fontWeight: 600,
-                            background: C.primary, color: "#fff", cursor: "pointer"
-                          }}
-                          onClick={(e) => { e.stopPropagation(); setSelectedArtist(matchedArtist); }}>
-                            Invest →</span>
-                        </div>
-                      }
+                          View →</span>
+                      </div>
                     </div>
                   );
                 })}
@@ -2547,28 +2552,28 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
               ) : (
                 <>
                   <div style={{
-                    display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr",
+                    display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 120px",
                     padding: "0 0 10px 0", borderBottom: "1px solid rgba(0,0,0,0.05)",
                     fontSize: 11, fontWeight: 600, color: C.textMuted, textTransform: "uppercase",
                     letterSpacing: "0.08em", fontFamily: "monospace",
                   }}>
-                    <span>Artist</span><span>Shares</span><span>Avg Cost</span><span>Value</span><span>P&L</span>
+                    <span>Artist</span><span>Shares</span><span>Avg Cost</span><span>Value</span><span>P&L</span><span>Trade</span>
                   </div>
                   {portfolioHoldings.map((a, i) => {
                     const val = a.marketValue || a.shares * a.price;
                     const pnl = a.unrealizedPnL || (a.price - a.avgCost) * a.shares;
                     const pnlPct = a.avgCost > 0 ? ((a.price - a.avgCost) / a.avgCost * 100).toFixed(1) : '0.0';
                     return (
-                      <div key={a.id} onClick={() => {
-                        const fullArtist = artists.find(ar => ar.id === a.id);
-                        if (fullArtist) setSelectedArtist(fullArtist);
-                      }} style={{
-                        display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr",
+                      <div key={a.id} style={{
+                        display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 120px",
                         alignItems: "center", padding: "14px 0",
                         borderBottom: i < portfolioHoldings.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none",
-                        cursor: "pointer", transition: "background 0.15s", borderRadius: 8,
+                        borderRadius: 8,
                       }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div onClick={() => {
+                          const fullArtist = artists.find(ar => ar.id === a.id);
+                          if (fullArtist) setSelectedArtist(fullArtist);
+                        }} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
                           <img src={avatarUrl(a.name, 72)} alt={a.name} style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid rgba(0,0,0,0.04)" }} />
                           <div>
                             <div style={{ fontSize: 14, fontWeight: 600 }}>{a.name}</div>
@@ -2588,6 +2593,28 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                             padding: "2px 6px", borderRadius: 4,
                             background: pnl >= 0 ? C.greenSoft : C.redSoft,
                           }}>{pnl >= 0 ? '+' : ''}{pnlPct}%</span>
+                        </div>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button onClick={() => {
+                            const fullArtist = artists.find(ar => ar.id === a.id);
+                            if (fullArtist) setSelectedArtist(fullArtist);
+                          }} style={{
+                            padding: "6px 12px", borderRadius: 8, border: "none",
+                            fontSize: 11, fontWeight: 700, cursor: "pointer",
+                            fontFamily: "monospace", letterSpacing: "0.04em",
+                            background: C.greenSoft, color: C.green,
+                            transition: "all 0.15s",
+                          }}>BUY</button>
+                          <button onClick={() => {
+                            const fullArtist = artists.find(ar => ar.id === a.id);
+                            if (fullArtist) setSelectedArtist({ ...fullArtist, _defaultSell: true });
+                          }} style={{
+                            padding: "6px 12px", borderRadius: 8, border: "none",
+                            fontSize: 11, fontWeight: 700, cursor: "pointer",
+                            fontFamily: "monospace", letterSpacing: "0.04em",
+                            background: C.redSoft, color: C.red,
+                            transition: "all 0.15s",
+                          }}>SELL</button>
                         </div>
                       </div>
                     );
@@ -2725,7 +2752,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
         artist={selectedArtist}
         onClose={() => setSelectedArtist(null)}
         allNews={news}
-        trendingSounds={trendingSounds}
+        trendingSounds={recommendedArtists}
         isLoggedIn={isLoggedIn}
         auth={auth}
         onTradeComplete={handleTradeComplete} />

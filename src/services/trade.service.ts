@@ -283,6 +283,9 @@ export async function executeSell(userId: string, artistId: string, quantity: nu
       .limit(1);
 
     if (!pos) throw new BadRequestError('No position found');
+    if (pos.sharesHeld < quantity) {
+      throw new BadRequestError(`Insufficient shares: you hold ${pos.sharesHeld}, tried to sell ${quantity}`);
+    }
 
     const newShares = pos.sharesHeld - quantity;
     await tx

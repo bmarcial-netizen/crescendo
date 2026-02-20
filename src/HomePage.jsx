@@ -31,6 +31,8 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
   const [loaded, setLoaded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [hoveredFeature, setHoveredFeature] = useState(null);
+  const [darkHeader, setDarkHeader] = useState(false);
+  const darkHeaderRef = useRef(false);
 
   // Refs for scroll-to-section (About / Contact)
   const aboutRef = useRef(null);
@@ -63,6 +65,7 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
   const heroSubRef = useRef(null);
   const cylinderRef = useRef(null);
   const coordRef = useRef(null);
+  const headerRef = useRef(null);
   const headerTextRef = useRef(null);
   const headerBtnRef = useRef(null);
 
@@ -85,6 +88,12 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
     const h = winH.current;
     const progress = Math.min(Math.max(sy / h, 0), 1);
     const pastHero = sy > h * 0.85;
+
+    // Toggle header colors when crossing into/out of light section
+    if (pastHero !== darkHeaderRef.current) {
+      darkHeaderRef.current = pastHero;
+      setDarkHeader(pastHero);
+    }
 
     // Crosshair color: light on dark, dark on light
     const lnColor = pastHero ? "rgba(15,23,42,0.12)" : "rgba(255,255,255,0.08)";
@@ -220,12 +229,12 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
       }} />
 
             {/* ─── FIXED HEADER ─── */}
-            <header style={{
+            <header ref={headerRef} style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "20px 40px",
         opacity: loaded ? 1 : 0,
-        transition: "opacity 0.8s 0.2s"
+        transition: "opacity 0.8s 0.2s, color 0.4s"
       }}>
                 <div
           onClick={() => {navigate('home');window.scrollTo({ top: 0, behavior: 'smooth' });}}
@@ -233,59 +242,15 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
 
                     <span ref={headerTextRef} style={{
             fontSize: 15, fontWeight: 800, letterSpacing: "0.12em",
-            textTransform: "uppercase", color: COLORS.text
+            textTransform: "uppercase", color: darkHeader ? "#0F172A" : COLORS.text,
+            transition: "color 0.4s"
           }}>CRESCENDO</span>
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: 30 }}>
                     {isLoggedIn ? (
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <button
-                                onClick={() => navigate('dashboard')}
-                                style={{
-                                    padding: "8px 20px",
-                                    background: "transparent",
-                                    color: COLORS.text,
-                                    border: `1px solid rgba(255,255,255,0.15)`,
-                                    borderRadius: 0, cursor: "pointer",
-                                    fontFamily: "monospace", fontSize: 13, fontWeight: 600,
-                                    letterSpacing: "0.1em",
-                                    transition: "all 0.4s",
-                                }}
-                                onMouseEnter={(e) => { e.target.style.background = COLORS.accent; e.target.style.color = COLORS.bg; e.target.style.borderColor = COLORS.accent; }}
-                                onMouseLeave={(e) => { e.target.style.background = "transparent"; e.target.style.color = COLORS.text; e.target.style.borderColor = "rgba(255,255,255,0.15)"; }}
-                            >
-                                DASHBOARD
-                            </button>
-                            <div
-                                onClick={() => navigate('profile')}
-                                style={{
-                                    width: 32, height: 32, borderRadius: 8,
-                                    background: `linear-gradient(135deg, ${COLORS.accent}90, ${COLORS.primary}50)`,
-                                    display: "flex", alignItems: "center", justifyContent: "center",
-                                    fontSize: 12, fontWeight: 700, color: "#fff",
-                                    cursor: "pointer", transition: "all 0.3s",
-                                    border: "1px solid rgba(255,255,255,0.2)",
-                                }}
-                            >{user?.initials || '?'}</div>
-                            <button
-                                onClick={onLogout}
-                                style={{
-                                    padding: "8px 14px",
-                                    background: "transparent",
-                                    color: COLORS.textMuted,
-                                    border: `1px solid rgba(255,255,255,0.1)`,
-                                    borderRadius: 0, cursor: "pointer",
-                                    fontFamily: "monospace", fontSize: 11, fontWeight: 600,
-                                    letterSpacing: "0.1em",
-                                    transition: "all 0.4s",
-                                }}
-                                onMouseEnter={(e) => { e.target.style.color = "#EF4444"; e.target.style.borderColor = "rgba(239,68,68,0.3)"; }}
-                                onMouseLeave={(e) => { e.target.style.color = COLORS.textMuted; e.target.style.borderColor = "rgba(255,255,255,0.1)"; }}
-                            >
-                                SIGN OUT
-                            </button>
-                        </div>
+                        <>
+                        </>
                     ) : (
                         <div style={{ display: "flex", gap: 8 }}>
                             <button
@@ -293,15 +258,15 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
                                 style={{
                                     padding: "8px 18px",
                                     background: "transparent",
-                                    color: COLORS.text,
-                                    border: `1px solid rgba(255,255,255,0.15)`,
+                                    color: darkHeader ? "#0F172A" : COLORS.text,
+                                    border: `1px solid ${darkHeader ? "rgba(15,23,42,0.2)" : "rgba(255,255,255,0.15)"}`,
                                     borderRadius: 0, cursor: "pointer",
                                     fontFamily: "monospace", fontSize: 12, fontWeight: 600,
                                     letterSpacing: "0.1em",
                                     transition: "all 0.4s",
                                 }}
-                                onMouseEnter={(e) => { e.target.style.background = "rgba(255,255,255,0.08)"; e.target.style.borderColor = "rgba(255,255,255,0.3)"; }}
-                                onMouseLeave={(e) => { e.target.style.background = "transparent"; e.target.style.borderColor = "rgba(255,255,255,0.15)"; }}
+                                onMouseEnter={(e) => { e.target.style.background = darkHeader ? "rgba(15,23,42,0.06)" : "rgba(255,255,255,0.08)"; e.target.style.borderColor = darkHeader ? "rgba(15,23,42,0.4)" : "rgba(255,255,255,0.3)"; }}
+                                onMouseLeave={(e) => { e.target.style.background = "transparent"; e.target.style.borderColor = darkHeader ? "rgba(15,23,42,0.2)" : "rgba(255,255,255,0.15)"; }}
                             >
                                 LOG IN
                             </button>
@@ -326,12 +291,33 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
                     )}
                     <span ref={coordRef} style={{
             fontFamily: "monospace", fontSize: 12,
-            color: COLORS.textMuted,
+            color: darkHeader ? "rgba(15,23,42,0.4)" : COLORS.textMuted,
             letterSpacing: "0.15em",
-            minWidth: 180
+            minWidth: 180,
+            transition: "color 0.4s"
           }}>
                         X : 0  Y : 0
                     </span>
+
+                    {isLoggedIn &&
+                      <button
+                        onClick={() => navigate('dashboard')}
+                        style={{
+                          padding: "8px 20px",
+                          background: "transparent",
+                          color: darkHeader ? "#0F172A" : COLORS.text,
+                          border: `1px solid ${darkHeader ? "rgba(15,23,42,0.2)" : "rgba(255,255,255,0.15)"}`,
+                          borderRadius: 0, cursor: "pointer",
+                          fontFamily: "monospace", fontSize: 13, fontWeight: 600,
+                          letterSpacing: "0.1em",
+                          transition: "all 0.4s",
+                        }}
+                        onMouseEnter={(e) => { e.target.style.background = COLORS.accent; e.target.style.color = COLORS.bg; e.target.style.borderColor = COLORS.accent; }}
+                        onMouseLeave={(e) => { e.target.style.background = "transparent"; e.target.style.color = darkHeader ? "#0F172A" : COLORS.text; e.target.style.borderColor = darkHeader ? "rgba(15,23,42,0.2)" : "rgba(255,255,255,0.15)"; }}
+                      >
+                        DASHBOARD
+                      </button>
+                    }
 
                     <button
             ref={headerBtnRef}
@@ -339,8 +325,8 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
             style={{
               padding: "8px 20px",
               background: menuOpen ? COLORS.accent : "transparent",
-              color: menuOpen ? COLORS.bg : COLORS.text,
-              border: `1px solid ${menuOpen ? COLORS.accent : "rgba(255,255,255,0.15)"}`,
+              color: menuOpen ? COLORS.bg : (darkHeader ? "#0F172A" : COLORS.text),
+              border: `1px solid ${menuOpen ? COLORS.accent : (darkHeader ? "rgba(15,23,42,0.2)" : "rgba(255,255,255,0.15)")}`,
               borderRadius: 0, cursor: "pointer",
               fontFamily: "monospace", fontSize: 13, fontWeight: 600,
               letterSpacing: "0.1em",
@@ -773,8 +759,7 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
                 label: "PLATFORM", items: [
                 { name: "Markets", page: "markets" },
                 { name: "Dashboard", page: "dashboard" },
-                { name: "Portfolio", page: "portfolio" },
-                { name: "Trending", page: "dashboard" }]
+                { name: "Portfolio", page: "portfolio" }]
 
               },
               {
