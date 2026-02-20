@@ -283,6 +283,14 @@ export async function getOrders() {
   }));
 }
 
+export async function getPortfolioHistory() {
+  const data = await apiFetch("/api/investor/portfolio-history");
+  return (data.history || []).map(p => ({
+    d: p.t,
+    v: p.v,
+  }));
+}
+
 // ── Artist Detail (public) ──
 export async function getArtistById(artistId) {
   const data = await apiFetch(`/api/artists/${artistId}`);

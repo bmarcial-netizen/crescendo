@@ -174,6 +174,135 @@ export async function googleAuth(credential: string) {
   };
 }
 
+export async function spotifyAuth(code: string) {
+  const { clientId, clientSecret, callbackUrl } = config.spotify;
+  if (!clientId || !clientSecret) {
+    throw new BadRequestError('Spotify Sign-In is not configured. Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in .env');
+  }
+
+  // Exchange authorization code for access token
+  const tokenResp = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: callbackUrl,
+      client_id: clientId,
+      client_secret: clientSecret,
+    }),
+  });
+
+  if (!tokenResp.ok) {
+    const err = await tokenResp.text();
+    console.error('Spotify token exchange failed:', err);
+    throw new BadRequestError('Spotify authentication failed');
+  }
+
+  const tokenData = await tokenResp.json() as { access_token: string };
+
+  // Get Spotify user profile
+  const profileResp = await fetch('https://api.spotify.com/v1/me', {
+    headers: { Authorization: `Bearer ${tokenData.access_token}` },
+  });
+
+  if (!profileResp.ok) {
+    throw new BadRequestError('Failed to fetch Spotify profile');
+  }
+
+  const profile = await profileResp.json() as {
+    id: string;
+    email?: string;
+    display_name?: string;
+  };
+
+  const spotifyId = profile.id;
+  const email = profile.email;
+  const displayName = profile.display_name;
+
+  if (!email) {
+    throw new BadRequestError('Spotify account has no email. Please ensure the "user-read-email" scope is granted.');
+  }
+
+  // Check if user with this spotifyId already exists
+  const [existingBySpotifyId] = await db
+    .select()
+    .from(users)
+    .where(eq(users.spotifyId, spotifyId))
+    .limit(1);
+
+  if (existingBySpotifyId) {
+    const token = generateToken(existingBySpotifyId.id, existingBySpotifyId.role);
+    return {
+      user: {
+        id: existingBySpotifyId.id,
+        email: existingBySpotifyId.email,
+        role: existingBySpotifyId.role,
+        displayName: existingBySpotifyId.displayName,
+      },
+      token,
+    };
+  }
+
+  // Check if user with this email exists (link Spotify to existing account)
+  const [existingByEmail] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+
+  if (existingByEmail) {
+    await db
+      .update(users)
+      .set({ spotifyId, updatedAt: new Date() })
+      .where(eq(users.id, existingByEmail.id));
+
+    const token = generateToken(existingByEmail.id, existingByEmail.role);
+    return {
+      user: {
+        id: existingByEmail.id,
+        email: existingByEmail.email,
+        role: existingByEmail.role,
+        displayName: existingByEmail.displayName,
+      },
+      token,
+    };
+  }
+
+  // New user — create account with wallet
+  const result = await db.transaction(async (tx) => {
+    const [user] = await tx
+      .insert(users)
+      .values({
+        email,
+        spotifyId,
+        role: 'investor',
+        displayName: displayName || email.split('@')[0],
+      })
+      .returning();
+
+    await tx.insert(ledgerAccounts).values({
+      name: `user:${user.id}:wallet`,
+      accountType: 'liability',
+      userId: user.id,
+      balance: config.defaultStartingBalance,
+    });
+
+    return user;
+  });
+
+  const token = generateToken(result.id, result.role);
+  return {
+    user: {
+      id: result.id,
+      email: result.email,
+      role: result.role,
+      displayName: result.displayName,
+    },
+    token,
+  };
+}
+
 function generateToken(userId: string, role: string): string {
   return jwt.sign({ userId, role }, config.jwtSecret, { expiresIn: '24h' });
 }

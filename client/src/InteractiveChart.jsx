@@ -45,7 +45,7 @@ export default function InteractiveChart({
   const [containerWidth, setContainerWidth] = useState(400);
   const [hoverIdx, setHoverIdx] = useState(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
-  const [mode, setMode] = useState("line"); // line | candlestick
+  const [mode, setMode] = useState("line"); // line | candlestick // line | candlestick
   const [dragStart, setDragStart] = useState(null);
   const [dragEnd, setDragEnd] = useState(null);
   const [zoomRange, setZoomRange] = useState(null);
@@ -248,32 +248,33 @@ export default function InteractiveChart({
         <div
           style={{
             display: "inline-flex",
-            gap: 1,
-            background: "rgba(0,0,0,0.04)",
+            gap: 0,
+            background: "rgba(0,0,0,0.05)",
             borderRadius: 8,
             padding: 2,
           }}
         >
           {[
-            { key: "line", label: "Line" },
-            { key: "candlestick", label: "Candles" },
+            { key: "line", label: "Line Chart" },
+            { key: "candlestick", label: "Candlestick" },
           ].map((m) => (
             <button
               key={m.key}
               onClick={() => setMode(m.key)}
               style={{
-                padding: "4px 10px",
+                padding: "5px 14px",
                 borderRadius: 6,
                 border: "none",
                 fontSize: 11,
-                fontWeight: 500,
+                fontWeight: mode === m.key ? 600 : 500,
                 cursor: "pointer",
                 fontFamily: "'Inter', sans-serif",
                 background: mode === m.key ? "#fff" : "transparent",
                 color: mode === m.key ? C.text : C.textMuted,
                 boxShadow:
-                  mode === m.key ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
-                transition: "all 0.15s",
+                  mode === m.key ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+                transition: "all 0.18s ease",
+                letterSpacing: "-0.01em",
               }}
             >
               {m.label}

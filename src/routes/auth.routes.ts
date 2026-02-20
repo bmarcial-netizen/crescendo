@@ -1,7 +1,8 @@
 import { Router, Request, Response } from 'express';
-import { register, login, googleAuth } from '../services/auth.service';
+import { register, login, googleAuth, spotifyAuth } from '../services/auth.service';
 import { requireAuth } from '../middleware/auth';
 import { AuthRequest } from '../types';
+import { config } from '../config';
 import { db } from '../db';
 import { users } from '../db/schema';
 import { eq } from 'drizzle-orm';
@@ -53,6 +54,54 @@ router.post('/google', async (req: Request, res: Response) => {
     const message = err instanceof Error ? err.message : 'Google authentication failed';
     console.error('Google auth error:', message);
     res.status(401).json({ error: { message: 'Google authentication failed. Please try again.' } });
+  }
+});
+
+// Spotify OAuth — Step 1: redirect user to Spotify's authorization page
+router.get('/spotify', (_req: Request, res: Response) => {
+  const { clientId, callbackUrl } = config.spotify;
+  if (!clientId) {
+    res.status(500).json({ error: { message: 'Spotify OAuth not configured' } });
+    return;
+  }
+
+  const scopes = 'user-read-email user-read-private';
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: clientId,
+    scope: scopes,
+    redirect_uri: callbackUrl,
+    show_dialog: 'true',
+  });
+
+  res.redirect(`https://accounts.spotify.com/authorize?${params.toString()}`);
+});
+
+// Spotify OAuth — Step 2: handle callback, exchange code for JWT
+router.get('/spotify/callback', async (req: Request, res: Response) => {
+  const code = req.query.code as string | undefined;
+  const error = req.query.error as string | undefined;
+
+  if (error) {
+    res.redirect(`${config.appUrl || 'http://localhost:5173'}/?auth_error=${encodeURIComponent(error)}`);
+    return;
+  }
+
+  if (!code) {
+    res.status(400).json({ error: { message: 'Missing authorization code' } });
+    return;
+  }
+
+  try {
+    const result = await spotifyAuth(code);
+    // Redirect to frontend with token in query params so the SPA can store it
+    const frontendUrl = config.appUrl || 'http://localhost:5173';
+    res.redirect(`${frontendUrl}/?token=${result.token}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Spotify authentication failed';
+    console.error('Spotify auth error:', message);
+    const frontendUrl = config.appUrl || 'http://localhost:5173';
+    res.redirect(`${frontendUrl}/?auth_error=${encodeURIComponent('Spotify authentication failed. Please try again.')}`);
   }
 });
 

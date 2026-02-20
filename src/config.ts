@@ -68,6 +68,7 @@ export const config = {
   spotify: {
     clientId: optional('SPOTIFY_CLIENT_ID'),
     clientSecret: optional('SPOTIFY_CLIENT_SECRET'),
+    callbackUrl: optional('SPOTIFY_CALLBACK_URL') || `${appUrl || 'http://localhost:3000'}/api/auth/spotify/callback`,
   },
   google: {
     clientId: optional('GOOGLE_CLIENT_ID'),

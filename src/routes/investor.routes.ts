@@ -3,8 +3,9 @@ import { requireAuth } from '../middleware/auth';
 import { AuthRequest } from '../types';
 import { getBalance, deposit, withdraw } from '../services/wallet.service';
 import { db } from '../db';
-import { investorPositions, artists, orders } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { investorPositions, artists, orders, ledgerAccounts, ledgerEntries } from '../db/schema';
+import { eq, and, asc } from 'drizzle-orm';
+import { config } from '../config';
 
 const router = Router();
 
@@ -66,6 +67,83 @@ router.get('/orders', async (req: AuthRequest, res: Response) => {
     .from(orders)
     .where(eq(orders.userId, req.user!.userId));
   res.json({ orders: userOrders });
+});
+
+router.get('/portfolio-history', async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.userId;
+  const walletName = `user:${userId}:wallet`;
+
+  // Find the user's wallet account
+  const [wallet] = await db
+    .select()
+    .from(ledgerAccounts)
+    .where(eq(ledgerAccounts.name, walletName))
+    .limit(1);
+
+  if (!wallet) {
+    // No wallet yet — return starting balance as single point
+    res.json({ history: [{ t: new Date().toISOString(), v: parseFloat(config.defaultStartingBalance) }] });
+    return;
+  }
+
+  // Get all ledger entries for this wallet, ordered chronologically
+  const entries = await db
+    .select({
+      entryType: ledgerEntries.entryType,
+      amount: ledgerEntries.amount,
+      txnType: ledgerEntries.txnType,
+      createdAt: ledgerEntries.createdAt,
+    })
+    .from(ledgerEntries)
+    .where(eq(ledgerEntries.accountId, wallet.id))
+    .orderBy(asc(ledgerEntries.createdAt));
+
+  // Reconstruct running balance over time
+  // Wallet is a LIABILITY account: credit = +balance, debit = -balance
+  const startingBal = parseFloat(config.defaultStartingBalance);
+  const history: { t: string; v: number }[] = [];
+
+  if (entries.length === 0) {
+    // No ledger entries yet — just show starting balance
+    res.json({ history: [{ t: new Date().toISOString(), v: startingBal }] });
+    return;
+  }
+
+  // Add the starting point (before first entry)
+  let runningBalance = startingBal;
+  const firstEntry = entries[0];
+  history.push({ t: new Date(firstEntry.createdAt.getTime() - 1000).toISOString(), v: runningBalance });
+
+  for (const entry of entries) {
+    const amount = parseFloat(entry.amount);
+    if (entry.entryType === 'credit') {
+      runningBalance += amount;
+    } else {
+      runningBalance -= amount;
+    }
+    history.push({ t: entry.createdAt.toISOString(), v: Math.max(0, runningBalance) });
+  }
+
+  // Append current total value (cash + holdings market value)
+  const positions = await db
+    .select({
+      sharesHeld: investorPositions.sharesHeld,
+      currentBid: artists.currentBid,
+    })
+    .from(investorPositions)
+    .innerJoin(artists, eq(investorPositions.artistId, artists.id))
+    .where(eq(investorPositions.userId, userId));
+
+  const holdingsValue = positions.reduce(
+    (sum, p) => sum + p.sharesHeld * parseFloat(p.currentBid),
+    0
+  );
+
+  const currentCash = parseFloat(wallet.balance);
+  const totalNow = currentCash + holdingsValue;
+  history.push({ t: new Date().toISOString(), v: totalNow });
+
+  res.json({ history });
 });
 
 export default router;

@@ -72,6 +72,7 @@ export const users = pgTable('users', {
   email: varchar('email', { length: 255 }).notNull().unique(),
   passwordHash: text('password_hash'),
   googleId: varchar('google_id', { length: 255 }).unique(),
+  spotifyId: varchar('spotify_id', { length: 255 }).unique(),
   role: userRoleEnum('role').notNull().default('investor'),
   displayName: varchar('display_name', { length: 255 }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

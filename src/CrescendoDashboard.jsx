@@ -1437,6 +1437,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
   // Live data from API
   const [liveArtists, setLiveArtists] = useState(null);
   const [livePortfolio, setLivePortfolio] = useState(null);
+  const [portfolioHistory, setPortfolioHistory] = useState(null);
   const auth = useAuth();
 
   // Fetch live artists on mount
@@ -1454,6 +1455,16 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
     let cancelled = false;
     api.getPortfolio().then(data => {
       if (!cancelled) setLivePortfolio(data);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [isLoggedIn]);
+
+  // Fetch portfolio history for performance chart
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    let cancelled = false;
+    api.getPortfolioHistory().then(data => {
+      if (!cancelled) setPortfolioHistory(data);
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [isLoggedIn]);
@@ -1525,6 +1536,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
     if (isLoggedIn) {
       api.getPortfolio().then(data => setLivePortfolio(data)).catch(() => {});
       api.getTradeHistory().then(data => setLiveTradeHistory(data)).catch(() => {});
+      api.getPortfolioHistory().then(data => setPortfolioHistory(data)).catch(() => {});
       auth.refreshBalance();
     }
   };
@@ -2060,8 +2072,19 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                 <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 2 }}>
                   ${totalValue.toFixed(0)}
                 </div>
-                <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 16 }}>This week</div>
-                <MiniChart data={graphWeek} color={C.primary} h={80} />
+                <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 16 }}>
+                  {period === "1D" ? "Today" : period === "5D" ? "Last 5 days" : period === "1W" ? "This week" : period === "2W" ? "Last 2 weeks" : "This month"}
+                </div>
+                <MiniChart data={(() => {
+                  const raw = portfolioHistory || graphWeek;
+                  if (!portfolioHistory) return raw;
+                  const now = Date.now();
+                  const cutoffs = { "1D": 1, "5D": 5, "1W": 7, "2W": 14, "1M": 30 };
+                  const days = cutoffs[period] || 7;
+                  const cutoff = now - days * 86400000;
+                  const filtered = raw.filter(p => new Date(p.d).getTime() >= cutoff);
+                  return filtered.length >= 2 ? filtered : raw;
+                })()} color={C.primary} h={80} />
 
                 <div style={{
                   marginTop: 16, borderRadius: 14,

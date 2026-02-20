@@ -254,33 +254,33 @@ export default function InteractiveChart({
         <div
           style={{
             display: "inline-flex",
-            gap: 1,
-            background: "rgba(0,0,0,0.04)",
+            gap: 0,
+            background: "rgba(0,0,0,0.05)",
             borderRadius: 8,
             padding: 2,
           }}
         >
           {[
-            { key: "line", label: "Line" },
-            { key: "candlestick", label: "Candles" },
-            { key: "scatter", label: "Dots" },
+            { key: "line", label: "Line Chart" },
+            { key: "candlestick", label: "Candlestick" },
           ].map((m) => (
             <button
               key={m.key}
               onClick={() => setMode(m.key)}
               style={{
-                padding: "4px 10px",
+                padding: "5px 14px",
                 borderRadius: 6,
                 border: "none",
                 fontSize: 11,
-                fontWeight: 500,
+                fontWeight: mode === m.key ? 600 : 500,
                 cursor: "pointer",
                 fontFamily: "'Inter', sans-serif",
                 background: mode === m.key ? "#fff" : "transparent",
                 color: mode === m.key ? C.text : C.textMuted,
                 boxShadow:
-                  mode === m.key ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
-                transition: "all 0.15s",
+                  mode === m.key ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+                transition: "all 0.18s ease",
+                letterSpacing: "-0.01em",
               }}
             >
               {m.label}
@@ -479,81 +479,6 @@ export default function InteractiveChart({
                   />
                 </>
               )}
-            </>
-          ) : mode === "scatter" ? (
-            <>
-              {/* Y-axis grid lines with price labels */}
-              {[0, 0.25, 0.5, 0.75, 1].map((frac) => {
-                const priceVal = min + (1 - frac) * range;
-                return (
-                  <text
-                    key={`y-${frac}`}
-                    x={PAD.left + 2}
-                    y={PAD.top + frac * chartH - 3}
-                    fill="rgba(0,0,0,0.25)"
-                    fontSize="8"
-                    fontFamily="'Inter', monospace"
-                  >
-                    ${priceVal.toFixed(2)}
-                  </text>
-                );
-              })}
-
-              {/* Scatter dots: each data point as a circle on the x-y plane */}
-              {pts.map((p, i) => {
-                const isHovered = hoverIdx === i;
-                const dotColor = viewData[i]?.v >= (i > 0 ? viewData[i-1]?.v : viewData[i]?.v) ? C.green : C.red;
-                return (
-                  <g key={i}>
-                    {/* Subtle connecting line between dots */}
-                    {i > 0 && (
-                      <line
-                        x1={pts[i-1].x}
-                        y1={pts[i-1].y}
-                        x2={p.x}
-                        y2={p.y}
-                        stroke={dotColor}
-                        strokeWidth="0.5"
-                        strokeDasharray="2 3"
-                        opacity="0.3"
-                      />
-                    )}
-                    {/* Outer glow on hover */}
-                    {isHovered && (
-                      <circle
-                        cx={p.x}
-                        cy={p.y}
-                        r="10"
-                        fill={dotColor}
-                        fillOpacity="0.15"
-                      />
-                    )}
-                    {/* Main dot */}
-                    <circle
-                      cx={p.x}
-                      cy={p.y}
-                      r={isHovered ? 5 : 3.5}
-                      fill={dotColor}
-                      fillOpacity={isHovered ? 1 : 0.8}
-                      stroke="#fff"
-                      strokeWidth={isHovered ? 1.5 : 0.5}
-                      style={{ transition: "r 0.1s, fill-opacity 0.1s" }}
-                    />
-                  </g>
-                );
-              })}
-
-              {/* Comparison scatter dots */}
-              {comparisonData && compPts.length > 0 && compPts.map((p, i) => (
-                <circle
-                  key={`comp-${i}`}
-                  cx={p.x}
-                  cy={p.y}
-                  r={hoverIdx === i ? 4 : 2.5}
-                  fill={comparisonColor}
-                  fillOpacity={0.7}
-                />
-              ))}
             </>
           ) : (
             effectiveOhlc.map((candle, i) => {
