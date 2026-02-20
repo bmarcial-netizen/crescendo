@@ -609,8 +609,8 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
                 style={{
                   marginTop: 50,
                   padding: "18px 48px",
-                  background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.blue})`,
-                  color: "#fff",
+                  background: COLORS.accent,
+                  color: "#0F172A",
                   border: "none",
                   borderRadius: 0,
                   cursor: "pointer",

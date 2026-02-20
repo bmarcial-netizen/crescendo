@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Bell, ArrowLeft, MapPin, Calendar, Tag, TrendingUp, TrendingDown, DollarSign, Music, BarChart3, Wallet, AlertTriangle, Star } from "lucide-react";
 import ArtistDetailModal from "./ArtistDetailModal";
+import NotificationsPage from "./NotificationsPage";
 import WalletPanel from "./WalletPanel";
 import OrderHistory from "./OrderHistory";
 import EarningsBand from "./EarningsBand";
@@ -1212,6 +1213,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
   const [selectedArtist, setSelectedArtist] = useState(null);
   const [showAuthBanner, setShowAuthBanner] = useState(false);
   const [showDeposit, setShowDeposit] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [showWallet, setShowWallet] = useState(false);
   const [showOrderHistory, setShowOrderHistory] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -1374,7 +1376,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
 
         <div style={{ display: "flex", gap: 2, background: "rgba(255,255,255,0.6)", borderRadius: 12, padding: 3, border: "1px solid rgba(255,255,255,0.8)" }}>
           {["Dashboard", "Markets", "Portfolio", "News"].map((t) =>
-            <button key={t} onClick={() => { setTab(t); navigate(t.toLowerCase()); }} style={{
+            <button key={t} onClick={() => { setTab(t); setShowNotifications(false); navigate(t.toLowerCase()); }} style={{
               padding: "8px 20px", borderRadius: 10, border: "none",
               fontSize: 12, fontWeight: 600, cursor: "pointer",
               fontFamily: "monospace",
@@ -1416,13 +1418,17 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
               <BarChart3 size={16} color={C.text} />
             </div>
           )}
-          <div style={{
+          <div
+            onClick={() => { setShowNotifications(!showNotifications); if (showProfile) navigate('dashboard'); }}
+            style={{
             width: 38, height: 38, borderRadius: 12,
-            background: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.9)",
+            background: showNotifications ? C.primarySoft : "rgba(255,255,255,0.7)",
+            border: showNotifications ? `1px solid ${C.primary}30` : "1px solid rgba(255,255,255,0.9)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 16, cursor: "pointer", position: "relative"
+            fontSize: 16, cursor: "pointer", position: "relative",
+            transition: "all 0.2s"
           }}>
-            <Bell size={18} color={C.text} />
+            <Bell size={18} color={showNotifications ? C.primary : C.text} />
             <div style={{
               position: "absolute", top: 6, right: 6, width: 7, height: 7,
               borderRadius: "50%", background: C.primary, border: "2px solid #fff"
@@ -1506,8 +1512,17 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
       {/* Main Content */}
       <main style={{ maxWidth: 1200, margin: "0 auto", padding: "28px 32px", position: "relative", zIndex: 1 }}>
 
+        {/* ─── NOTIFICATIONS PAGE ─── */}
+        {showNotifications && !showProfile &&
+          <NotificationsPage
+            setSelectedArtist={setSelectedArtist}
+            artists={artists}
+            fadeIn={fadeIn}
+          />
+        }
+
         {/* ─── PROFILE PAGE ─── */}
-        {showProfile &&
+        {showProfile && !showNotifications &&
           <div style={fadeIn(0.1)}>
             <div style={{ marginBottom: 24 }}>
               <h1 style={{ fontSize: "clamp(36px, 5vw, 48px)", fontWeight: 900, letterSpacing: "-0.04em", marginBottom: 6, textTransform: "uppercase", lineHeight: 1.05 }}>Profile</h1>
@@ -1559,7 +1574,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
         }
 
         {/* ─── MARKETS PAGE ─── */}
-        {!showProfile && tab === "Markets" &&
+        {!showProfile && !showNotifications && tab === "Markets" &&
           <MarketsPage
             artists={artists}
             C={C}
@@ -1578,12 +1593,12 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
         }
 
         {/* ─── NEWS PAGE ─── */}
-        {!showProfile && tab === "News" &&
+        {!showProfile && !showNotifications && tab === "News" &&
           <NewsPage C={C} fadeIn={fadeIn} Card={Card} />
         }
 
         {/* ─── DASHBOARD PAGE ─── */}
-        {!showProfile && tab === "Dashboard" && <>
+        {!showProfile && !showNotifications && tab === "Dashboard" && <>
 
           {/* Portfolio Value Header */}
           <div style={{ marginBottom: 24, ...fadeIn(0.1) }}>
@@ -2195,7 +2210,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
         </>}
 
         {/* ─── PORTFOLIO PAGE ─── */}
-        {!showProfile && tab === "Portfolio" && <>
+        {!showProfile && !showNotifications && tab === "Portfolio" && <>
           <div style={fadeIn(0.1)}>
             {/* Title + Ticker Strip */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
