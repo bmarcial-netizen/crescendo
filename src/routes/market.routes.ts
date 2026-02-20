@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
 import { artists, tractionIndexSnapshots, artistMetricSnapshots, earningsModelParams, artistCandles } from '../db/schema';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, and, gte, lte, asc, sql } from 'drizzle-orm';
 import { getPriceQuote } from '../services/pricing.service';
 import { NotFoundError } from '../utils/errors';
 import { estimateEarningsBand, DEFAULT_PARAMS, EarningsModelParams } from '../model/earningsEstimator';
@@ -13,6 +13,7 @@ router.get('/artists', async (_req: Request, res: Response) => {
   const allArtists = await db
     .select({
       id: artists.id,
+      symbol: artists.symbol,
       stageName: artists.stageName,
       bio: artists.bio,
       sharesOutstanding: artists.sharesOutstanding,
@@ -164,6 +165,57 @@ router.get('/artists/:id/earnings-band', async (req: Request, res: Response) => 
       ? { id: snapshot.id, capturedAt: snapshot.capturedAt, source: snapshot.source }
       : null,
     ...result,
+  });
+});
+
+// Get daily metrics for an artist by symbol (public, for charting)
+router.get('/:symbol/metrics', async (req: Request, res: Response) => {
+  const symbol = (req.params.symbol as string).toUpperCase();
+  const from = req.query.from as string | undefined;
+  const to = req.query.to as string | undefined;
+
+  // Look up artist by symbol
+  const [artist] = await db
+    .select({ id: artists.id, symbol: artists.symbol, stageName: artists.stageName })
+    .from(artists)
+    .where(eq(artists.symbol, symbol))
+    .limit(1);
+
+  if (!artist) throw new NotFoundError(`Artist with symbol "${symbol}" not found`);
+
+  // Build query conditions
+  const conditions = [eq(artistMetricSnapshots.artistId, artist.id)];
+  if (from) {
+    conditions.push(gte(artistMetricSnapshots.capturedAt, new Date(from + 'T00:00:00Z')));
+  }
+  if (to) {
+    conditions.push(lte(artistMetricSnapshots.capturedAt, new Date(to + 'T23:59:59Z')));
+  }
+
+  const rows = await db
+    .select({
+      id: artistMetricSnapshots.id,
+      capturedAt: artistMetricSnapshots.capturedAt,
+      source: artistMetricSnapshots.source,
+      spotifyMonthlyListeners: artistMetricSnapshots.spotifyMonthlyListeners,
+      spotifyFollowers: artistMetricSnapshots.spotifyFollowers,
+      spotifyPopularity: artistMetricSnapshots.spotifyPopularity,
+      playlistReach: artistMetricSnapshots.playlistReach,
+      tiktokFollowers: artistMetricSnapshots.tiktokFollowers,
+      instagramFollowers: artistMetricSnapshots.instagramFollowers,
+      youtubeSubscribers: artistMetricSnapshots.youtubeSubscribers,
+      youtubeChannelViews: artistMetricSnapshots.youtubeChannelViews,
+      fanConversionRate: artistMetricSnapshots.fanConversionRate,
+      spotifyListenerToFollowerRatio: artistMetricSnapshots.spotifyListenerToFollowerRatio,
+    })
+    .from(artistMetricSnapshots)
+    .where(and(...conditions))
+    .orderBy(asc(artistMetricSnapshots.capturedAt))
+    .limit(365);
+
+  res.json({
+    artist: { id: artist.id, symbol: artist.symbol, stageName: artist.stageName },
+    metrics: rows,
   });
 });
 

@@ -83,6 +83,7 @@ export const users = pgTable('users', {
 export const artists = pgTable('artists', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id).unique(),
+  symbol: varchar('symbol', { length: 20 }).unique(),
   stageName: varchar('stage_name', { length: 255 }).notNull(),
   bio: text('bio'),
   spotifyArtistId: varchar('spotify_artist_id', { length: 255 }),
