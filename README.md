@@ -198,7 +198,8 @@ Rate limit headers (`RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`)
 
 ### Quick start for your frontend teammate
 
-**Base URL**: `http://localhost:3000` (local) or your deployed URL
+**Production URL**: `https://crescendo-production-1231.up.railway.app`
+**Local URL**: `http://localhost:3000`
 
 **OpenAPI spec**: `GET /api/docs` — paste into Swagger UI or import into Postman
 
@@ -210,7 +211,7 @@ POST /api/auth/login     { email, password }                     → { user, tok
 
 Then use `Authorization: Bearer <token>` on all authenticated requests.
 
-**5 must-hit endpoints for the UI**:
+**Must-hit endpoints for the UI**:
 
 1. `GET /api/market/artists` — artist cards / listing page
 2. `GET /api/market/artists/:id/quote` — live bid/ask for trade dialog
@@ -219,7 +220,7 @@ Then use `Authorization: Bearer <token>` on all authenticated requests.
 5. `GET /api/investor/portfolio` — portfolio page with P&L
 6. `GET /api/investor/balance` — wallet balance display
 
-**CORS**: `http://localhost:3000` and `http://localhost:5173` are always allowed. Set `APP_URL` env var for your deployed frontend domain (e.g. Vercel). The `Authorization` and `Idempotency-Key` headers are explicitly allowed. Rate limit headers are exposed.
+**CORS**: `http://localhost:3000` and `http://localhost:5173` are always allowed. Set `APP_URL` env var on Railway for your deployed frontend domain (e.g. Vercel). The `Authorization` and `Idempotency-Key` headers are explicitly allowed. Rate limit headers are exposed.
 
 **All monetary values** are returned as strings (to preserve decimal precision). Parse with `parseFloat()` for display.
 

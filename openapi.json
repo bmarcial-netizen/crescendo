@@ -6,6 +6,7 @@
     "version": "1.0.0"
   },
   "servers": [
+    { "url": "https://crescendo-production-1231.up.railway.app", "description": "Railway production" },
     { "url": "http://localhost:3000", "description": "Local development" }
   ],
   "components": {
