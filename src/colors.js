@@ -29,6 +29,8 @@ export default C;
 export const GENRE_MAP = {
   ESDK: "Experimental Hip-Hop",
   BBDB: "Indie Pop",
+  JRJR: "Hyperpop / Shoegaze",
+  MCTD: "R&B / Soul",
 };
 
 // Format large numbers for display

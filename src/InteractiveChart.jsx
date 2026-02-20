@@ -1,23 +1,12 @@
 import { useState, useRef } from "react";
 import C from "./colors";
 
-// ─── Interactive Chart ─── scrubber, zoom, candlestick, comparison, dynamic fill ───
-
-function generateOHLC(data, id = 1) {
-  const seed = id * 13;
-  return data.map((pt, i) => {
-    const noise1 = Math.sin(seed + i * 1.1) * 0.04;
-    const noise2 = Math.cos(seed + i * 0.9) * 0.03;
-    const open = i === 0 ? pt.v * (1 + noise1) : data[i - 1].v;
-    const close = pt.v;
-    const high = Math.max(open, close) * (1 + Math.abs(noise1) + 0.01);
-    const low = Math.min(open, close) * (1 - Math.abs(noise2) - 0.01);
-    return { d: pt.d, open, high, low, close, vol: pt.vol };
-  });
-}
+// ─── Interactive Chart ─── scrubber, zoom, candlestick, dynamic fill ───
+// NO randomness. OHLC data must come from props (fetched from API).
 
 export default function InteractiveChart({
   data = [],
+  ohlcData = null, // Pre-computed OHLC from API: [{t, o, h, l, c, v}]
   color = C.green,
   height = 160,
   buyInPrice = null,
@@ -41,11 +30,30 @@ export default function InteractiveChart({
   const pinchRef = useRef(null);
 
   const viewData = zoomRange ? data.slice(zoomRange[0], zoomRange[1] + 1) : data;
-  const ohlcData = generateOHLC(viewData, artistId);
+
+  // Use API-provided OHLC data if available, otherwise derive deterministically from line data
+  const effectiveOhlc = ohlcData
+    ? (zoomRange ? ohlcData.slice(zoomRange[0], zoomRange[1] + 1) : ohlcData)
+    : viewData.map((pt, i) => {
+        const open = i === 0 ? pt.v : viewData[i - 1].v;
+        const close = pt.v;
+        const bodyHigh = Math.max(open, close);
+        const bodyLow = Math.min(open, close);
+        const range = bodyHigh - bodyLow;
+        const wick = Math.max(range * 0.2, close * 0.005);
+        return {
+          t: pt.d,
+          o: open,
+          h: bodyHigh + wick,
+          l: Math.max(0.01, bodyLow - wick),
+          c: close,
+          v: pt.vol || 0,
+        };
+      });
 
   const W = 400;
   const H = height;
-  const PAD = { top: 12, bottom: 20, left: 0, right: 0 };
+  const PAD = { top: 12, bottom: 28, left: 0, right: 0 };
   const chartW = W - PAD.left - PAD.right;
   const chartH = H - PAD.top - PAD.bottom;
 
@@ -210,6 +218,27 @@ export default function InteractiveChart({
       : 0;
 
   const uniqueId = `chart-${artistId}-${mode}`;
+
+  // X-axis date labels: show ~5 evenly spaced date ticks
+  const xAxisLabels = [];
+  if (viewData.length > 1) {
+    const tickCount = Math.min(5, viewData.length);
+    for (let i = 0; i < tickCount; i++) {
+      const idx = Math.round((i / (tickCount - 1)) * (viewData.length - 1));
+      const pt = viewData[idx];
+      const dateStr = typeof pt.d === "string" ? pt.d : `Day ${idx + 1}`;
+      // Format date for display
+      let label = dateStr;
+      if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const d = new Date(dateStr + "T12:00:00Z");
+        label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      }
+      xAxisLabels.push({
+        x: toX(idx, viewData.length),
+        label,
+      });
+    }
+  }
 
   return (
     <div style={{ position: "relative", userSelect: "none" }}>
@@ -451,15 +480,15 @@ export default function InteractiveChart({
               )}
             </>
           ) : (
-            ohlcData.map((candle, i) => {
-              const x = toX(i, ohlcData.length);
-              const barW = Math.max(6, chartW / ohlcData.length * 0.65);
-              const isGreen = candle.close >= candle.open;
-              const bodyTop = toY(Math.max(candle.open, candle.close));
-              const bodyBottom = toY(Math.min(candle.open, candle.close));
+            effectiveOhlc.map((candle, i) => {
+              const x = toX(i, effectiveOhlc.length);
+              const barW = Math.max(6, chartW / effectiveOhlc.length * 0.65);
+              const isGreen = candle.c >= candle.o;
+              const bodyTop = toY(Math.max(candle.o, candle.c));
+              const bodyBottom = toY(Math.min(candle.o, candle.c));
               const bodyH = Math.max(2, bodyBottom - bodyTop);
-              const wickTop = toY(candle.high);
-              const wickBottom = toY(candle.low);
+              const wickTop = toY(candle.h);
+              const wickBottom = toY(candle.l);
               const candleColor = isGreen ? C.green : C.red;
               const isHovered = hoverIdx === i;
 
@@ -500,6 +529,21 @@ export default function InteractiveChart({
               );
             })
           )}
+
+          {/* X-axis date labels */}
+          {xAxisLabels.map((tick, i) => (
+            <text
+              key={i}
+              x={tick.x}
+              y={H - 4}
+              textAnchor="middle"
+              fill="rgba(0,0,0,0.35)"
+              fontSize="9"
+              fontFamily="'Inter', monospace"
+            >
+              {tick.label}
+            </text>
+          ))}
 
           {isDragging &&
             dragStart != null &&
@@ -581,7 +625,9 @@ export default function InteractiveChart({
               }}
             >
               {typeof hoverPt.d === "string"
-                ? hoverPt.d
+                ? (hoverPt.d.match(/^\d{4}-\d{2}-\d{2}$/)
+                    ? new Date(hoverPt.d + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                    : hoverPt.d)
                 : `Day ${hoverPt.d + 1}`}
             </div>
             <div
@@ -592,17 +638,17 @@ export default function InteractiveChart({
                 letterSpacing: "-0.02em",
               }}
             >
-              ${hoverPt.v.toFixed(2)}
+              ${hoverPt.v.toFixed(4)}
             </div>
-            {mode === "candlestick" && ohlcData[hoverIdx] && (
+            {mode === "candlestick" && effectiveOhlc[hoverIdx] && (
               <div style={{
                 display: "flex", gap: 8, fontSize: 10, marginTop: 4,
                 borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 4,
               }}>
-                <span style={{ color: C.green }}>O: ${ohlcData[hoverIdx].open.toFixed(2)}</span>
-                <span style={{ color: "rgba(255,255,255,0.6)" }}>H: ${ohlcData[hoverIdx].high.toFixed(2)}</span>
-                <span style={{ color: "rgba(255,255,255,0.6)" }}>L: ${ohlcData[hoverIdx].low.toFixed(2)}</span>
-                <span style={{ color: ohlcData[hoverIdx].close >= ohlcData[hoverIdx].open ? C.green : C.red }}>C: ${ohlcData[hoverIdx].close.toFixed(2)}</span>
+                <span style={{ color: C.green }}>O: ${effectiveOhlc[hoverIdx].o.toFixed(4)}</span>
+                <span style={{ color: "rgba(255,255,255,0.6)" }}>H: ${effectiveOhlc[hoverIdx].h.toFixed(4)}</span>
+                <span style={{ color: "rgba(255,255,255,0.6)" }}>L: ${effectiveOhlc[hoverIdx].l.toFixed(4)}</span>
+                <span style={{ color: effectiveOhlc[hoverIdx].c >= effectiveOhlc[hoverIdx].o ? C.green : C.red }}>C: ${effectiveOhlc[hoverIdx].c.toFixed(4)}</span>
               </div>
             )}
             {hoverPt.vol && (

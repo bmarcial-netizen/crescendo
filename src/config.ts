@@ -36,13 +36,15 @@ if (stripeEnabled) {
 
 // ── CORS ────────────────────────────────────────────────────────────────────
 
-const appUrl = optional('APP_URL');
+const appUrl = optional('APP_URL') || optional('APP_URL_PROD') || optional('APP_URL_DEV');
+const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '';
 const corsOrigins: string[] = [
   'http://localhost:3000',
   'http://localhost:5173',
   'http://localhost:5174',
   ...(appUrl ? [appUrl] : []),
-];
+  ...(vercelUrl ? [vercelUrl] : []),
+].filter(Boolean);
 
 // ── Export ───────────────────────────────────────────────────────────────────
 

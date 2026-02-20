@@ -29,12 +29,13 @@ export async function register(
       .values({ email, passwordHash, role, displayName })
       .returning();
 
-    // Create wallet ledger account for non-admin users
+    // Create wallet ledger account for non-admin users with $1000 starting balance
     if (role !== 'admin') {
       await tx.insert(ledgerAccounts).values({
         name: `user:${user.id}:wallet`,
         accountType: 'liability',
         userId: user.id,
+        balance: '1000.0000',
       });
     }
 
@@ -155,6 +156,7 @@ export async function googleAuth(credential: string) {
       name: `user:${user.id}:wallet`,
       accountType: 'liability',
       userId: user.id,
+      balance: '1000.0000',
     });
 
     return user;

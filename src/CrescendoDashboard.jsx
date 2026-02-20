@@ -216,11 +216,13 @@ function EmptyState({ icon, title, description, cta, onCta }) {
 }
 
 function MiniChart({ data, color, w = 100, h = 36 }) {
+  if (!data || data.length === 0) return <svg viewBox={`0 0 ${w} ${h}`} style={{ width: "100%", height: h }} />;
   const max = Math.max(...data.map((d) => d.v));
   const min = Math.min(...data.map((d) => d.v));
   const range = max - min || 1;
+  const divisor = Math.max(data.length - 1, 1);
   const pts = data.map((d, i) => {
-    const x = i / (data.length - 1) * w;
+    const x = i / divisor * w;
     const y = 4 + (1 - (d.v - min) / range) * (h - 8);
     return { x, y };
   });
@@ -256,32 +258,33 @@ function SparkLine({ positive, w = 60, h = 20 }) {
   );
 }
 
-// Generate candlestick data for the chart
-function generateCandlesticks(basePrice, count = 40) {
-  const candles = [];
-  let price = basePrice;
-  for (let i = 0; i < count; i++) {
-    const open = price;
-    const change = (Math.random() - 0.45) * basePrice * 0.04;
-    const close = open + change;
-    const high = Math.max(open, close) + Math.random() * basePrice * 0.015;
-    const low = Math.min(open, close) - Math.random() * basePrice * 0.015;
-    candles.push({ open, close, high, low, time: i });
-    price = close;
-  }
-  return candles;
-}
+// No more generateCandlesticks — all candle data comes from backend API
 
+// CandlestickChart now uses API-provided OHLCV data (no randomness)
+// candles format: [{t: "YYYY-MM-DD", o, h, l, c, v}]
 function CandlestickChart({ candles, w = 720, h = 380 }) {
   const [hover, setHover] = useState(null);
-  const svgRef = useState(null);
 
-  if (!candles.length) return null;
-  const allHigh = Math.max(...candles.map((c) => c.high));
-  const allLow = Math.min(...candles.map((c) => c.low));
-  const range = allHigh - allLow || 1;
+  if (candles === null || candles === undefined) {
+    return (
+      <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#94A3B8", fontSize: 13 }}>
+        Loading chart data...
+      </div>
+    );
+  }
+  if (!candles.length) {
+    return (
+      <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#94A3B8", fontSize: 13 }}>
+        No chart data available
+      </div>
+    );
+  }
+
+  const allHigh = Math.max(...candles.map((c) => c.h));
+  const allLow = Math.min(...candles.map((c) => c.l));
+  const range = allHigh - allLow || 0.01;
   const barW = Math.max((w - 60) / candles.length - 2, 4);
-  const toY = (v) => 20 + (1 - (v - allLow) / range) * (h - 40);
+  const toY = (v) => 20 + (1 - (v - allLow) / range) * (h - 60);
   const steps = 6;
   const yLabels = [];
   for (let i = 0; i <= steps; i++) {
@@ -289,7 +292,25 @@ function CandlestickChart({ candles, w = 720, h = 380 }) {
     yLabels.push({ val, y: toY(val) });
   }
   const lastCandle = candles[candles.length - 1];
-  const lastY = toY(lastCandle.close);
+  const lastY = toY(lastCandle.c);
+
+  // X-axis date labels (show ~6 evenly spaced)
+  const xLabels = [];
+  const tickCount = Math.min(6, candles.length);
+  for (let i = 0; i < tickCount; i++) {
+    const idx = Math.round((i / Math.max(tickCount - 1, 1)) * (candles.length - 1));
+    const candle = candles[idx];
+    const dateStr = candle.t || '';
+    let label = dateStr;
+    if (dateStr.match && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const d = new Date(dateStr + "T12:00:00Z");
+      label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    }
+    xLabels.push({
+      x: 55 + idx * ((w - 60) / candles.length) + barW / 2,
+      label,
+    });
+  }
 
   const handleMouseMove = (e) => {
     const svg = e.currentTarget;
@@ -323,43 +344,50 @@ function CandlestickChart({ candles, w = 720, h = 380 }) {
       )}
       {candles.map((c, i) => {
         const x = 55 + i * ((w - 60) / candles.length) + barW / 2;
-        const isUp = c.close >= c.open;
-        const bodyTop = toY(Math.max(c.open, c.close));
-        const bodyBot = toY(Math.min(c.open, c.close));
+        const isUp = c.c >= c.o;
+        const bodyTop = toY(Math.max(c.o, c.c));
+        const bodyBot = toY(Math.min(c.o, c.c));
         const bodyH = Math.max(bodyBot - bodyTop, 1);
         const isHovered = hover && hover.idx === i;
         return (
           <g key={i}>
-            <line x1={x} y1={toY(c.high)} x2={x} y2={toY(c.low)} stroke={isUp ? "#38BDF8" : "#EF4444"} strokeWidth={isHovered ? 2 : 1} />
+            <line x1={x} y1={toY(c.h)} x2={x} y2={toY(c.l)} stroke={isUp ? "#38BDF8" : "#EF4444"} strokeWidth={isHovered ? 2 : 1} />
             <rect x={x - barW / 2} y={bodyTop} width={barW} height={bodyH} rx={1} fill={isUp ? "#38BDF8" : "#EF4444"} opacity={isHovered ? 1 : 0.9} />
           </g>
         );
       })}
+      {/* X-axis date labels */}
+      {xLabels.map((tick, i) =>
+        <text key={i} x={tick.x} y={h - 8} textAnchor="middle" fontSize="9" fill="#94A3B8" fontFamily="monospace">{tick.label}</text>
+      )}
       <line x1={50} y1={lastY} x2={w} y2={lastY} stroke="#1E40AF" strokeWidth="1" strokeDasharray="4,4" opacity={0.5} />
       <rect x={0} y={lastY - 10} width={52} height={20} rx={4} fill="#1E40AF" />
-      <text x={26} y={lastY + 4} fontSize="9" fill="white" textAnchor="middle" fontFamily="monospace">{lastCandle.close.toFixed(2)}</text>
+      <text x={26} y={lastY + 4} fontSize="9" fill="white" textAnchor="middle" fontFamily="monospace">{lastCandle.c.toFixed(2)}</text>
       {hover && hc &&
         <g>
           <line x1={hcX} y1={20} x2={hcX} y2={h - 20} stroke="rgba(30,64,175,0.4)" strokeWidth="1" strokeDasharray="3,3" />
           <line x1={50} y1={hover.mouseY} x2={w} y2={hover.mouseY} stroke="rgba(30,64,175,0.4)" strokeWidth="1" strokeDasharray="3,3" />
           <rect x={0} y={hover.mouseY - 10} width={52} height={20} rx={4} fill="rgba(30,64,175,0.7)" />
           <text x={26} y={hover.mouseY + 4} fontSize="9" fill="white" textAnchor="middle" fontFamily="monospace">
-            {(allLow + (1 - (hover.mouseY - 20) / (h - 40)) * range).toFixed(2)}
+            {(allLow + (1 - (hover.mouseY - 20) / (h - 60)) * range).toFixed(2)}
           </text>
           {(() => {
-            const tooltipW = 130;
-            const tooltipH = 82;
+            const tooltipW = 160;
+            const tooltipH = 96;
             const tx = hcX + 15 + tooltipW > w ? hcX - tooltipW - 15 : hcX + 15;
             const ty = Math.max(5, Math.min(hover.mouseY - tooltipH / 2, h - tooltipH - 5));
-            const isUp = hc.close >= hc.open;
+            const isUp = hc.c >= hc.o;
+            const dateLabel = hc.t && hc.t.match && hc.t.match(/^\d{4}-\d{2}-\d{2}$/)
+              ? new Date(hc.t + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric" })
+              : '';
             return (
               <g>
                 <rect x={tx} y={ty} width={tooltipW} height={tooltipH} rx={8} fill="rgba(15,23,42,0.92)" />
-                <text x={tx + 10} y={ty + 16} fontSize="10" fontWeight="700" fill="#fff" fontFamily="monospace">OHLC Data</text>
-                <text x={tx + 10} y={ty + 32} fontSize="9" fill="#94A3B8" fontFamily="monospace">O: <tspan fill={isUp ? "#38BDF8" : "#EF4444"}>{hc.open.toFixed(4)}</tspan></text>
-                <text x={tx + 10} y={ty + 46} fontSize="9" fill="#94A3B8" fontFamily="monospace">H: <tspan fill="#fff">{hc.high.toFixed(4)}</tspan></text>
-                <text x={tx + 10} y={ty + 60} fontSize="9" fill="#94A3B8" fontFamily="monospace">L: <tspan fill="#fff">{hc.low.toFixed(4)}</tspan></text>
-                <text x={tx + 10} y={ty + 74} fontSize="9" fill="#94A3B8" fontFamily="monospace">C: <tspan fill={isUp ? "#38BDF8" : "#EF4444"}>{hc.close.toFixed(4)}</tspan></text>
+                <text x={tx + 10} y={ty + 16} fontSize="10" fontWeight="700" fill="#fff" fontFamily="monospace">{dateLabel || "OHLC Data"}</text>
+                <text x={tx + 10} y={ty + 34} fontSize="9" fill="#94A3B8" fontFamily="monospace">O: <tspan fill={isUp ? "#38BDF8" : "#EF4444"}>{hc.o.toFixed(4)}</tspan></text>
+                <text x={tx + 10} y={ty + 48} fontSize="9" fill="#94A3B8" fontFamily="monospace">H: <tspan fill="#fff">{hc.h.toFixed(4)}</tspan></text>
+                <text x={tx + 10} y={ty + 62} fontSize="9" fill="#94A3B8" fontFamily="monospace">L: <tspan fill="#fff">{hc.l.toFixed(4)}</tspan></text>
+                <text x={tx + 10} y={ty + 76} fontSize="9" fill="#94A3B8" fontFamily="monospace">C: <tspan fill={isUp ? "#38BDF8" : "#EF4444"}>{hc.c.toFixed(4)}</tspan></text>
               </g>
             );
           })()}
@@ -370,6 +398,7 @@ function CandlestickChart({ candles, w = 720, h = 380 }) {
 }
 
 function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card, TabPill, auth, isLoggedIn, onTradeComplete, genreFilter, setGenreFilter, watchlist, toggleWatchlist }) {
+  const [viewMode, setViewMode] = useState("overview"); // "overview" | "detail"
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [chartPeriod, setChartPeriod] = useState("1M");
   const [tradeTab, setTradeTab] = useState("BUY");
@@ -377,16 +406,57 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
   const [tradeLoading, setTradeLoading] = useState(false);
   const [tradeMsg, setTradeMsg] = useState(null);
   const [liveQuote, setLiveQuote] = useState(null);
+  const [allCandles, setAllCandles] = useState(null); // all candles, no date filter
+  const [analysisData, setAnalysisData] = useState(null);
+  const [overviewCandles, setOverviewCandles] = useState({}); // { artistId: candles[] }
 
   const selected = artists[selectedIdx];
   const isTripped = selected?.circuitBreakerStatus === "tripped";
 
-  // Fetch live quote when selected artist changes
+  // Slice candles based on period selection (frontend filtering)
+  const sliceCandles = (candles, period) => {
+    if (!candles || !candles.length) return candles;
+    let days;
+    switch (period) {
+      case "1D": days = 1; break;
+      case "5D": days = 5; break;
+      case "1W": days = 7; break;
+      case "2W": days = 14; break;
+      case "1M": default: days = 30; break;
+    }
+    return candles.slice(-days);
+  };
+
+  const apiCandles = sliceCandles(allCandles, chartPeriod);
+
+  // Fetch mini-candles for all artists on mount (for overview sparklines)
   useEffect(() => {
-    if (!selected?.id) return;
+    artists.forEach(a => {
+      if (!a.id) return;
+      api.getDailyCandles(a.id)
+        .then(candles => setOverviewCandles(prev => ({ ...prev, [a.id]: candles })))
+        .catch(() => {});
+    });
+  }, [artists.map(a => a.id).join(",")]);
+
+  // Fetch live quote when selected artist changes (detail view)
+  useEffect(() => {
+    if (viewMode !== "detail" || !selected?.id) return;
     setLiveQuote(null);
     api.getQuote(selected.id).then(q => setLiveQuote(q)).catch(() => {});
-  }, [selected?.id]);
+  }, [selected?.id, viewMode]);
+
+  // Fetch ALL candles when artist changes (no date range — backend returns full history)
+  useEffect(() => {
+    if (viewMode !== "detail" || !selected?.id) return;
+    setAllCandles(null);
+    api.getDailyCandles(selected.id)
+      .then(candles => setAllCandles(candles))
+      .catch(() => setAllCandles([]));
+    api.getFinancialAnalysis(selected.id)
+      .then(analysis => setAnalysisData(analysis))
+      .catch(() => setAnalysisData(null));
+  }, [selected?.id, viewMode]);
 
   const displayPrice = liveQuote?.mid || selected?.price || 0;
   const displayBid = liveQuote?.bid || selected?.price || 0;
@@ -419,27 +489,132 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
     }
   };
 
+  const openDetail = (idx) => {
+    setSelectedIdx(idx);
+    setViewMode("detail");
+    setTradeMsg(null);
+    setQuantity("");
+    setAllCandles(null);
+    setAnalysisData(null);
+    setLiveQuote(null);
+  };
+
+  // ── OVERVIEW MODE: Grid of all artists ──
+
+  if (viewMode === "overview") {
+    return (
+      <div style={fadeIn(0.1)}>
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: "clamp(36px, 5vw, 48px)", fontWeight: 900, letterSpacing: "-0.04em", marginBottom: 6, textTransform: "uppercase", lineHeight: 1.05 }}>Markets</h1>
+          <p style={{ fontSize: 11, color: C.textMuted, fontFamily: "monospace", letterSpacing: "0.12em", textTransform: "uppercase" }}>Browse all artist tokens</p>
+        </div>
+        {/* Genre filter pills */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
+          {genres.map(g => (
+            <button key={g} onClick={() => setGenreFilter(g)} style={{
+              padding: "5px 14px", borderRadius: 8, border: "none",
+              fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "monospace",
+              background: genreFilter === g ? "#fff" : "rgba(0,0,0,0.04)",
+              color: genreFilter === g ? C.text : C.textMuted,
+              boxShadow: genreFilter === g ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
+              transition: "all 0.2s"
+            }}>{g}</button>
+          ))}
+        </div>
+
+        {/* Artist overview grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+          {filteredArtists.map((a) => {
+            const idx = artists.indexOf(a);
+            const candles = overviewCandles[a.id] || [];
+            const miniData = candles.length > 0
+              ? candles.slice(-14).map(c => ({ v: c.c }))
+              : [{ v: a.price || 1 }];
+            const isUp = a.change >= 0;
+            const totalReturn = candles.length >= 2 ? ((candles[candles.length - 1].c / candles[0].c - 1) * 100) : a.change;
+            return (
+              <Card key={a.id} style={{ padding: 0, cursor: "pointer", overflow: "hidden" }} hover>
+                <div onClick={() => openDetail(idx)} style={{ padding: 20 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                    <img
+                      src={avatarUrl(a.name, 52)} alt={a.name}
+                      style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid rgba(0,0,0,0.05)" }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{
+                          padding: "2px 7px", borderRadius: 4, fontSize: 10, fontWeight: 700,
+                          background: C.primarySoft, color: C.primary, fontFamily: "monospace",
+                        }}>{a.symbol || getTicker(a.name)}</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-0.01em" }}>{a.name}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>{a.genre}</div>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleWatchlist(a.id); }}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, padding: 0, color: watchlist.includes(a.id) ? "#F59E0B" : C.textMuted }}
+                    >{watchlist.includes(a.id) ? "★" : "☆"}</button>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 10 }}>
+                    <div>
+                      <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1 }}>${a.price.toFixed(2)}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: isUp ? C.green : C.red, marginTop: 4 }}>
+                        {isUp ? "▲" : "▼"} {Math.abs(a.change).toFixed(1)}% today
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 11, color: C.textMuted, fontFamily: "monospace" }}>30d</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: totalReturn >= 0 ? C.green : C.red, fontFamily: "monospace" }}>
+                        {totalReturn >= 0 ? "+" : ""}{totalReturn.toFixed(1)}%
+                      </div>
+                    </div>
+                  </div>
+                  {/* Mini chart */}
+                  <div style={{ height: 44 }}>
+                    <MiniChart data={miniData} color={isUp ? C.green : C.red} h={44} />
+                  </div>
+                </div>
+                {/* Quick trade bar */}
+                <div style={{
+                  display: "flex", borderTop: "1px solid rgba(0,0,0,0.05)",
+                }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); openDetail(idx); }}
+                    style={{
+                      flex: 1, padding: "10px 0", border: "none", fontSize: 12, fontWeight: 700,
+                      cursor: "pointer", fontFamily: "monospace", letterSpacing: "0.04em",
+                      background: "transparent", color: C.primary,
+                      transition: "background 0.15s",
+                    }}
+                    onMouseEnter={e => e.target.style.background = "rgba(30,64,175,0.04)"}
+                    onMouseLeave={e => e.target.style.background = "transparent"}
+                  >VIEW & TRADE</button>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ── DETAIL MODE: Selected artist chart + trading ──
+
   if (!selected) return null;
 
   return (
     <div style={fadeIn(0.1)}>
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: "clamp(36px, 5vw, 48px)", fontWeight: 900, letterSpacing: "-0.04em", marginBottom: 6, textTransform: "uppercase", lineHeight: 1.05 }}>Markets</h1>
-        <p style={{ fontSize: 11, color: C.textMuted, fontFamily: "monospace", letterSpacing: "0.12em", textTransform: "uppercase" }}>Trade artist tokens in real time</p>
-      </div>
-      {/* Genre filter pills */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
-        {genres.map(g => (
-          <button key={g} onClick={() => setGenreFilter(g)} style={{
-            padding: "5px 14px", borderRadius: 8, border: "none",
-            fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "monospace",
-            background: genreFilter === g ? "#fff" : "rgba(0,0,0,0.04)",
-            color: genreFilter === g ? C.text : C.textMuted,
-            boxShadow: genreFilter === g ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
-            transition: "all 0.2s"
-          }}>{g}</button>
-        ))}
-      </div>
+      {/* Back to overview */}
+      <button
+        onClick={() => setViewMode("overview")}
+        style={{
+          display: "flex", alignItems: "center", gap: 8, background: "none", border: "none",
+          fontSize: 13, fontWeight: 600, color: C.textSec, cursor: "pointer", marginBottom: 16,
+          fontFamily: "'Inter', sans-serif", padding: 0
+        }}>
+        <ArrowLeft size={16} /> Back to Markets
+      </button>
+
       {/* Circuit breaker warning - info only, doesn't block */}
       {isTripped && (
         <div style={{
@@ -491,8 +666,24 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
             <TabPill options={["1M", "2W", "1W", "5D", "1D"]} active={chartPeriod} onChange={setChartPeriod} />
           </div>
           <div style={{ width: "100%", height: 360 }}>
-            <CandlestickChart candles={generateCandlesticks(displayPrice, 45)} />
+            <CandlestickChart candles={apiCandles} />
           </div>
+          {/* Financial Analysis Summary */}
+          {analysisData && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 12 }}>
+              {[
+                { label: "Return", value: `${analysisData.returnPct >= 0 ? '+' : ''}${analysisData.returnPct.toFixed(2)}%`, color: analysisData.returnPct >= 0 ? "#38BDF8" : "#EF4444" },
+                { label: "Volatility", value: `${analysisData.annualizedVolatility.toFixed(1)}%`, color: "#94A3B8" },
+                { label: "Max Drawdown", value: `${analysisData.maxDrawdown.toFixed(2)}%`, color: "#EF4444" },
+                { label: "Sharpe", value: analysisData.sharpeRatio.toFixed(2), color: analysisData.sharpeRatio >= 0 ? "#38BDF8" : "#EF4444" },
+              ].map(({ label, value, color: statColor }) => (
+                <div key={label} style={{ textAlign: "center", padding: "6px 4px", borderRadius: 8, background: "rgba(0,0,0,0.02)" }}>
+                  <div style={{ fontSize: 10, color: "#94A3B8", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: statColor, fontFamily: "monospace" }}>{value}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
 
         {/* Right: Trade panel — simplified, real API */}
@@ -610,41 +801,25 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
         </div>
       </div>
 
-      {/* Bottom ticker cards */}
+      {/* Bottom: Other artists to switch to */}
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(filteredArtists.length, 4)}, 1fr)`, gap: 12 }}>
-        {filteredArtists.slice(0, 8).map((a, i) =>
-          <Card key={a.id} style={{ padding: 18, cursor: "pointer", border: selectedIdx === artists.indexOf(a) ? `2px solid ${C.primary}` : undefined }} hover>
-            <div onClick={() => setSelectedIdx(artists.indexOf(a))}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <img
-                  src={avatarUrl(a.name, 52)} alt={a.name}
-                  onClick={(e) => { e.stopPropagation(); setSelectedArtist(a); }}
-                  style={{ width: 26, height: 26, borderRadius: 8, border: "1px solid rgba(0,0,0,0.05)", cursor: "pointer" }}
-                />
-                {a.symbol && (
-                  <span style={{
-                    padding: "1px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700,
-                    background: C.primarySoft, color: C.primary, fontFamily: "monospace",
-                  }}>{a.symbol}</span>
-                )}
-                <span
-                  onClick={(e) => { e.stopPropagation(); setSelectedArtist(a); }}
-                  style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "color 0.2s" }}
-                  onMouseEnter={e => e.target.style.color = C.primary}
-                  onMouseLeave={e => e.target.style.color = C.text}
-                ><span style={{ fontWeight: 700, color: a.change >= 0 ? C.green : C.red, fontFamily: "monospace", marginRight: 4, fontSize: 11 }}>{a.symbol || getTicker(a.name)}</span>{a.name}</span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); toggleWatchlist(a.id); }}
-                  style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", fontSize: 14, padding: 0 }}
-                >{watchlist.includes(a.id) ? "★" : "☆"}</button>
+        {filteredArtists.filter(a => a.id !== selected.id).slice(0, 4).map((a) =>
+          <Card key={a.id} style={{ padding: 14, cursor: "pointer" }} hover>
+            <div onClick={() => openDetail(artists.indexOf(a))}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <img src={avatarUrl(a.name, 44)} alt={a.name} style={{ width: 22, height: 22, borderRadius: 6 }} />
+                <span style={{
+                  padding: "1px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700,
+                  background: C.primarySoft, color: C.primary, fontFamily: "monospace",
+                }}>{a.symbol || getTicker(a.name)}</span>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>{a.name}</span>
               </div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
-                <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.03em" }}>${a.price.toFixed(2)}</span>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.03em" }}>${a.price.toFixed(2)}</span>
                 <span style={{ fontSize: 11, fontWeight: 600, color: a.change >= 0 ? C.green : C.red }}>
                   {a.change >= 0 ? "▲" : "▼"} {Math.abs(a.change).toFixed(1)}%
                 </span>
               </div>
-              <SparkLine positive={a.change >= 0} w={100} h={22} />
             </div>
           </Card>
         )}

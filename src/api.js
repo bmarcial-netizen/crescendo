@@ -35,7 +35,9 @@ async function apiFetch(path, options = {}) {
     headers["Authorization"] = `Bearer ${authToken}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = `${API_BASE}${path}`;
+  console.log(`[api] ${options.method || 'GET'} ${url}`);
+  const res = await fetch(url, {
     ...options,
     headers,
   });
@@ -56,6 +58,7 @@ async function apiFetch(path, options = {}) {
 
   if (!res.ok) {
     const message = data?.error?.message || data?.message || `Request failed (${res.status})`;
+    console.error(`[api] ${res.status} ${url}`, data);
     throw new ApiError(message, res.status, data);
   }
 
@@ -142,6 +145,40 @@ export async function getCandles(artistId, interval = "1h", limit = 100) {
     volume: c.volume,
     tradeCount: c.tradeCount,
   }));
+}
+
+// ── Daily candles (deterministic, metrics-derived) ──
+export async function getDailyCandles(artistId, start, end) {
+  let url = `/api/market/artists/${artistId}/daily-candles`;
+  const params = [];
+  if (start) params.push(`start=${encodeURIComponent(start)}`);
+  if (end) params.push(`end=${encodeURIComponent(end)}`);
+  if (params.length) url += `?${params.join("&")}`;
+  const data = await apiFetch(url);
+  return (data.candles || []).map(c => ({
+    t: c.t,
+    o: c.o,
+    h: c.h,
+    l: c.l,
+    c: c.c,
+    v: c.v || 0,
+  }));
+}
+
+// ── Market summary ──
+export async function getMarketSummary(artistId) {
+  return await apiFetch(`/api/market/artists/${artistId}/summary`);
+}
+
+// ── Financial analysis ──
+export async function getFinancialAnalysis(artistId, start, end) {
+  let url = `/api/market/artists/${artistId}/analysis`;
+  const params = [];
+  if (start) params.push(`start=${encodeURIComponent(start)}`);
+  if (end) params.push(`end=${encodeURIComponent(end)}`);
+  if (params.length) url += `?${params.join("&")}`;
+  const data = await apiFetch(url);
+  return data.analysis;
 }
 
 export async function getTractionHistory(artistId) {
