@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
 import { config } from './config';
 import { errorHandler } from './middleware/errorHandler';
 import { authLimiter, tradeLimiter, generalLimiter } from './middleware/rateLimit';
@@ -82,8 +83,17 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/admin/metrics', metricsRoutes);
 app.use('/api/stripe', stripeRoutes);
 
-// Error handler (must be last)
+// Error handler (must be last — but before static files)
 app.use(errorHandler);
+
+// Serve frontend from client/dist (built React app)
+const clientDist = path.join(__dirname, '..', 'client', 'dist');
+app.use(express.static(clientDist));
+
+// SPA fallback: any non-API route serves index.html
+app.get('/{*path}', (_req, res) => {
+  res.sendFile(path.join(clientDist, 'index.html'));
+});
 
 app.listen(config.port, () => {
   console.log(`Server running on port ${config.port}`);
