@@ -4,6 +4,8 @@ node_modules/
 # Build
 dist/
 dist-ssr/
+api/index.mjs
+api/index.mjs.map
 
 # Environment
 .env
