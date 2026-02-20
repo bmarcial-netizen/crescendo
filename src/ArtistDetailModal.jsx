@@ -50,7 +50,13 @@ function generateOrderBook(bid, ask) {
 }
 
 // ─── Artist images map (placeholder keys — swap with real uploaded images) ───
-const artistImages = {};
+const artistImages = {
+    "2hollis": "/artists/2Hollis.jpg",
+    "beabadoobee": "/artists/beabadobee.jpeg",
+    "JPEGMAFIA": "/artists/jpegmafia.jpeg",
+    "Men I Trust": "/artists/menitrust.jpg",
+    "Teezo Touchdown": "/artists/teezotouchdown.jpeg",
+};
 
 // ─── Marquee items per artist (swap src with real images: drop into public/artists/) ───
 const marqueeItems = {
