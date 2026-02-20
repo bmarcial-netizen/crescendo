@@ -39,19 +39,10 @@ const C = {
 const artistImages = {
   "2hollis": "/artists/2Hollis.jpg",
   "beabadoobee": "/artists/beabadobee.jpeg",
-  "jane remover": "/artists/janeremover.jpg",
-  "FENG": "/artists/feng.jpg",
-  "IAN": "/artists/ian.jpg",
   "JPEGMAFIA": "/artists/jpegmafia.jpeg",
   "Men I Trust": "/artists/menitrust.jpg",
   "Teezo Touchdown": "/artists/teezotouchdown.jpeg",
-  "Snow Strippers": "/artists/snowstrippers.jpg",
-  "King Krule": "/artists/kingkrule.jpg",
-  "Paris Texas": "/artists/paristexas.jpg",
-  "The Twolips": "/artists/thetwolips.jpg",
-  "Leon Thomas": "/artists/leonthomas.jpg",
   "Dave Blunts": "/artists/daveblunts.jpg",
-  "malcolm todd": "/artists/malcolmtodd.jpg",
 };
 
 // Helper to generate avatar URL from artist name (uses real photo if available)
