@@ -1,19 +1,22 @@
 /**
- * Conservative monthly earnings band estimator.
+ * Conservative monthly earnings band estimator (v1.1.0).
  *
  * Uses Spotify monthly listeners as a proxy for streams, applies
- * conservative multipliers, and outputs a LOW / BASE / HIGH range
- * that is explicitly labeled as directional (not a guarantee).
+ * conservative multipliers and a safety haircut, and outputs a
+ * LOW / BASE / HIGH range that is explicitly labeled as directional
+ * (not a guarantee).
  *
  * Model:
- *   estimatedMonthlyStreams = monthlyListeners × streamsPerListener
+ *   estimatedMonthlyStreams = monthlyListeners × streamsPerListener × adjustments
  *   grossMonthlyRoyalty     = estimatedMonthlyStreams × usdPerStream
- *   artistShareRoyalty      = grossMonthlyRoyalty × revenueSharePct
+ *   grossAdjusted           = grossMonthlyRoyalty × safetyHaircut
+ *   artistShareRoyalty      = grossAdjusted × revenueSharePct
  *   earningsPerShare        = artistShareRoyalty / sharesOutstanding
  *
  * Adjustments:
- *   - Popularity multiplier: scales streams if spotifyPopularity is known
- *   - Fan conversion multiplier: if fanConversionRate is unusually high/low
+ *   - Popularity multiplier: symmetric around midpoint, ±maxAdj
+ *   - Fan conversion multiplier: log-scale comparison to midpoint
+ *   - Safety haircut: flat 15% reduction to gross (conservative floor)
  */
 
 // ── Default Model Parameters ────────────────────────────────────────────────
@@ -27,34 +30,39 @@ export interface EarningsModelParams {
   usdPerStreamHigh: number;
   /** Popularity score (0-100) considered "average" — used as midpoint for multiplier */
   popularityMidpoint: number;
-  /** Max adjustment factor from popularity (e.g., 0.3 means ±30%) */
+  /** Max adjustment factor from popularity (e.g., 0.20 means ±20%) */
   popularityMaxAdjustment: number;
   /** Fan conversion rate considered "average" */
   fanConversionMidpoint: number;
-  /** Max adjustment factor from fan conversion (e.g., 0.15 means ±15%) */
+  /** Max adjustment factor from fan conversion (e.g., 0.12 means ±12%) */
   fanConversionMaxAdjustment: number;
+  /** Flat haircut applied to gross royalty before revenue share (e.g., 0.85 = 15% reduction) */
+  safetyHaircut: number;
 }
 
 export const DEFAULT_PARAMS: EarningsModelParams = {
   // Streams per listener: conservative range
-  // Industry avg is ~4-6, we use lower band to be conservative
-  streamsPerListenerLow: 2.5,
-  streamsPerListenerBase: 4.0,
-  streamsPerListenerHigh: 6.0,
+  // Industry avg is ~4-6, we use lower band to underestimate
+  streamsPerListenerLow: 2.0,
+  streamsPerListenerBase: 3.2,
+  streamsPerListenerHigh: 5.0,
 
-  // USD per stream: blended payout rate across distributors
-  // Spotify avg ~$0.003-0.005, but varies by market/tier
-  usdPerStreamLow: 0.0025,
-  usdPerStreamBase: 0.0033,
-  usdPerStreamHigh: 0.0042,
+  // USD per stream: conservative blended payout rate
+  // Spotify stream-share model means effective rate varies; we stay low
+  usdPerStreamLow: 0.0018,
+  usdPerStreamBase: 0.0024,
+  usdPerStreamHigh: 0.0030,
 
   // Popularity midpoint and max adjustment
   popularityMidpoint: 50,
-  popularityMaxAdjustment: 0.3,
+  popularityMaxAdjustment: 0.20,
 
   // Fan conversion midpoint and max adjustment
   fanConversionMidpoint: 0.05,
-  fanConversionMaxAdjustment: 0.15,
+  fanConversionMaxAdjustment: 0.12,
+
+  // Safety haircut: always reduce gross by 15% before revenue share
+  safetyHaircut: 0.85,
 };
 
 // ── Input / Output Types ────────────────────────────────────────────────────
@@ -83,6 +91,7 @@ export interface EarningsEstimatorOutput {
   adjustments: {
     popularityMultiplier: number;
     fanConversionMultiplier: number;
+    safetyHaircut: number;
   };
   disclaimer: string;
   modelVersion: string;
@@ -92,7 +101,9 @@ export interface EarningsEstimatorOutput {
 
 /**
  * Compute popularity-based adjustment multiplier.
- * Maps spotifyPopularity (0-100) to a multiplier in [1-maxAdj, 1+maxAdj].
+ * Symmetric around midpoint: maps popularity (0-100) to [1-maxAdj, 1+maxAdj].
+ * Uses (pop - midpoint) / 50 so the scaling is the same on both sides
+ * regardless of where the midpoint sits.
  * Unknown popularity → 1.0 (no adjustment).
  */
 export function popularityMultiplier(
@@ -102,9 +113,10 @@ export function popularityMultiplier(
 ): number {
   if (popularity === null || popularity === undefined) return 1.0;
   const clamped = Math.max(0, Math.min(100, popularity));
-  // Linear interpolation: at midpoint → 1.0, at 100 → 1+max, at 0 → 1-max
-  const offset = ((clamped - midpoint) / (100 - midpoint)) * maxAdjustment;
-  return Math.round((1.0 + offset) * 10000) / 10000;
+  // Symmetric: normalize to [-1, +1] around midpoint, clamp
+  const normalized = Math.max(-1, Math.min(1, (clamped - midpoint) / 50));
+  const result = 1.0 + normalized * maxAdjustment;
+  return Math.round(result * 10000) / 10000;
 }
 
 /**
@@ -161,11 +173,17 @@ export function estimateEarningsBand(
   const grossBase = round4(streamsBase * params.usdPerStreamBase);
   const grossHigh = round4(streamsHigh * params.usdPerStreamHigh);
 
-  // Artist's share
+  // Apply safety haircut BEFORE revenue share
+  const haircut = params.safetyHaircut;
+  const adjustedLow = round4(grossLow * haircut);
+  const adjustedBase = round4(grossBase * haircut);
+  const adjustedHigh = round4(grossHigh * haircut);
+
+  // Artist's share (applied to haircut-adjusted gross)
   const revPct = input.revenueSharePct;
-  const artistLow = round4(grossLow * revPct);
-  const artistBase = round4(grossBase * revPct);
-  const artistHigh = round4(grossHigh * revPct);
+  const artistLow = round4(adjustedLow * revPct);
+  const artistBase = round4(adjustedBase * revPct);
+  const artistHigh = round4(adjustedHigh * revPct);
 
   // Per-share
   const shares = input.sharesOutstanding;
@@ -188,12 +206,15 @@ export function estimateEarningsBand(
     adjustments: {
       popularityMultiplier: popMult,
       fanConversionMultiplier: fcMult,
+      safetyHaircut: haircut,
     },
     disclaimer:
-      'These figures are directional estimates only, not guarantees. ' +
-      'Actual royalties depend on distribution deals, streaming tier mix, ' +
-      'geographic distribution, and other factors outside this model.',
-    modelVersion: '1.0.0',
+      'These figures are conservative directional estimates only, not guarantees. ' +
+      'Spotify royalties are stream-share-based and not fixed per stream; actual ' +
+      'payouts depend on distribution deals, streaming tier mix, geographic ' +
+      'distribution, and other factors outside this model. A 15% safety haircut ' +
+      'is applied to all gross estimates.',
+    modelVersion: '1.1.0',
   };
 }
 

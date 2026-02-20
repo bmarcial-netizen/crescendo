@@ -1,17 +1,28 @@
 /**
- * Pure Traction Index computation module.
+ * Pure Traction Index computation module (v1.1.0).
  * No DB calls, no side effects — takes snapshots in, returns scores out.
  *
  * Model:
- *   Stage score  = percentile-rank of (Spotify monthly listeners, playlist reach,
- *                  TikTok top views, Shazam, YouTube channel views, airplay spins)
- *   Followers score = percentile-rank of (Spotify followers, IG followers,
- *                     TikTok followers, YouTube subs)
- *   base = 0.80 * stage + 0.20 * followers
- *   modifiers (±0.05 max each):
+ *   Stage score  = weighted percentile-rank of:
+ *                  Spotify monthly listeners (40), playlist reach (25),
+ *                  Spotify popularity (15), YouTube channel views (10),
+ *                  TikTok top views (10)
+ *   Followers score = weighted percentile-rank of:
+ *                     Spotify followers (60), IG followers (20),
+ *                     TikTok followers (20), YouTube subs (20)
+ *
+ *   base = 0.80 * stageScore + 0.20 * followersScore
+ *
+ *   modifiers (±MODIFIER_MAX_POINTS each, default ±5 points on 0–100 scale):
  *     - fan conversion (followers / monthly listeners) — high = good
  *     - listener-to-follower ratio (monthly listeners / followers) — high = viral reach
+ *
  *   tractionIndex = clamp(base + modifiers, 0, 100)
+ *
+ * Missing-metrics safe:
+ *   - null metrics are SKIPPED per artist (not treated as 0)
+ *   - Weights renormalize over present metrics so no-TikTok ≠ penalty
+ *   - 0 values ARE scored as genuinely zero (low percentile)
  */
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -20,13 +31,16 @@ export interface ArtistSnapshot {
   artistId: string;
   spotifyMonthlyListeners: number | null;
   spotifyFollowers: number | null;
+  spotifyPopularity: number | null;
   playlistReach: number | null;
   tiktokFollowers: number | null;
   tiktokTopViews: number | null;
   instagramFollowers: number | null;
   youtubeSubscribers: number | null;
   youtubeChannelViews: number | null;
+  /** Kept in type for backwards compat / display, but NOT scored */
   shazamTotal: number | null;
+  /** Kept in type for backwards compat / display, but NOT scored */
   airplaySpins: number | null;
   fanConversionRate: number | null;
   spotifyListenerToFollowerRatio: number | null;
@@ -37,9 +51,11 @@ export interface TractionDebug {
   artistId: string;
   stageRaw: Record<string, number>;
   stagePercentiles: Record<string, number>;
+  stageWeightsUsed: Record<string, number>;
   stageScore: number;
   followersRaw: Record<string, number>;
   followersPercentiles: Record<string, number>;
+  followersWeightsUsed: Record<string, number>;
   followersScore: number;
   baseScore: number;
   fanConversionModifier: number;
@@ -59,23 +75,30 @@ export interface TractionResult {
   metricSnapshotId?: string;
 }
 
-// ── Stage & Followers metric keys ──────────────────────────────────────────
+// ── Weighted metric definitions ─────────────────────────────────────────────
 
-const STAGE_KEYS: (keyof ArtistSnapshot)[] = [
-  'spotifyMonthlyListeners',
-  'playlistReach',
-  'tiktokTopViews',
-  'shazamTotal',
-  'youtubeChannelViews',
-  'airplaySpins',
+interface WeightedMetric {
+  key: keyof ArtistSnapshot;
+  weight: number;
+}
+
+const STAGE_METRICS: WeightedMetric[] = [
+  { key: 'spotifyMonthlyListeners', weight: 40 },
+  { key: 'playlistReach', weight: 25 },
+  { key: 'spotifyPopularity', weight: 15 },
+  { key: 'youtubeChannelViews', weight: 10 },
+  { key: 'tiktokTopViews', weight: 10 },
 ];
 
-const FOLLOWERS_KEYS: (keyof ArtistSnapshot)[] = [
-  'spotifyFollowers',
-  'instagramFollowers',
-  'tiktokFollowers',
-  'youtubeSubscribers',
+const FOLLOWERS_METRICS: WeightedMetric[] = [
+  { key: 'spotifyFollowers', weight: 60 },
+  { key: 'instagramFollowers', weight: 20 },
+  { key: 'tiktokFollowers', weight: 20 },
+  { key: 'youtubeSubscribers', weight: 20 },
 ];
+
+/** Max modifier points on the 0–100 scale (each modifier can add/subtract this much) */
+export const MODIFIER_MAX_POINTS = 5;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -104,21 +127,41 @@ export function percentileRank(value: number, allValues: number[]): number {
 }
 
 /**
- * Compute the average percentile score across a set of metric keys.
- * Metrics with all-zero cohort values are skipped (no signal).
+ * Compute a weighted composite percentile score across metrics.
+ *
+ * Missing-metrics safe:
+ *   - If snapshot[key] is null → skip that metric for this artist (no penalty)
+ *   - If metric has no cohort signal (all zeros) → skip
+ *   - Weights renormalize over whichever metrics are present
+ *   - If no metrics are usable → returns 50 (neutral)
  */
-function compositePercentile(
+function weightedCompositePercentile(
   snapshot: ArtistSnapshot,
-  keys: (keyof ArtistSnapshot)[],
+  metrics: WeightedMetric[],
   cohortTransformed: Map<string, number[]>,
-): { score: number; rawValues: Record<string, number>; percentiles: Record<string, number> } {
+): {
+  score: number;
+  rawValues: Record<string, number>;
+  percentiles: Record<string, number>;
+  weightsUsed: Record<string, number>;
+} {
   const rawValues: Record<string, number> = {};
   const percentiles: Record<string, number> = {};
-  let sum = 0;
-  let count = 0;
+  const weightsUsed: Record<string, number> = {};
+  let weightedSum = 0;
+  let totalWeight = 0;
 
-  for (const key of keys) {
+  for (const { key, weight } of metrics) {
     const raw = snapshot[key] as number | null;
+
+    // null = artist doesn't have / we don't track it → SKIP (no penalty)
+    if (raw === null || raw === undefined) {
+      rawValues[key] = 0;
+      percentiles[key] = -1; // sentinel: skipped
+      continue;
+    }
+
+    // Transform the value (0 stays 0 after log1p, which is correct — it's a real zero)
     const transformed = log1pTransform(raw);
     rawValues[key] = transformed;
 
@@ -132,21 +175,27 @@ function compositePercentile(
 
     const pct = percentileRank(transformed, cohortValues);
     percentiles[key] = Math.round(pct * 100) / 100;
-    sum += pct;
-    count++;
+    weightsUsed[key] = weight;
+    weightedSum += weight * pct;
+    totalWeight += weight;
   }
 
-  const score = count > 0 ? sum / count : 50;
-  return { score: Math.round(score * 100) / 100, rawValues, percentiles };
+  const score = totalWeight > 0 ? weightedSum / totalWeight : 50;
+  return {
+    score: Math.round(score * 100) / 100,
+    rawValues,
+    percentiles,
+    weightsUsed,
+  };
 }
 
 /**
  * Compute fan conversion modifier.
  * Fan conversion = followers / monthly listeners.
  * Higher is better (artist converts listeners to fans).
- * Percentile-ranked across cohort, then mapped to ±0.05 range.
+ * Percentile-ranked across cohort, then mapped to ±MODIFIER_MAX_POINTS range.
  */
-function fanConversionModifier(
+function fanConversionMod(
   snapshot: ArtistSnapshot,
   cohortRatios: number[],
 ): number {
@@ -156,17 +205,17 @@ function fanConversionModifier(
 
   const ratio = followers / listeners;
   const pct = percentileRank(ratio, cohortRatios);
-  // Map 0-100 percentile to -0.05..+0.05
-  return Math.round(((pct - 50) / 50) * 5 * 100) / 100;
+  // Map 0-100 percentile to -MAX..+MAX points
+  return Math.round(((pct - 50) / 50) * MODIFIER_MAX_POINTS * 100) / 100;
 }
 
 /**
  * Compute listener-to-follower ratio modifier.
  * L/F ratio = monthly listeners / followers.
  * Higher means more reach relative to base (viral/playlist-driven).
- * Percentile-ranked, mapped to ±0.05.
+ * Percentile-ranked, mapped to ±MODIFIER_MAX_POINTS.
  */
-function listenerFollowerModifier(
+function listenerFollowerMod(
   snapshot: ArtistSnapshot,
   cohortRatios: number[],
 ): number {
@@ -176,7 +225,7 @@ function listenerFollowerModifier(
 
   const ratio = listeners / followers;
   const pct = percentileRank(ratio, cohortRatios);
-  return Math.round(((pct - 50) / 50) * 5 * 100) / 100;
+  return Math.round(((pct - 50) / 50) * MODIFIER_MAX_POINTS * 100) / 100;
 }
 
 // ── Main Computation ───────────────────────────────────────────────────────
@@ -191,18 +240,26 @@ function listenerFollowerModifier(
 export function computeTractionIndexCohort(snapshots: ArtistSnapshot[]): TractionResult[] {
   if (snapshots.length === 0) return [];
 
-  // Pre-compute log1p-transformed values for the entire cohort
-  const cohortTransformed = new Map<string, number[]>();
-  const allKeys = [...STAGE_KEYS, ...FOLLOWERS_KEYS];
+  // All metric keys we score (stage + followers)
+  const allMetrics = [...STAGE_METRICS, ...FOLLOWERS_METRICS];
 
-  for (const key of allKeys) {
-    cohortTransformed.set(
-      key,
-      snapshots.map((s) => log1pTransform(s[key] as number | null))
-    );
+  // Pre-compute log1p-transformed cohort arrays.
+  // IMPORTANT: only include non-null values in each metric's cohort array.
+  // This way null artists don't drag down the cohort distribution.
+  const cohortTransformed = new Map<string, number[]>();
+
+  for (const { key } of allMetrics) {
+    const values: number[] = [];
+    for (const s of snapshots) {
+      const raw = s[key] as number | null;
+      if (raw !== null && raw !== undefined) {
+        values.push(log1pTransform(raw));
+      }
+    }
+    cohortTransformed.set(key, values);
   }
 
-  // Pre-compute modifier cohort arrays
+  // Pre-compute modifier cohort arrays (only from artists with both metrics)
   const fanConvRatios = snapshots
     .map((s) => {
       const l = s.spotifyMonthlyListeners ?? 0;
@@ -222,12 +279,12 @@ export function computeTractionIndexCohort(snapshots: ArtistSnapshot[]): Tractio
   const results: TractionResult[] = [];
 
   for (const snapshot of snapshots) {
-    const stage = compositePercentile(snapshot, STAGE_KEYS, cohortTransformed);
-    const followers = compositePercentile(snapshot, FOLLOWERS_KEYS, cohortTransformed);
+    const stage = weightedCompositePercentile(snapshot, STAGE_METRICS, cohortTransformed);
+    const followers = weightedCompositePercentile(snapshot, FOLLOWERS_METRICS, cohortTransformed);
 
     const baseScore = 0.80 * stage.score + 0.20 * followers.score;
-    const fcMod = fanConversionModifier(snapshot, fanConvRatios);
-    const lfMod = listenerFollowerModifier(snapshot, lfRatios);
+    const fcMod = fanConversionMod(snapshot, fanConvRatios);
+    const lfMod = listenerFollowerMod(snapshot, lfRatios);
 
     const rawFinal = baseScore + fcMod + lfMod;
     const finalScore = Math.round(Math.max(0, Math.min(100, rawFinal)) * 100) / 100;
@@ -236,9 +293,11 @@ export function computeTractionIndexCohort(snapshots: ArtistSnapshot[]): Tractio
       artistId: snapshot.artistId,
       stageRaw: stage.rawValues,
       stagePercentiles: stage.percentiles,
+      stageWeightsUsed: stage.weightsUsed,
       stageScore: stage.score,
       followersRaw: followers.rawValues,
       followersPercentiles: followers.percentiles,
+      followersWeightsUsed: followers.weightsUsed,
       followersScore: followers.score,
       baseScore: Math.round(baseScore * 100) / 100,
       fanConversionModifier: fcMod,
