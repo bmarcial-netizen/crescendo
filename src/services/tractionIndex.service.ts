@@ -17,6 +17,7 @@ function toArtistSnapshot(
     artistId,
     spotifyMonthlyListeners: numOrNull(row.spotifyMonthlyListeners),
     spotifyFollowers: numOrNull(row.spotifyFollowers),
+    spotifyPopularity: numOrNull(row.spotifyPopularity),
     playlistReach: numOrNull(row.playlistReach),
     tiktokFollowers: numOrNull(row.tiktokFollowers),
     tiktokTopViews: numOrNull(row.tiktokTopViews),
