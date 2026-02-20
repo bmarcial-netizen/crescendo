@@ -397,7 +397,7 @@ function ArtistMarquee({ artistName }) {
 }
 
 export default function ArtistDetailModal({ artist, onClose, allNews, trendingSounds, isLoggedIn, auth, onTradeComplete }) {
-    const [orderType, setOrderType] = useState("buy");
+    const [orderType, setOrderType] = useState(artist?._defaultSell ? "sell" : "buy");
     const [orderMode, setOrderMode] = useState("market");
     const [qty, setQty] = useState("");
     const [limitPrice, setLimitPrice] = useState(artist?.price?.toFixed(2) || "");
@@ -418,6 +418,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
     useEffect(() => {
         if (artist) {
             requestAnimationFrame(() => setVisible(true));
+            setOrderType(artist._defaultSell ? "sell" : "buy");
             setQty("");
             setShowConfirm(false);
             setOrderPlaced(false);

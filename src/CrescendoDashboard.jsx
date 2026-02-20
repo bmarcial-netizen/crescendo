@@ -1263,8 +1263,10 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
   }, [isLoggedIn]);
 
   // Map live artists to display format — use real API data, genre map for known symbols
+  // Merge portfolio positions so ArtistDetailModal can show "Your Position"
   const artists = liveArtists ? liveArtists.map((a) => {
     const symbol = a.symbol || a.stageName?.replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase() || '';
+    const position = livePortfolio?.find(p => p.artistId === a.id);
     return {
       id: a.id,
       name: a.stageName || a.name || 'Unknown',
@@ -1274,8 +1276,8 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
       price: a.currentPrice || 0,
       change: a.change24h || 0,
       volume: a.volume24h || "0",
-      shares: 0,
-      avgCost: 0,
+      shares: position ? position.sharesHeld : 0,
+      avgCost: position ? position.avgCostBasis : 0,
       streams: a.streams || "0",
       bio: a.bio || "",
       sharesOutstanding: a.sharesOutstanding || 0,
@@ -1785,13 +1787,24 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                       </div>
 
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
-                        {[C.accent, "#3B82F6", C.primary].map((c, i) =>
-                          <div key={i} style={{
-                            width: 28 - i * 4, height: 28 - i * 4, borderRadius: "50%",
-                            background: `radial-gradient(circle, ${c}90 0%, ${c}30 70%)`,
-                            filter: "blur(0.5px)"
-                          }} />
-                        )}
+                        <button onClick={() => {
+                          const fullArtist = artists.find(ar => ar.id === a.id);
+                          if (fullArtist) setSelectedArtist(fullArtist);
+                        }} style={{
+                          padding: "5px 14px", borderRadius: 8, border: "none",
+                          fontSize: 11, fontWeight: 700, cursor: "pointer",
+                          fontFamily: "monospace", letterSpacing: "0.04em",
+                          background: C.greenSoft, color: C.green,
+                        }}>BUY</button>
+                        <button onClick={() => {
+                          const fullArtist = artists.find(ar => ar.id === a.id);
+                          if (fullArtist) setSelectedArtist({ ...fullArtist, _defaultSell: true });
+                        }} style={{
+                          padding: "5px 14px", borderRadius: 8, border: "none",
+                          fontSize: 11, fontWeight: 700, cursor: "pointer",
+                          fontFamily: "monospace", letterSpacing: "0.04em",
+                          background: C.redSoft, color: C.red,
+                        }}>SELL</button>
                         <div style={{
                           marginLeft: "auto",
                           fontSize: 22, fontWeight: 700, color: C.text
@@ -2321,28 +2334,28 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
               ) : (
                 <>
                   <div style={{
-                    display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr",
+                    display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 120px",
                     padding: "0 0 10px 0", borderBottom: "1px solid rgba(0,0,0,0.05)",
                     fontSize: 11, fontWeight: 600, color: C.textMuted, textTransform: "uppercase",
                     letterSpacing: "0.08em", fontFamily: "monospace",
                   }}>
-                    <span>Artist</span><span>Shares</span><span>Avg Cost</span><span>Value</span><span>P&L</span>
+                    <span>Artist</span><span>Shares</span><span>Avg Cost</span><span>Value</span><span>P&L</span><span>Trade</span>
                   </div>
                   {portfolioHoldings.map((a, i) => {
                     const val = a.marketValue || a.shares * a.price;
                     const pnl = a.unrealizedPnL || (a.price - a.avgCost) * a.shares;
                     const pnlPct = a.avgCost > 0 ? ((a.price - a.avgCost) / a.avgCost * 100).toFixed(1) : '0.0';
                     return (
-                      <div key={a.id} onClick={() => {
-                        const fullArtist = artists.find(ar => ar.id === a.id);
-                        if (fullArtist) setSelectedArtist(fullArtist);
-                      }} style={{
-                        display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr",
+                      <div key={a.id} style={{
+                        display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 120px",
                         alignItems: "center", padding: "14px 0",
                         borderBottom: i < portfolioHoldings.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none",
-                        cursor: "pointer", transition: "background 0.15s", borderRadius: 8,
+                        borderRadius: 8,
                       }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div onClick={() => {
+                          const fullArtist = artists.find(ar => ar.id === a.id);
+                          if (fullArtist) setSelectedArtist(fullArtist);
+                        }} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
                           <img src={avatarUrl(a.name, 72)} alt={a.name} style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid rgba(0,0,0,0.04)" }} />
                           <div>
                             <div style={{ fontSize: 14, fontWeight: 600 }}>{a.name}</div>
@@ -2362,6 +2375,28 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                             padding: "2px 6px", borderRadius: 4,
                             background: pnl >= 0 ? C.greenSoft : C.redSoft,
                           }}>{pnl >= 0 ? '+' : ''}{pnlPct}%</span>
+                        </div>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button onClick={() => {
+                            const fullArtist = artists.find(ar => ar.id === a.id);
+                            if (fullArtist) setSelectedArtist(fullArtist);
+                          }} style={{
+                            padding: "6px 12px", borderRadius: 8, border: "none",
+                            fontSize: 11, fontWeight: 700, cursor: "pointer",
+                            fontFamily: "monospace", letterSpacing: "0.04em",
+                            background: C.greenSoft, color: C.green,
+                            transition: "all 0.15s",
+                          }}>BUY</button>
+                          <button onClick={() => {
+                            const fullArtist = artists.find(ar => ar.id === a.id);
+                            if (fullArtist) setSelectedArtist({ ...fullArtist, _defaultSell: true });
+                          }} style={{
+                            padding: "6px 12px", borderRadius: 8, border: "none",
+                            fontSize: 11, fontWeight: 700, cursor: "pointer",
+                            fontFamily: "monospace", letterSpacing: "0.04em",
+                            background: C.redSoft, color: C.red,
+                            transition: "all 0.15s",
+                          }}>SELL</button>
                         </div>
                       </div>
                     );
