@@ -8,6 +8,7 @@ import { updateArtistPrice } from '../services/pricing.service';
 import { getArtistAlbums, computeAlbumVelocityScore, computeCatalogSizeScore } from '../services/spotify.service';
 import { NotFoundError, BadRequestError } from '../utils/errors';
 import { runTractionIndexForAll } from '../services/tractionIndex.service';
+import { resetDemo } from '../services/demo.service';
 
 const router = Router();
 
@@ -201,6 +202,12 @@ router.put('/risk-controls', async (req: AuthRequest, res: Response) => {
     .returning();
 
   res.json(updated);
+});
+
+// Demo reset — wipes trades/positions/dividends, preserves artists, reruns traction index
+router.post('/demo/reset', async (_req: AuthRequest, res: Response) => {
+  const result = await resetDemo();
+  res.json(result);
 });
 
 export default router;

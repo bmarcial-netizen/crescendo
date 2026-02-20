@@ -10,7 +10,10 @@ import {
 } from '../services/metrics.service';
 import { BadRequestError } from '../utils/errors';
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+});
 const router = Router();
 
 router.use(requireAuth('admin'));
