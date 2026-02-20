@@ -76,18 +76,12 @@ const news = [
 ];
 
 const newsArticles = [
-  { id: 1, artist: "2hollis", category: "Releases", location: "Los Angeles, CA", year: "2026", headline: "New EP 'Phantom Thread' drops to critical acclaim", description: "2hollis has released a 6-track EP blending experimental hip-hop with ambient production. The project, produced entirely in-house, has already generated over 2M streams in its first week. Critics are calling it a defining moment for the underground scene, with standout tracks 'Veil' and 'Drift' receiving heavy rotation across independent radio stations.", up: true },
-  { id: 2, artist: "Snow Strippers", category: "Touring", location: "Brooklyn, NY", year: "2026", headline: "Sold-out residency at Brooklyn Steel announced", description: "Snow Strippers will perform a 4-night residency at Brooklyn Steel this April, with all dates selling out within 12 minutes. The shows will feature new material from their upcoming album alongside fan favorites. VIP packages include exclusive merchandise and a meet-and-greet session.", up: true },
-  { id: 3, artist: "Doechii", category: "Awards", location: "Atlanta, GA", year: "2026", headline: "Nominated for 3 Grammy Awards including Best New Artist", description: "Following a breakout year, Doechii has earned three Grammy nominations spanning Best New Artist, Best Rap Performance, and Best Music Video. Her innovative approach to blending rap with theatrical performance art has garnered widespread industry recognition and a rapidly growing fanbase.", up: true },
-  { id: 4, artist: "King Krule", category: "Releases", location: "London, UK", year: "2025", headline: "Surprise album 'Concrete Garden' released overnight", description: "King Krule dropped an unannounced album at midnight, featuring 12 tracks of his signature blend of jazz, punk, and spoken word. The album was recorded entirely in his South London home studio over the past year. Early reviews praise its raw intimacy and sonic experimentation.", up: true },
-  { id: 5, artist: "JPEGMAFIA", category: "Collaborations", location: "Baltimore, MD", year: "2026", headline: "Joint project with Danny Brown confirmed for spring", description: "JPEGMAFIA and Danny Brown have announced a collaborative album dropping in March. The pair have been teasing the project on social media with cryptic studio clips. Producers include Kenny Beats and Madlib, promising a fusion of glitch-rap and classic Detroit energy.", up: true },
-  { id: 6, artist: "Men I Trust", category: "Touring", location: "Montreal, QC", year: "2026", headline: "World tour spanning 45 cities kicks off in May", description: "The Montreal trio has announced their most ambitious tour yet, covering North America, Europe, and Asia over five months. Support acts include Crumb and Fazerdaze. The tour will showcase material from their forthcoming fourth studio album, described as their most lush and cinematic work to date.", up: true },
-  { id: 7, artist: "Feng", category: "Sync", location: "Shanghai, CN", year: "2026", headline: "Track featured in HBO's latest limited series", description: "Feng's atmospheric track 'Still Water' has been placed in the opening credits of HBO's new limited series 'The Garden.' The sync deal marks a significant crossover moment for the artist, whose blend of traditional Chinese instrumentation with electronic production has caught the attention of music supervisors worldwide.", up: true },
-  { id: 8, artist: "Ian", category: "Releases", location: "Chicago, IL", year: "2025", headline: "Debut mixtape surpasses 10M total streams", description: "Ian's self-released debut mixtape has quietly crossed the 10 million stream mark across platforms, driven by organic playlist placements and word-of-mouth buzz. The project's lo-fi R&B sound has resonated particularly with Gen-Z listeners, positioning Ian as one to watch in 2026.", up: true },
-  { id: 9, artist: "Malcom Todd", category: "Live", location: "Austin, TX", year: "2026", headline: "Headlining SXSW showcase draws record crowd", description: "Malcom Todd's late-night SXSW showcase packed out the Mohawk venue, with fans lined up around the block. The performance featured a full band arrangement and debuted three unreleased songs. Industry insiders are calling it one of the standout moments of the festival.", up: true },
-  { id: 10, artist: "Matt Maltese", category: "Releases", location: "London, UK", year: "2026", headline: "Fourth album 'Midnight Baroque' announced with lead single", description: "Matt Maltese has unveiled plans for his fourth studio album alongside lead single 'Chandelier Dust,' a sweeping orchestral pop ballad. The album, due in June, was recorded at Abbey Road Studios with a 24-piece string section. Pre-orders have already surpassed his previous album's first-week figures.", up: true },
-  { id: 11, artist: "Esdeekid", category: "Collaborations", location: "São Paulo, BR", year: "2026", headline: "Production credits on major label debut", description: "Esdeekid has landed production credits on a major label artist's debut album, marking a significant milestone. The producer's signature blend of Brazilian funk with trap elements has been gaining traction in international circles, and this placement is expected to open doors to further high-profile collaborations.", up: true },
-  { id: 12, artist: "The Tulips", category: "Touring", location: "Amsterdam, NL", year: "2025", headline: "European festival circuit confirms 8 headline slots", description: "The Tulips have been confirmed as headliners at eight major European festivals this summer, including Primavera Sound and Rock Werchter. The band's psychedelic dream-pop sound has been steadily building a devoted European following, and these bookings represent their biggest stages to date.", up: false }
+  { id: 1, artist: "Malcom Todd", headline: "SXSW showcase draws record crowd, three new songs debuted", category: "Touring", location: "Austin, TX", year: "2026", up: true, description: "Malcom Todd's SXSW set drew an estimated 4,000 fans to the outdoor stage at Auditorium Shores, making it one of the most-attended showcases of the festival. He debuted three unreleased tracks from an upcoming project, sending his streaming numbers surging overnight." },
+  { id: 2, artist: "Snow Strippers", headline: "Sold-out Brooklyn Steel residency announced for April", category: "Touring", location: "Brooklyn, NY", year: "2026", up: true, description: "Snow Strippers have announced a four-night residency at Brooklyn Steel, with all dates selling out within minutes. The run will feature rotating visual installations and guest collaborators each night." },
+  { id: 3, artist: "2hollis", headline: "New EP 'Phantom Thread' hits 2M streams in first week", category: "Releases", location: "Los Angeles, CA", year: "2026", up: true, description: "2hollis's surprise-dropped EP 'Phantom Thread' crossed two million combined streams in its first seven days, driven by the standout track 'Dissolve.' The project has been praised for its genre-blending production." },
+  { id: 4, artist: "King Krule", headline: "Surprise album 'Concrete Garden' polarizes critics", category: "Releases", location: "London, UK", year: "2026", up: false, description: "King Krule's unannounced album 'Concrete Garden' arrived with no prior marketing, splitting critical opinion between those who see it as a bold evolution and others who find it inaccessible. Fan reception has been warmer, with several tracks trending on social platforms." },
+  { id: 5, artist: "Men I Trust", headline: "Headlining Pitchfork Music Festival 2026", category: "Touring", location: "Chicago, IL", year: "2026", up: true, description: "Men I Trust have been announced as headliners for the 2026 Pitchfork Music Festival, marking their largest headline slot to date. The band will close out the Saturday night program." },
+  { id: 6, artist: "Ian", headline: "Signs exclusive sync deal with A24 Films", category: "Business", location: "New York, NY", year: "2026", up: true, description: "Ian has signed an exclusive synchronization licensing deal with A24, allowing the studio first-look access to his catalog for upcoming film and television projects. The deal is reportedly worth seven figures over three years." },
 ];
 
 const trendingSounds = [
@@ -387,7 +381,7 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                 <img src={avatarUrl(selected.name, 44)} alt={selected.name} style={{ width: 22, height: 22, borderRadius: 6 }} />
-                <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.02em" }}>{selected.name} / USD</span>
+                <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em", textTransform: "uppercase" }}>{selected.name} / USD</span>
               </div>
               <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
                 <span style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1 }}>{lastPrice.toFixed(2)}</span>
@@ -414,8 +408,8 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
                 <button key={t} onClick={() => !isTripped && setTradeTab(t)} disabled={isTripped} style={{
                   padding: "10px 0", borderRadius: 14, border: "none", fontSize: 13, fontWeight: 700,
                   cursor: isTripped ? "not-allowed" : "pointer", fontFamily: "'Inter', sans-serif", letterSpacing: "0.04em",
-                  background: tradeTab === t ? t === "BUY" ? "#4338CA" : C.accent : "transparent",
-                  color: tradeTab === t ? "#fff" : "#94A3B8", transition: "all 0.2s",
+                  background: tradeTab === t ? t === "BUY" ? C.accent : "#4338CA" : "transparent",
+                  color: tradeTab === t ? (t === "BUY" ? "#0F172A" : "#fff") : "#94A3B8", transition: "all 0.2s",
                   opacity: isTripped ? 0.5 : 1
                 }}>{t}</button>
               )}
@@ -595,8 +589,8 @@ function NewsPage({ C, fadeIn, Card }) {
     <div style={fadeIn(0.1)}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 4 }}>News</h1>
-          <p style={{ fontSize: 14, color: C.textSec }}>Stay updated with the latest in music investing</p>
+          <h1 style={{ fontSize: "clamp(36px, 5vw, 48px)", fontWeight: 900, letterSpacing: "-0.04em", marginBottom: 6, textTransform: "uppercase", lineHeight: 1.05 }}>News</h1>
+          <p style={{ fontSize: 11, color: C.textMuted, fontFamily: "monospace", letterSpacing: "0.12em", textTransform: "uppercase" }}>Latest in music investing</p>
         </div>
         <div style={{ display: "flex", gap: 2, background: "rgba(0,0,0,0.04)", borderRadius: 10, padding: 3 }}>
           {categories.map((cat) =>
@@ -658,8 +652,8 @@ function RoyaltiesPage({ C, fadeIn, Card }) {
   return (
     <div style={fadeIn(0.1)}>
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 4 }}>Royalties</h1>
-        <p style={{ fontSize: 14, color: C.textSec }}>Your earned royalty distributions</p>
+        <h1 style={{ fontSize: "clamp(28px, 4vw, 36px)", fontWeight: 900, letterSpacing: "-0.04em", marginBottom: 6, textTransform: "uppercase", lineHeight: 1.05 }}>Royalties</h1>
+        <p style={{ fontSize: 11, color: C.textMuted, fontFamily: "monospace", letterSpacing: "0.12em", textTransform: "uppercase" }}>Your earned distributions</p>
       </div>
 
       {!hasRoyalties ? (
@@ -1059,13 +1053,14 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
           <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: C.text, fontFamily: "'Inter', sans-serif" }}>CRESCENDO</span>
         </div>
 
-        <div style={{ display: "flex", gap: 2, background: "rgba(255,255,255,0.6)", borderRadius: 12, padding: 3, border: "1px solid rgba(255,255,255,0.8)" }}>
+        <div style={{ display: "flex", gap: 2, background: "rgba(255,255,255,0.6)", borderRadius: 0, padding: 3, border: "1px solid rgba(255,255,255,0.8)" }}>
           {["Portfolio", "Markets", "News"].map((t) =>
             <button key={t} onClick={() => { setTab(t); navigate(t.toLowerCase()); }} style={{
-              padding: "8px 20px", borderRadius: 10, border: "none",
-              fontSize: 12, fontWeight: 600, cursor: "pointer",
-              fontFamily: "'Inter', sans-serif",
-              letterSpacing: "0.06em",
+              padding: "8px 20px", borderRadius: 0, border: "none",
+              fontSize: 11, fontWeight: 600, cursor: "pointer",
+              fontFamily: "monospace",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
               background: tab === t && !showProfile ? "#fff" : "transparent",
               color: tab === t && !showProfile ? C.text : C.textSec,
               boxShadow: tab === t && !showProfile ? "0 1px 6px rgba(0,0,0,0.06)" : "none",
@@ -1150,8 +1145,8 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
         {showProfile &&
           <div style={fadeIn(0.1)}>
             <div style={{ marginBottom: 24 }}>
-              <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 4 }}>Profile</h1>
-              <p style={{ fontSize: 14, color: C.textSec }}>Manage your account and preferences</p>
+              <h1 style={{ fontSize: "clamp(36px, 5vw, 48px)", fontWeight: 900, letterSpacing: "-0.04em", marginBottom: 6, textTransform: "uppercase", lineHeight: 1.05 }}>Profile</h1>
+              <p style={{ fontSize: 11, color: C.textMuted, fontFamily: "monospace", letterSpacing: "0.12em", textTransform: "uppercase" }}>Manage your account</p>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <Card style={{ padding: 32 }} hover>
@@ -1222,8 +1217,8 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
           <div style={{ marginBottom: 24, ...fadeIn(0.1) }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 4 }}>Portfolio</h1>
-                <p style={{ fontSize: 14, color: C.textSec }}>Your music investment overview</p>
+                <h1 style={{ fontSize: "clamp(36px, 5vw, 48px)", fontWeight: 900, letterSpacing: "-0.04em", marginBottom: 6, textTransform: "uppercase", lineHeight: 1.05 }}>Portfolio</h1>
+                <p style={{ fontSize: 11, color: C.textMuted, fontFamily: "monospace", letterSpacing: "0.12em", textTransform: "uppercase" }}>Your music investment overview</p>
               </div>
               <button
                 onClick={() => guardedClick(() => setShowDeposit(true))}
@@ -1467,7 +1462,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
             <Card style={{ padding: 24, gridColumn: "span 2" }} hover>
               <div style={fadeIn(0.35)}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                  <h2 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em" }}>Most Active Markets</h2>
+                  <h2 style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", fontFamily: "monospace", textTransform: "uppercase", color: C.textMuted }}>Most Active Markets</h2>
                   <TabPill options={["Daily", "Weekly", "Monthly"]} active={marketPeriod} onChange={setMarketPeriod} />
                 </div>
 
