@@ -249,53 +249,8 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
 
                 <div style={{ display: "flex", alignItems: "center", gap: 30 }}>
                     {isLoggedIn ? (
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <button
-                                onClick={() => navigate('dashboard')}
-                                style={{
-                                    padding: "8px 20px",
-                                    background: "transparent",
-                                    color: darkHeader ? "#0F172A" : COLORS.text,
-                                    border: `1px solid ${darkHeader ? "rgba(15,23,42,0.2)" : "rgba(255,255,255,0.15)"}`,
-                                    borderRadius: 0, cursor: "pointer",
-                                    fontFamily: "monospace", fontSize: 13, fontWeight: 600,
-                                    letterSpacing: "0.1em",
-                                    transition: "all 0.4s",
-                                }}
-                                onMouseEnter={(e) => { e.target.style.background = COLORS.accent; e.target.style.color = COLORS.bg; e.target.style.borderColor = COLORS.accent; }}
-                                onMouseLeave={(e) => { e.target.style.background = "transparent"; e.target.style.color = darkHeader ? "#0F172A" : COLORS.text; e.target.style.borderColor = darkHeader ? "rgba(15,23,42,0.2)" : "rgba(255,255,255,0.15)"; }}
-                            >
-                                DASHBOARD
-                            </button>
-                            <div
-                                onClick={() => navigate('profile')}
-                                style={{
-                                    width: 32, height: 32, borderRadius: 8,
-                                    background: `linear-gradient(135deg, ${COLORS.accent}90, ${COLORS.primary}50)`,
-                                    display: "flex", alignItems: "center", justifyContent: "center",
-                                    fontSize: 12, fontWeight: 700, color: "#fff",
-                                    cursor: "pointer", transition: "all 0.3s",
-                                    border: "1px solid rgba(255,255,255,0.2)",
-                                }}
-                            >{user?.initials || '?'}</div>
-                            <button
-                                onClick={onLogout}
-                                style={{
-                                    padding: "8px 14px",
-                                    background: "transparent",
-                                    color: darkHeader ? "rgba(15,23,42,0.5)" : COLORS.textMuted,
-                                    border: `1px solid ${darkHeader ? "rgba(15,23,42,0.1)" : "rgba(255,255,255,0.1)"}`,
-                                    borderRadius: 0, cursor: "pointer",
-                                    fontFamily: "monospace", fontSize: 11, fontWeight: 600,
-                                    letterSpacing: "0.1em",
-                                    transition: "all 0.4s",
-                                }}
-                                onMouseEnter={(e) => { e.target.style.color = "#EF4444"; e.target.style.borderColor = "rgba(239,68,68,0.3)"; }}
-                                onMouseLeave={(e) => { e.target.style.color = darkHeader ? "rgba(15,23,42,0.5)" : COLORS.textMuted; e.target.style.borderColor = darkHeader ? "rgba(15,23,42,0.1)" : "rgba(255,255,255,0.1)"; }}
-                            >
-                                SIGN OUT
-                            </button>
-                        </div>
+                        <>
+                        </>
                     ) : (
                         <div style={{ display: "flex", gap: 8 }}>
                             <button
@@ -343,6 +298,26 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
           }}>
                         X : 0  Y : 0
                     </span>
+
+                    {isLoggedIn &&
+                      <button
+                        onClick={() => navigate('dashboard')}
+                        style={{
+                          padding: "8px 20px",
+                          background: "transparent",
+                          color: darkHeader ? "#0F172A" : COLORS.text,
+                          border: `1px solid ${darkHeader ? "rgba(15,23,42,0.2)" : "rgba(255,255,255,0.15)"}`,
+                          borderRadius: 0, cursor: "pointer",
+                          fontFamily: "monospace", fontSize: 13, fontWeight: 600,
+                          letterSpacing: "0.1em",
+                          transition: "all 0.4s",
+                        }}
+                        onMouseEnter={(e) => { e.target.style.background = COLORS.accent; e.target.style.color = COLORS.bg; e.target.style.borderColor = COLORS.accent; }}
+                        onMouseLeave={(e) => { e.target.style.background = "transparent"; e.target.style.color = darkHeader ? "#0F172A" : COLORS.text; e.target.style.borderColor = darkHeader ? "rgba(15,23,42,0.2)" : "rgba(255,255,255,0.15)"; }}
+                      >
+                        DASHBOARD
+                      </button>
+                    }
 
                     <button
             ref={headerBtnRef}

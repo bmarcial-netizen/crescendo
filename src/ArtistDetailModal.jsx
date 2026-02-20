@@ -52,6 +52,84 @@ function generateOrderBook(bid, ask) {
 // ─── Artist images map (placeholder keys — swap with real uploaded images) ───
 const artistImages = {};
 
+// ─── Marquee items per artist (swap src with real images: drop into public/artists/) ───
+const marqueeItems = {
+    "2hollis": [
+        { label: "Phantom Thread", type: "album" },
+        { label: "2hollis Live", type: "artist" },
+        { label: "Vapor Trail", type: "album" },
+        { label: "Studio Session", type: "artist" },
+        { label: "Early Works", type: "album" },
+        { label: "2hollis Press", type: "artist" },
+    ],
+    "Snow Strippers": [
+        { label: "Neon Vein", type: "album" },
+        { label: "Snow Strippers Live", type: "artist" },
+        { label: "Wired", type: "album" },
+        { label: "Brooklyn Show", type: "artist" },
+        { label: "Debut EP", type: "album" },
+        { label: "Snow Strippers Press", type: "artist" },
+    ],
+    "Malcom Todd": [
+        { label: "Soft Focus", type: "album" },
+        { label: "Malcom Todd Live", type: "artist" },
+        { label: "Velvet", type: "album" },
+        { label: "SXSW 2026", type: "artist" },
+        { label: "Early Demos", type: "album" },
+        { label: "Malcom Todd Press", type: "artist" },
+    ],
+    "Men I Trust": [
+        { label: "Headroom", type: "album" },
+        { label: "Men I Trust Live", type: "artist" },
+        { label: "Untourable Album", type: "album" },
+        { label: "Pitchfork 2026", type: "artist" },
+        { label: "Oncle Jazz", type: "album" },
+        { label: "Men I Trust Press", type: "artist" },
+    ],
+    "King Krule": [
+        { label: "Concrete Garden", type: "album" },
+        { label: "King Krule Live", type: "artist" },
+        { label: "Space Heavy", type: "album" },
+        { label: "London Show", type: "artist" },
+        { label: "The OOZ", type: "album" },
+        { label: "King Krule Press", type: "artist" },
+    ],
+    "Ian": [
+        { label: "RUNAWAY", type: "album" },
+        { label: "Ian Live", type: "artist" },
+        { label: "Lo-fi Diaries", type: "album" },
+        { label: "A24 Signing", type: "artist" },
+        { label: "Early Works", type: "album" },
+        { label: "Ian Press", type: "artist" },
+    ],
+    "Rommulus": [
+        { label: "Rommulus", type: "artist" },
+        { label: "Alt R&B Sessions", type: "album" },
+        { label: "Rommulus Live", type: "artist" },
+        { label: "Textures", type: "album" },
+    ],
+    "Nate Sib": [
+        { label: "Nate Sib", type: "artist" },
+        { label: "Bedroom Pop", type: "album" },
+        { label: "Nate Sib Live", type: "artist" },
+        { label: "Hook Driven", type: "album" },
+    ],
+    "Steve Lacy": [
+        { label: "Gemini Rights", type: "album" },
+        { label: "Steve Lacy Live", type: "artist" },
+        { label: "Apollo XXI", type: "album" },
+        { label: "Grammy 2023", type: "artist" },
+        { label: "The Lo-Fis", type: "album" },
+        { label: "Steve Lacy Press", type: "artist" },
+    ],
+    "Sombr": [
+        { label: "Sombr", type: "artist" },
+        { label: "Dark Pop Vol. 1", type: "album" },
+        { label: "Sombr Live", type: "artist" },
+        { label: "Distorted Synths", type: "album" },
+    ],
+};
+
 // ─── Top Tracks per artist ───
 const topTracks = {
     "2hollis": [
@@ -264,6 +342,57 @@ function InteractiveTractionChart({ data, width = "100%", height = 120 }) {
                 </>
             )}
         </svg>
+    );
+}
+
+// ─── Marquee Component ───
+function ArtistMarquee({ artistName }) {
+    const items = marqueeItems[artistName] || marqueeItems["Steve Lacy"] || [];
+    if (!items.length) return null;
+    // Gradient colors for placeholder album/artist art
+    const gradients = [
+        "linear-gradient(135deg, #1E40AF, #38BDF8)",
+        "linear-gradient(135deg, #0F172A, #1E40AF)",
+        "linear-gradient(135deg, #38BDF8, #0EA5E9)",
+        "linear-gradient(135deg, #1D4ED8, #60A5FA)",
+        "linear-gradient(135deg, #0F172A, #38BDF8)",
+        "linear-gradient(135deg, #3B82F6, #1E40AF)",
+    ];
+    // Duplicate items for seamless loop
+    const duped = [...items, ...items];
+    return (
+        <div style={{ overflow: "hidden", marginBottom: 20, marginLeft: -32, marginRight: -32, position: "relative" }}>
+            <style>{`
+                @keyframes marqueeScroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+            `}</style>
+            {/* Fade edges */}
+            <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 40, zIndex: 2, background: "linear-gradient(90deg, rgba(240,243,250,0.97), transparent)", pointerEvents: "none" }} />
+            <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 40, zIndex: 2, background: "linear-gradient(270deg, rgba(240,243,250,0.97), transparent)", pointerEvents: "none" }} />
+            <div style={{
+                display: "flex", gap: 12,
+                animation: "marqueeScroll 20s linear infinite",
+                width: "max-content",
+            }}>
+                {duped.map((item, i) => (
+                    <div key={i} style={{
+                        width: 120, height: 120, borderRadius: item.type === "artist" ? 60 : 14,
+                        background: gradients[i % gradients.length],
+                        display: "flex", alignItems: "flex-end", justifyContent: "center",
+                        overflow: "hidden", flexShrink: 0, position: "relative",
+                        boxShadow: "0 2px 12px rgba(0,0,0,0.1)",
+                        border: "1px solid rgba(255,255,255,0.3)",
+                    }}>
+                        <span style={{
+                            fontSize: 10, fontWeight: 600, color: "#fff",
+                            padding: "4px 8px 6px", textAlign: "center",
+                            width: "100%",
+                            background: "linear-gradient(transparent, rgba(0,0,0,0.5))",
+                            letterSpacing: "0.02em",
+                        }}>{item.label}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
     );
 }
 
@@ -570,6 +699,9 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                             {artist.bio}
                         </div>
                     )}
+
+                    {/* ─── MARQUEE ─── */}
+                    <ArtistMarquee artistName={artist.name} />
 
                     {/* ─── PRICE CHART ─── */}
                     <div style={{

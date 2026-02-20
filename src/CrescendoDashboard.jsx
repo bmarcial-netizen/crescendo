@@ -58,6 +58,10 @@ const TICKERS = {
   "Solène": "SOLN",
   "KODA": "KODA",
   "Mira Voss": "MRVS",
+  "Rommulus": "ROML",
+  "Nate Sib": "NSIB",
+  "Steve Lacy": "SLCY",
+  "Sombr": "SMBR",
 };
 
 export function getTicker(name) {
@@ -109,12 +113,16 @@ const newsArticles = [
   { id: 6, artist: "Ian", headline: "Signs exclusive sync deal with A24 Films", category: "Business", location: "New York, NY", year: "2026", up: true, description: "Ian has signed an exclusive synchronization licensing deal with A24, allowing the studio first-look access to his catalog for upcoming film and television projects. The deal is reportedly worth seven figures over three years." },
 ];
 
-const trendingSounds = [
-  { id: 1, title: "Amber Light", artist: "Malcom Todd", platform: "TikTok", uses: "1.2M", growth: "+340%", growthNum: 340, duration: "0:18", snippet: "♪ caught in the amber light, I don't wanna leave tonight...", priceImpact: +12.4, daysAgo: 2, tags: ["viral", "aesthetic"], wave: [3, 5, 4, 7, 9, 14, 18, 25, 38, 52, 71, 89] },
-  { id: 2, title: "dissolve (slowed)", artist: "Men I Trust", platform: "Reels", uses: "842K", growth: "+580%", growthNum: 580, duration: "0:22", snippet: "♪ let me dissolve into the noise...", priceImpact: +8.7, daysAgo: 1, tags: ["slowed", "study"], wave: [2, 3, 5, 4, 8, 11, 19, 28, 44, 62, 78, 95] },
-  { id: 3, title: "RUNAWAY", artist: "Ian", platform: "TikTok", uses: "2.4M", growth: "+120%", growthNum: 120, duration: "0:15", snippet: "♪ I been running, running, can't stop now...", priceImpact: +22.1, daysAgo: 5, tags: ["dance", "transition"], wave: [8, 15, 28, 45, 62, 78, 88, 92, 95, 90, 85, 82] },
-  { id: 4, title: "Concrete Garden", artist: "King Krule", platform: "TikTok", uses: "390K", growth: "+1,200%", growthNum: 1200, duration: "0:20", snippet: "♪ flickering through the concrete garden...", priceImpact: +5.2, daysAgo: 0, tags: ["new", "sleeper"], wave: [1, 1, 2, 2, 3, 5, 8, 14, 25, 48, 72, 100] },
-  { id: 5, title: "Pulse (remix)", artist: "Snow Strippers", platform: "Reels", uses: "678K", growth: "+95%", growthNum: 95, duration: "0:17", snippet: "♪ feel the pulse, feel it drop...", priceImpact: +3.8, daysAgo: 3, tags: ["remix", "gym"], wave: [12, 18, 25, 32, 38, 42, 48, 52, 58, 60, 62, 65] }
+// Recommended artists — "You Might Like"
+const recommendedArtists = [
+  { id: 101, name: "Rommulus", ticker: "ROML", genre: "Alt R&B", price: 3.24, change: +14.6, volume: "56.8K", streams: "4.1M", bio: "Genre-defying vocalist weaving experimental R&B with cinematic textures.", sharesOutstanding: 7200, maxShares: 15000, revenueSharePct: 10, circuitBreakerStatus: "normal",
+    ohlc: [{o:2.80,h:2.95,l:2.72,c:2.88},{o:2.88,h:3.01,l:2.82,c:2.95},{o:2.95,h:2.98,l:2.78,c:2.82},{o:2.82,h:2.94,l:2.75,c:2.91},{o:2.91,h:3.10,l:2.88,c:3.05},{o:3.05,h:3.12,l:2.96,c:2.99},{o:2.99,h:3.08,l:2.90,c:3.04},{o:3.04,h:3.18,l:3.00,c:3.14},{o:3.14,h:3.22,l:3.05,c:3.10},{o:3.10,h:3.15,l:2.98,c:3.02},{o:3.02,h:3.20,l:3.00,c:3.18},{o:3.18,h:3.28,l:3.12,c:3.24}] },
+  { id: 102, name: "Nate Sib", ticker: "NSIB", genre: "Indie Pop", price: 1.87, change: +22.3, volume: "33.5K", streams: "1.8M", bio: "Bedroom-pop producer crafting hook-driven anthems with lo-fi warmth.", sharesOutstanding: 5400, maxShares: 12000, revenueSharePct: 12, circuitBreakerStatus: "normal",
+    ohlc: [{o:1.45,h:1.52,l:1.40,c:1.48},{o:1.48,h:1.55,l:1.44,c:1.52},{o:1.52,h:1.58,l:1.46,c:1.50},{o:1.50,h:1.62,l:1.48,c:1.60},{o:1.60,h:1.68,l:1.55,c:1.58},{o:1.58,h:1.65,l:1.52,c:1.62},{o:1.62,h:1.72,l:1.58,c:1.70},{o:1.70,h:1.78,l:1.65,c:1.74},{o:1.74,h:1.80,l:1.68,c:1.72},{o:1.72,h:1.82,l:1.70,c:1.80},{o:1.80,h:1.90,l:1.76,c:1.85},{o:1.85,h:1.92,l:1.80,c:1.87}] },
+  { id: 103, name: "Steve Lacy", ticker: "SLCY", genre: "Neo-Soul / Funk", price: 6.41, change: +5.8, volume: "204K", streams: "28.5M", bio: "Grammy-winning multi-instrumentalist pushing neo-soul into uncharted territory.", sharesOutstanding: 18500, maxShares: 30000, revenueSharePct: 6, circuitBreakerStatus: "normal",
+    ohlc: [{o:5.90,h:6.05,l:5.82,c:5.98},{o:5.98,h:6.10,l:5.88,c:5.92},{o:5.92,h:6.08,l:5.85,c:6.04},{o:6.04,h:6.18,l:5.95,c:6.12},{o:6.12,h:6.20,l:6.00,c:6.05},{o:6.05,h:6.15,l:5.92,c:6.10},{o:6.10,h:6.28,l:6.02,c:6.22},{o:6.22,h:6.35,l:6.15,c:6.18},{o:6.18,h:6.30,l:6.08,c:6.25},{o:6.25,h:6.40,l:6.18,c:6.32},{o:6.32,h:6.45,l:6.25,c:6.38},{o:6.38,h:6.50,l:6.30,c:6.41}] },
+  { id: 104, name: "Sombr", ticker: "SMBR", genre: "Dark Pop", price: 2.15, change: +38.7, volume: "29.1K", streams: "980K", bio: "Anonymous dark-pop project blending haunting vocals with distorted synths.", sharesOutstanding: 3800, maxShares: 10000, revenueSharePct: 14, circuitBreakerStatus: "normal",
+    ohlc: [{o:1.42,h:1.50,l:1.35,c:1.46},{o:1.46,h:1.55,l:1.40,c:1.52},{o:1.52,h:1.48,l:1.38,c:1.44},{o:1.44,h:1.58,l:1.42,c:1.55},{o:1.55,h:1.70,l:1.50,c:1.68},{o:1.68,h:1.78,l:1.60,c:1.72},{o:1.72,h:1.85,l:1.65,c:1.82},{o:1.82,h:1.95,l:1.78,c:1.90},{o:1.90,h:2.02,l:1.85,c:1.98},{o:1.98,h:2.10,l:1.92,c:2.05},{o:2.05,h:2.18,l:2.00,c:2.12},{o:2.12,h:2.22,l:2.08,c:2.15}] },
 ];
 
 // NOTE: portfolioHoldings, totalValue, totalReturn, totalPct computed inside component from live data
@@ -1351,6 +1359,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
         @keyframes float2 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-25px,15px); } }
         @keyframes float3 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(15px,25px); } }
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .drag-scroll::-webkit-scrollbar { display: none; }
       `}</style>
 
       <Blob style={{ width: 350, height: 350, top: -60, right: 80, background: C.blob1, animation: "float1 12s ease-in-out infinite" }} />
@@ -1994,7 +2003,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
             </Card>
           </div>
 
-          {/* Trending Sounds */}
+          {/* You Might Like — recommended artists with mini candlestick charts */}
           <div style={{ marginBottom: 20, ...fadeIn(0.38) }}>
             <Card style={{ padding: 0, overflow: "hidden" }}>
               <div style={{ padding: "24px 24px 0 24px" }}>
@@ -2011,138 +2020,129 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                         <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: C.accent, animation: "pulse 2s infinite" }} /> LIVE
                       </span>
                     </div>
-                    <p style={{ fontSize: 13, color: C.textSec }}>Songs gaining traction on TikTok & Reels — early signals for price movement</p>
+                    <p style={{ fontSize: 13, color: C.textSec }}>Artists trending across your taste profile — tap to explore</p>
                   </div>
-                  <TabPill options={["All", "TikTok", "Reels"]} active="All" onChange={() => {}} />
                 </div>
               </div>
 
-              <div style={{
-                display: "flex", gap: 14, padding: "16px 24px 24px 24px",
-                overflowX: "auto", scrollSnapType: "x mandatory"
-              }}>
-                {trendingSounds.map((sound) => {
-                  const isExplosive = sound.growthNum >= 500;
-                  const isNew = sound.daysAgo === 0;
-                  const matchedArtist = artists.find((a) => a.name === sound.artist);
-                  const waveMax = Math.max(...sound.wave);
+              {/* Drag-scrollable row */}
+              <div
+                className="drag-scroll"
+                ref={(el) => { el && (el._dragState = el._dragState || { down: false, didDrag: false, startX: 0, scrollL: 0 }); }}
+                onMouseDown={(e) => { const el = e.currentTarget; el._dragState.down = true; el._dragState.didDrag = false; el._dragState.startX = e.pageX - el.offsetLeft; el._dragState.scrollL = el.scrollLeft; el.style.cursor = "grabbing"; el.style.userSelect = "none"; }}
+                onMouseMove={(e) => { const el = e.currentTarget; if (!el._dragState.down) return; e.preventDefault(); el._dragState.didDrag = true; const x = e.pageX - el.offsetLeft; el.scrollLeft = el._dragState.scrollL - (x - el._dragState.startX); }}
+                onMouseUp={(e) => { e.currentTarget._dragState.down = false; e.currentTarget.style.cursor = "grab"; e.currentTarget.style.userSelect = ""; }}
+                onMouseLeave={(e) => { e.currentTarget._dragState.down = false; e.currentTarget.style.cursor = "grab"; e.currentTarget.style.userSelect = ""; }}
+                style={{
+                  display: "flex", gap: 14, padding: "16px 24px 24px 24px",
+                  overflowX: "auto", scrollSnapType: "x mandatory",
+                  cursor: "grab", scrollbarWidth: "none", msOverflowStyle: "none",
+                  WebkitOverflowScrolling: "touch"
+                }}>
+                {recommendedArtists.map((rec) => {
+                  const isHot = rec.change >= 20;
+                  const ohlc = rec.ohlc;
+                  // Mini candlestick chart dimensions
+                  const chartW = 224;
+                  const chartH = 64;
+                  const pad = 4;
+                  const allVals = ohlc.flatMap((c) => [c.h, c.l]);
+                  const minP = Math.min(...allVals);
+                  const maxP = Math.max(...allVals);
+                  const range = maxP - minP || 0.01;
+                  const barW = (chartW - pad * 2) / ohlc.length;
+                  const yScale = (v) => chartH - pad - ((v - minP) / range) * (chartH - pad * 2);
 
                   return (
-                    <div key={sound.id} style={{
-                      minWidth: 260, maxWidth: 260, scrollSnapAlign: "start",
-                      borderRadius: 16, padding: 18, position: "relative", overflow: "hidden",
-                      background: "rgba(255,255,255,0.55)",
-                      backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-                      border: "1px solid rgba(255,255,255,0.8)",
-                      boxShadow: "0 2px 16px rgba(0,0,0,0.03)",
-                      transition: "transform 0.25s, box-shadow 0.25s",
-                      cursor: "pointer",
-                      flex: "0 0 auto"
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(0,0,0,0.08)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 2px 16px rgba(0,0,0,0.03)"; }}>
+                    <div key={rec.id}
+                      onClick={(e) => { const row = e.currentTarget.parentElement; if (row._dragState && row._dragState.didDrag) return; setSelectedArtist(rec); }}
+                      style={{
+                        minWidth: 260, maxWidth: 260, scrollSnapAlign: "start",
+                        borderRadius: 16, padding: 18, position: "relative", overflow: "hidden",
+                        background: "rgba(255,255,255,0.55)",
+                        backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+                        border: "1px solid rgba(255,255,255,0.8)",
+                        boxShadow: "0 2px 16px rgba(0,0,0,0.03)",
+                        transition: "transform 0.25s, box-shadow 0.25s",
+                        cursor: "pointer", flex: "0 0 auto"
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(0,0,0,0.08)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 2px 16px rgba(0,0,0,0.03)"; }}>
 
                       <div style={{
                         position: "absolute", top: -20, right: -20, width: 80, height: 80, borderRadius: "50%",
-                        background: isExplosive ?
-                          "radial-gradient(circle, rgba(30,64,175,0.25) 0%, transparent 70%)" :
-                          "radial-gradient(circle, rgba(80,227,194,0.25) 0%, transparent 70%)",
+                        background: isHot
+                          ? "radial-gradient(circle, rgba(30,64,175,0.25) 0%, transparent 70%)"
+                          : "radial-gradient(circle, rgba(56,189,248,0.25) 0%, transparent 70%)",
                         filter: "blur(10px)", pointerEvents: "none"
                       }} />
 
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                        <span style={{
-                          padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600,
-                          background: sound.platform === "TikTok" ? "#00000010" : "linear-gradient(135deg, rgba(30,64,175,0.08), rgba(80,227,194,0.08))",
-                          color: sound.platform === "TikTok" ? C.text : C.primary,
-                          border: `1px solid ${sound.platform === "TikTok" ? "rgba(0,0,0,0.06)" : C.primary + "18"}`
-                        }}>
-                          {sound.platform === "TikTok" ? "♪ TikTok" : "◎ Reels"}
-                        </span>
-                        {isNew &&
-                          <span style={{
-                            padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600,
-                            background: `${C.accent}30`, color: C.accentDark, border: `1px solid ${C.accent}40`
-                          }}>NEW TODAY</span>
-                        }
-                        {isExplosive &&
-                          <span style={{
-                            padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600,
-                            background: `${C.primary}12`, color: C.primary, border: `1px solid ${C.primary}18`
-                          }}>🚀 EXPLOSIVE</span>
-                        }
+                      {/* Artist info */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                        <img src={avatarUrl(rec.name, 48)} alt={rec.name} style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid rgba(0,0,0,0.04)" }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-0.01em" }}>{rec.name}</span>
+                            {isHot && <span style={{ padding: "1px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: `${C.primary}15`, color: C.primary }}>HOT</span>}
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 1 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: C.accent, fontFamily: "monospace" }}>{rec.ticker}</span>
+                            <span style={{ fontSize: 10, color: C.textMuted }}>{rec.genre}</span>
+                          </div>
+                        </div>
                       </div>
 
-                      <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "-0.01em", marginBottom: 2, lineHeight: 1.3 }}>
-                        {sound.title}
-                      </div>
-                      <div style={{ fontSize: 12, color: C.primary, fontWeight: 600, marginBottom: 10, display: "flex", alignItems: "center", gap: 4 }}>
-                        {matchedArtist && <img src={avatarUrl(sound.artist, 32)} alt="" style={{ width: 14, height: 14, borderRadius: 4 }} />}
-                        <span style={{ fontSize: 10, fontWeight: 700, color: sound.priceImpact >= 0 ? "#38BDF8" : "#EF4444", fontFamily: "monospace", marginRight: 5 }}>{getTicker(sound.artist)}</span>{sound.artist}
-                      </div>
+                      {/* Mini candlestick chart */}
+                      <svg width={chartW} height={chartH} style={{ display: "block", marginBottom: 12, borderRadius: 8, background: "rgba(0,0,0,0.02)" }}>
+                        {ohlc.map((candle, ci) => {
+                          const bull = candle.c >= candle.o;
+                          const color = bull ? C.accent : "#EF4444";
+                          const x = pad + ci * barW + barW / 2;
+                          const bodyTop = yScale(Math.max(candle.o, candle.c));
+                          const bodyBot = yScale(Math.min(candle.o, candle.c));
+                          const bodyH = Math.max(bodyBot - bodyTop, 1);
+                          return (
+                            <g key={ci}>
+                              <line x1={x} x2={x} y1={yScale(candle.h)} y2={yScale(candle.l)} stroke={color} strokeWidth={1} strokeOpacity={0.6} />
+                              <rect x={x - barW * 0.3} y={bodyTop} width={barW * 0.6} height={bodyH} fill={color} rx={1} />
+                            </g>
+                          );
+                        })}
+                      </svg>
 
-                      <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 32, marginBottom: 10 }}>
-                        {sound.wave.map((v, wi) =>
-                          <div key={wi} style={{
-                            flex: 1, borderRadius: 2,
-                            height: `${v / waveMax * 100}%`,
-                            background: v === waveMax ?
-                              isExplosive ? C.primary : C.accent :
-                              `linear-gradient(180deg, ${isExplosive ? C.primary + "40" : C.accent + "40"}, ${isExplosive ? C.primary + "15" : C.accent + "15"})`,
-                            transition: "height 0.3s"
-                          }} />
-                        )}
-                      </div>
-
+                      {/* Price + change */}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                         <div>
-                          <div style={{ fontSize: 11, color: C.textMuted }}>Uses</div>
-                          <div style={{ fontSize: 16, fontWeight: 700 }}>{sound.uses}</div>
-                        </div>
-                        <div style={{ textAlign: "center" }}>
-                          <div style={{ fontSize: 11, color: C.textMuted }}>Growth</div>
-                          <div style={{
-                            fontSize: 14, fontWeight: 700,
-                            color: isExplosive ? C.primary : C.green
-                          }}>{sound.growth}</div>
+                          <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em" }}>${rec.price.toFixed(2)}</div>
+                          <div style={{ fontSize: 11, color: C.textMuted }}>per share</div>
                         </div>
                         <div style={{ textAlign: "right" }}>
-                          <div style={{ fontSize: 11, color: C.textMuted }}>Price Impact</div>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: C.green }}>+{sound.priceImpact}%</div>
+                          <div style={{
+                            fontSize: 14, fontWeight: 700,
+                            color: rec.change >= 0 ? C.green : "#EF4444"
+                          }}>{rec.change >= 0 ? "+" : ""}{rec.change}%</div>
+                          <div style={{ fontSize: 11, color: C.textMuted }}>{rec.volume} vol</div>
                         </div>
                       </div>
 
-                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                        {sound.tags.map((tag) =>
-                          <span key={tag} style={{
-                            padding: "2px 8px", borderRadius: 6, fontSize: 10,
-                            background: "rgba(0,0,0,0.03)", color: C.textMuted,
-                            fontWeight: 500, border: "1px solid rgba(0,0,0,0.04)"
-                          }}>#{tag}</span>
-                        )}
+                      {/* Stats row */}
+                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 12 }}>
+                        <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, background: "rgba(0,0,0,0.03)", color: C.textMuted, fontWeight: 500, border: "1px solid rgba(0,0,0,0.04)" }}>{rec.streams} streams</span>
+                        <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, background: "rgba(0,0,0,0.03)", color: C.textMuted, fontWeight: 500, border: "1px solid rgba(0,0,0,0.04)" }}>{rec.revenueSharePct}% royalty</span>
+                      </div>
+
+                      {/* Invest CTA */}
+                      <div style={{
+                        padding: "8px 0", borderTop: "1px solid rgba(0,0,0,0.04)",
+                        display: "flex", justifyContent: "space-between", alignItems: "center"
+                      }}>
+                        <span style={{ fontSize: 12, color: C.textSec }}>{rec.sharesOutstanding.toLocaleString()} / {rec.maxShares.toLocaleString()} shares</span>
                         <span style={{
-                          padding: "2px 8px", borderRadius: 6, fontSize: 10,
-                          background: "rgba(0,0,0,0.03)", color: C.textMuted,
-                          fontWeight: 500, border: "1px solid rgba(0,0,0,0.04)"
-                        }}>{sound.duration}</span>
-                      </div>
-
-                      {matchedArtist &&
-                        <div style={{
-                          marginTop: 12, padding: "8px 0", borderTop: "1px solid rgba(0,0,0,0.04)",
-                          display: "flex", justifyContent: "space-between", alignItems: "center"
+                          padding: "5px 14px", borderRadius: 8, fontSize: 11, fontWeight: 600,
+                          background: C.primary, color: "#fff", cursor: "pointer"
                         }}>
-                          <span style={{ fontSize: 12, color: C.textSec }}>
-                            Share price: <span style={{ fontWeight: 700, color: C.text }}>${matchedArtist.price.toFixed(2)}</span>
-                          </span>
-                          <span style={{
-                            padding: "5px 14px", borderRadius: 8, fontSize: 11, fontWeight: 600,
-                            background: C.primary, color: "#fff", cursor: "pointer"
-                          }}
-                          onClick={(e) => { e.stopPropagation(); setSelectedArtist(matchedArtist); }}>
-                            Invest →</span>
-                        </div>
-                      }
+                          View →</span>
+                      </div>
                     </div>
                   );
                 })}
@@ -2499,7 +2499,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
         artist={selectedArtist}
         onClose={() => setSelectedArtist(null)}
         allNews={news}
-        trendingSounds={trendingSounds}
+        trendingSounds={recommendedArtists}
         isLoggedIn={isLoggedIn}
         auth={auth}
         onTradeComplete={handleTradeComplete} />
