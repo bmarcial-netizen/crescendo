@@ -61,6 +61,9 @@ export const config = {
     clientId: optional('SPOTIFY_CLIENT_ID'),
     clientSecret: optional('SPOTIFY_CLIENT_SECRET'),
   },
+  google: {
+    clientId: optional('GOOGLE_CLIENT_ID'),
+  },
   corsOrigins,
   appUrl,
 };
