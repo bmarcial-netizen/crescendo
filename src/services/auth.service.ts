@@ -35,7 +35,7 @@ export async function register(
         name: `user:${user.id}:wallet`,
         accountType: 'liability',
         userId: user.id,
-        balance: '1000.0000',
+        balance: '1500.0000',
       });
     }
 
@@ -156,7 +156,7 @@ export async function googleAuth(credential: string) {
       name: `user:${user.id}:wallet`,
       accountType: 'liability',
       userId: user.id,
-      balance: '1000.0000',
+      balance: '1500.0000',
     });
 
     return user;

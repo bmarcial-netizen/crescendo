@@ -519,8 +519,8 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
           }}>
                         {Array.from({ length: 12 }).map((_, i) => {
               const angle = 360 / 12 * i;
-              const artistNames = ["2hollis", "Snow Strippers", "Esdeekid", "Doechii", "Ian", "Feng", "King Krule", "The Tulips", "Malcom Todd", "JPEGMAFIA", "Men I Trust", "Matt Maltese"];
-              const tickers = ["HLLS", "SNWS", "ESDK", "DCHI", "IANN", "FENG", "KRKL", "TULP", "MTOD", "JPEG", "MNIT", "MMLT"];
+              const artistNames = ["EsDeeKid", "beabadoobee", "jane remover", "malcolm todd", "2hollis", "Doechii", "Leon Thomas", "iann dior", "Men I Trust", "Snow Strippers", "JPEGMAFIA", "King Krule"];
+              const tickers = ["ESDK", "BBDB", "JRJR", "MCTD", "HLLS", "DCHI", "LNTH", "IANN", "MNIT", "SNST", "JPEG", "KGKR"];
               const prices = ["$2.47", "$5.12", "$3.88", "$0.74", "$1.03", "$1.95", "$2.47", "$5.12", "$3.88", "$0.74", "$1.03", "$1.95"];
               const changes = ["+18.3%", "+7.2%", "+31.5%", "+4.8%", "-2.1%", "-5.4%", "+18.3%", "+7.2%", "+31.5%", "+4.8%", "-2.1%", "-5.4%"];
               const isUp = !changes[i].startsWith("-");
@@ -659,10 +659,10 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
                       letterSpacing: "0.1em", color: COLORS.primary,
                       marginBottom: 16
                     }}>LIVE MARKET PREVIEW</div>
-                                        {["Solène", "KODA", "Mira Voss"].map((name, i) => {
-                      const previewTickers = ["SOLN", "KODA", "MRVS"];
-                      const prices = ["$3.88", "$5.12", "$2.47"];
-                      const pcts = ["+31.5%", "+7.2%", "+18.3%"];
+                                        {["EsDeeKid", "beabadoobee", "Doechii"].map((name, i) => {
+                      const previewTickers = ["ESDK", "BBDB", "DCHI"];
+                      const prices = ["$5.20", "$2.80", "$4.50"];
+                      const pcts = ["+4.2%", "-1.8%", "+12.0%"];
                       return (
                         <div key={name} style={{
                           display: "flex", justifyContent: "space-between",
@@ -672,7 +672,7 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
                                                     <div>
                                                         <div style={{ fontSize: 15, fontWeight: 700 }}><span style={{ fontSize: 10, fontWeight: 700, color: COLORS.accentDark, fontFamily: "monospace", marginRight: 6 }}>{previewTickers[i]}</span>{name}</div>
                                                         <div style={{ fontSize: 12, color: COLORS.textDarkMuted }}>
-                                                            {["R&B / Soul", "Electronic", "Indie Pop"][i]}
+                                                            {["Experimental Hip-Hop", "Indie Pop", "Hip-Hop / Rap"][i]}
                                                         </div>
                                                     </div>
                                                     <div style={{ textAlign: "right" }}>

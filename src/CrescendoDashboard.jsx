@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bell, ArrowLeft, MapPin, Calendar, Tag, TrendingUp, TrendingDown, DollarSign, Music, BarChart3, Wallet, AlertTriangle, Star } from "lucide-react";
+import { Bell, ArrowLeft, MapPin, Calendar, Tag, TrendingUp, TrendingDown, DollarSign, Music, BarChart3, Wallet, AlertTriangle, Star, Settings } from "lucide-react";
 import ArtistDetailModal from "./ArtistDetailModal";
 import NotificationsPage from "./NotificationsPage";
 import WalletPanel from "./WalletPanel";
@@ -8,6 +8,7 @@ import EarningsBand from "./EarningsBand";
 import { useAuth } from "./AuthContext";
 import * as api from "./api";
 import { GENRE_MAP } from "./colors";
+import { useTheme, SettingsPanel } from "./ThemeContext";
 
 // ─── Crescendo Dashboard ─── glassmorphic light mode, neon blob accents ───
 
@@ -41,23 +42,28 @@ function avatarUrl(name, size = 64) {
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=${size}&background=${colors[idx]}&color=fff&bold=true&format=svg`;
 }
 
-// Ticker lookup — maps artist name → 4-letter stock abbreviation
+// Ticker lookup — maps artist stageName → 4-letter stock symbol
 const TICKERS = {
+  // Original 5 (real data)
+  "EsDeeKid": "ESDK",
+  "beabadoobee": "BBDB",
+  "jane remover": "JRJR",
+  "malcolm todd": "MCTD",
   "2hollis": "HLLS",
-  "Snow Strippers": "SNWS",
-  "Malcom Todd": "MTOD",
-  "Men I Trust": "MNIT",
-  "King Krule": "KRKL",
-  "Ian": "IANN",
-  "Esdeekid": "ESDK",
+  // Synthetic artists
   "Doechii": "DCHI",
-  "Feng": "FENG",
-  "The Tulips": "TULP",
+  "Leon Thomas": "LNTH",
+  "iann dior": "IANN",
+  "Men I Trust": "MNIT",
+  "Teezo Touchdown": "TZTO",
+  "Snow Strippers": "SNST",
+  "Yves Tumor": "YVTM",
   "JPEGMAFIA": "JPEG",
-  "Matt Maltese": "MMLT",
-  "Solène": "SOLN",
-  "KODA": "KODA",
-  "Mira Voss": "MRVS",
+  "King Krule": "KGKR",
+  "Paris Texas": "PRTX",
+  "Feng Suave": "FENG",
+  "Dave Blunts": "DVBL",
+  "The Twolips": "TWLP",
 };
 
 export function getTicker(name) {
@@ -65,54 +71,54 @@ export function getTicker(name) {
 }
 
 const mockArtists = [
-  { id: 1, name: "2hollis", ticker: "HLLS", genre: "Experimental Hip-Hop", price: 2.47, change: +18.3, volume: "42.1K", shares: 120, avgCost: 1.82, streams: "2.1M", bio: "Experimental hip-hop artist blending ambient production with raw lyricism.", sharesOutstanding: 8500, maxShares: 15000, revenueSharePct: 12, circuitBreakerStatus: "normal" },
-  { id: 2, name: "Snow Strippers", ticker: "SNWS", genre: "Electronic / Post-Punk", price: 5.12, change: +7.2, volume: "118K", shares: 45, avgCost: 4.30, streams: "8.4M", bio: "Brooklyn-based duo fusing industrial electronics with post-punk energy.", sharesOutstanding: 14200, maxShares: 20000, revenueSharePct: 8, circuitBreakerStatus: "normal" },
-  { id: 3, name: "Malcom Todd", ticker: "MTOD", genre: "R&B / Soul", price: 3.88, change: +31.5, volume: "67.3K", shares: 200, avgCost: 2.10, streams: "5.2M", bio: "Austin-based R&B vocalist crafting intimate, genre-bending soul music.", sharesOutstanding: 11000, maxShares: 18000, revenueSharePct: 15, circuitBreakerStatus: "normal" },
-  { id: 4, name: "Men I Trust", ticker: "MNIT", genre: "Dream Pop", price: 4.74, change: +4.8, volume: "88.2K", shares: 500, avgCost: 3.55, streams: "14.4M", bio: "Montreal trio known for lush, cinematic dream pop and understated cool.", sharesOutstanding: 4000, maxShares: 25000, revenueSharePct: 5, circuitBreakerStatus: "normal" },
-  { id: 5, name: "King Krule", ticker: "KRKL", genre: "Art Rock / Jazz", price: 3.03, change: -2.1, volume: "15.8K", shares: 0, avgCost: 0, streams: "8.9M", bio: "South London polymath blending jazz, punk, and spoken word into raw sonic landscapes.", sharesOutstanding: 6200, maxShares: 12000, revenueSharePct: 10, circuitBreakerStatus: "tripped" },
-  { id: 6, name: "Ian", ticker: "IANN", genre: "Lo-fi R&B", price: 1.95, change: -5.4, volume: "31.0K", shares: 0, avgCost: 0, streams: "3.7M", bio: "Chicago-based lo-fi R&B artist resonating with Gen-Z through organic, bedroom-produced tracks.", sharesOutstanding: 9800, maxShares: 16000, revenueSharePct: 11, circuitBreakerStatus: "normal" }
+  { id: 1, name: "EsDeeKid", symbol: "ESDK", ticker: "ESDK", genre: "Experimental Hip-Hop", price: 5.20, change: +4.2, volume: "85K", shares: 0, avgCost: 0, streams: "22M", bio: "Experimental hip-hop artist with 22M+ monthly listeners. Genre-bending production and raw lyricism.", sharesOutstanding: 1000000, maxShares: 2000000, revenueSharePct: 10, circuitBreakerStatus: "normal" },
+  { id: 2, name: "beabadoobee", symbol: "BBDB", ticker: "BBDB", genre: "Indie Pop", price: 2.80, change: -1.8, volume: "62K", shares: 0, avgCost: 0, streams: "6M", bio: "Filipino-British indie pop artist. Bedroom-pop breakout turned arena headliner.", sharesOutstanding: 1000000, maxShares: 2000000, revenueSharePct: 10, circuitBreakerStatus: "normal" },
+  { id: 3, name: "jane remover", symbol: "JRJR", ticker: "JRJR", genre: "Hyperpop / Shoegaze", price: 1.50, change: -3.2, volume: "28K", shares: 0, avgCost: 0, streams: "800K", bio: "Hyperpop and shoegaze pioneer. Leading voice of the online experimental music scene.", sharesOutstanding: 1000000, maxShares: 2000000, revenueSharePct: 10, circuitBreakerStatus: "normal" },
+  { id: 4, name: "malcolm todd", symbol: "MCTD", ticker: "MCTD", genre: "R&B / Soul", price: 3.90, change: +6.5, volume: "67K", shares: 0, avgCost: 0, streams: "12M", bio: "Austin-based R&B vocalist crafting intimate, genre-bending soul music.", sharesOutstanding: 1000000, maxShares: 2000000, revenueSharePct: 10, circuitBreakerStatus: "normal" },
+  { id: 5, name: "2hollis", symbol: "HLLS", ticker: "HLLS", genre: "Experimental Hip-Hop", price: 1.20, change: +18.3, volume: "42K", shares: 0, avgCost: 0, streams: "2.1M", bio: "Experimental hip-hop artist blending ambient production with raw lyricism.", sharesOutstanding: 1000000, maxShares: 2000000, revenueSharePct: 10, circuitBreakerStatus: "normal" },
+  { id: 6, name: "Doechii", symbol: "DCHI", ticker: "DCHI", genre: "Hip-Hop / Rap", price: 4.50, change: +12.0, volume: "118K", shares: 0, avgCost: 0, streams: "28.9M", bio: "Grammy-nominated rapper/singer. Massive streaming presence.", sharesOutstanding: 1000000, maxShares: 2000000, revenueSharePct: 10, circuitBreakerStatus: "normal" },
 ];
 
 // Mock trade history
 const tradeHistory = [
-  { id: 1, artist: "Malcom Todd", type: "Buy", qty: 50, price: 2.10, total: 105.00, status: "filled", date: "2026-02-18" },
+  { id: 1, artist: "malcolm todd", type: "Buy", qty: 50, price: 2.10, total: 105.00, status: "filled", date: "2026-02-18" },
   { id: 2, artist: "Snow Strippers", type: "Buy", qty: 20, price: 4.50, total: 90.00, status: "filled", date: "2026-02-17" },
   { id: 3, artist: "2hollis", type: "Buy", qty: 30, price: 1.95, total: 58.50, status: "filled", date: "2026-02-15" },
   { id: 4, artist: "Men I Trust", type: "Buy", qty: 100, price: 3.60, total: 360.00, status: "pending", date: "2026-02-19" },
-  { id: 5, artist: "Malcom Todd", type: "Sell", qty: 10, price: 3.80, total: 38.00, status: "cancelled", date: "2026-02-19" },
+  { id: 5, artist: "malcolm todd", type: "Sell", qty: 10, price: 3.80, total: 38.00, status: "cancelled", date: "2026-02-19" },
   { id: 6, artist: "2hollis", type: "Buy", qty: 25, price: 2.30, total: 57.50, status: "filled", date: "2026-02-14" },
 ];
 
 // Mock royalty payments
 const royaltyPayments = [
-  { id: 1, artist: "Malcom Todd", amount: 42.50, type: "Streaming", date: "2026-02-15" },
+  { id: 1, artist: "malcolm todd", amount: 42.50, type: "Streaming", date: "2026-02-15" },
   { id: 2, artist: "Snow Strippers", amount: 18.30, type: "Sync License", date: "2026-02-12" },
   { id: 3, artist: "2hollis", amount: 12.75, type: "Streaming", date: "2026-02-10" },
   { id: 4, artist: "Men I Trust", amount: 25.20, type: "Streaming", date: "2026-02-08" },
-  { id: 5, artist: "Malcom Todd", amount: 31.00, type: "Merchandise", date: "2026-02-05" },
+  { id: 5, artist: "malcolm todd", amount: 31.00, type: "Merchandise", date: "2026-02-05" },
   { id: 6, artist: "Snow Strippers", amount: 22.10, type: "Live Performance", date: "2026-02-01" },
 ];
 
 const news = [
-  { artist: "Malcom Todd", text: "SXSW showcase draws record crowd, three new songs debuted", time: "2h", up: true },
+  { artist: "malcolm todd", text: "SXSW showcase draws record crowd, three new songs debuted", time: "2h", up: true },
   { artist: "Snow Strippers", text: "Sold-out Brooklyn Steel residency announced for April", time: "5h", up: true },
   { artist: "2hollis", text: "New EP 'Phantom Thread' hits 2M streams in first week", time: "8h", up: true },
   { artist: "King Krule", text: "Surprise album 'Concrete Garden' polarizes critics", time: "1d", up: false }
 ];
 
 const newsArticles = [
-  { id: 1, artist: "Malcom Todd", headline: "SXSW showcase draws record crowd, three new songs debuted", category: "Touring", location: "Austin, TX", year: "2026", up: true, description: "Malcom Todd's SXSW set drew an estimated 4,000 fans to the outdoor stage at Auditorium Shores, making it one of the most-attended showcases of the festival. He debuted three unreleased tracks from an upcoming project, sending his streaming numbers surging overnight." },
+  { id: 1, artist: "malcolm todd", headline: "SXSW showcase draws record crowd, three new songs debuted", category: "Touring", location: "Austin, TX", year: "2026", up: true, description: "malcolm todd's SXSW set drew an estimated 4,000 fans to the outdoor stage at Auditorium Shores, making it one of the most-attended showcases of the festival. He debuted three unreleased tracks from an upcoming project, sending his streaming numbers surging overnight." },
   { id: 2, artist: "Snow Strippers", headline: "Sold-out Brooklyn Steel residency announced for April", category: "Touring", location: "Brooklyn, NY", year: "2026", up: true, description: "Snow Strippers have announced a four-night residency at Brooklyn Steel, with all dates selling out within minutes. The run will feature rotating visual installations and guest collaborators each night." },
   { id: 3, artist: "2hollis", headline: "New EP 'Phantom Thread' hits 2M streams in first week", category: "Releases", location: "Los Angeles, CA", year: "2026", up: true, description: "2hollis's surprise-dropped EP 'Phantom Thread' crossed two million combined streams in its first seven days, driven by the standout track 'Dissolve.' The project has been praised for its genre-blending production." },
   { id: 4, artist: "King Krule", headline: "Surprise album 'Concrete Garden' polarizes critics", category: "Releases", location: "London, UK", year: "2026", up: false, description: "King Krule's unannounced album 'Concrete Garden' arrived with no prior marketing, splitting critical opinion between those who see it as a bold evolution and others who find it inaccessible. Fan reception has been warmer, with several tracks trending on social platforms." },
   { id: 5, artist: "Men I Trust", headline: "Headlining Pitchfork Music Festival 2026", category: "Touring", location: "Chicago, IL", year: "2026", up: true, description: "Men I Trust have been announced as headliners for the 2026 Pitchfork Music Festival, marking their largest headline slot to date. The band will close out the Saturday night program." },
-  { id: 6, artist: "Ian", headline: "Signs exclusive sync deal with A24 Films", category: "Business", location: "New York, NY", year: "2026", up: true, description: "Ian has signed an exclusive synchronization licensing deal with A24, allowing the studio first-look access to his catalog for upcoming film and television projects. The deal is reportedly worth seven figures over three years." },
+  { id: 6, artist: "iann dior", headline: "Signs exclusive sync deal with A24 Films", category: "Business", location: "New York, NY", year: "2026", up: true, description: "iann dior has signed an exclusive synchronization licensing deal with A24, allowing the studio first-look access to his catalog for upcoming film and television projects. The deal is reportedly worth seven figures over three years." },
 ];
 
 const trendingSounds = [
-  { id: 1, title: "Amber Light", artist: "Malcom Todd", platform: "TikTok", uses: "1.2M", growth: "+340%", growthNum: 340, duration: "0:18", snippet: "♪ caught in the amber light, I don't wanna leave tonight...", priceImpact: +12.4, daysAgo: 2, tags: ["viral", "aesthetic"], wave: [3, 5, 4, 7, 9, 14, 18, 25, 38, 52, 71, 89] },
+  { id: 1, title: "Amber Light", artist: "malcolm todd", platform: "TikTok", uses: "1.2M", growth: "+340%", growthNum: 340, duration: "0:18", snippet: "♪ caught in the amber light, I don't wanna leave tonight...", priceImpact: +12.4, daysAgo: 2, tags: ["viral", "aesthetic"], wave: [3, 5, 4, 7, 9, 14, 18, 25, 38, 52, 71, 89] },
   { id: 2, title: "dissolve (slowed)", artist: "Men I Trust", platform: "Reels", uses: "842K", growth: "+580%", growthNum: 580, duration: "0:22", snippet: "♪ let me dissolve into the noise...", priceImpact: +8.7, daysAgo: 1, tags: ["slowed", "study"], wave: [2, 3, 5, 4, 8, 11, 19, 28, 44, 62, 78, 95] },
-  { id: 3, title: "RUNAWAY", artist: "Ian", platform: "TikTok", uses: "2.4M", growth: "+120%", growthNum: 120, duration: "0:15", snippet: "♪ I been running, running, can't stop now...", priceImpact: +22.1, daysAgo: 5, tags: ["dance", "transition"], wave: [8, 15, 28, 45, 62, 78, 88, 92, 95, 90, 85, 82] },
+  { id: 3, title: "RUNAWAY", artist: "iann dior", platform: "TikTok", uses: "2.4M", growth: "+120%", growthNum: 120, duration: "0:15", snippet: "♪ I been running, running, can't stop now...", priceImpact: +22.1, daysAgo: 5, tags: ["dance", "transition"], wave: [8, 15, 28, 45, 62, 78, 88, 92, 95, 90, 85, 82] },
   { id: 4, title: "Concrete Garden", artist: "King Krule", platform: "TikTok", uses: "390K", growth: "+1,200%", growthNum: 1200, duration: "0:20", snippet: "♪ flickering through the concrete garden...", priceImpact: +5.2, daysAgo: 0, tags: ["new", "sleeper"], wave: [1, 1, 2, 2, 3, 5, 8, 14, 25, 48, 72, 100] },
   { id: 5, title: "Pulse (remix)", artist: "Snow Strippers", platform: "Reels", uses: "678K", growth: "+95%", growthNum: 95, duration: "0:17", snippet: "♪ feel the pulse, feel it drop...", priceImpact: +3.8, daysAgo: 3, tags: ["remix", "gym"], wave: [12, 18, 25, 32, 38, 42, 48, 52, 58, 60, 62, 65] }
 ];
@@ -397,7 +403,7 @@ function CandlestickChart({ candles, w = 720, h = 380 }) {
   );
 }
 
-function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card, TabPill, auth, isLoggedIn, onTradeComplete, genreFilter, setGenreFilter, watchlist, toggleWatchlist }) {
+function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card, TabPill, auth, isLoggedIn, onTradeComplete, genreFilter, setGenreFilter, watchlist, toggleWatchlist, watchlists, addToWatchlist, removeFromWatchlist, createWatchlist, deleteWatchlist, watchlistMenuArtist, setWatchlistMenuArtist, showCreateWatchlist, setShowCreateWatchlist, newWatchlistName, setNewWatchlistName }) {
   const [viewMode, setViewMode] = useState("overview"); // "overview" | "detail"
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [chartPeriod, setChartPeriod] = useState("1M");
@@ -544,16 +550,39 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <span style={{
                           padding: "2px 7px", borderRadius: 4, fontSize: 10, fontWeight: 700,
-                          background: C.primarySoft, color: C.primary, fontFamily: "monospace",
+                          background: isUp ? C.greenSoft : C.redSoft,
+                          color: isUp ? C.green : C.red, fontFamily: "monospace",
                         }}>{a.symbol || getTicker(a.name)}</span>
                         <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-0.01em" }}>{a.name}</span>
                       </div>
                       <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>{a.genre}</div>
                     </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); toggleWatchlist(a.id); }}
-                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, padding: 0, color: watchlist.includes(a.id) ? "#F59E0B" : C.textMuted }}
-                    >{watchlist.includes(a.id) ? "★" : "☆"}</button>
+                    <div style={{ position: "relative" }}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setWatchlistMenuArtist(watchlistMenuArtist === a.id ? null : a.id); }}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, padding: "2px 6px", color: watchlist.includes(a.id) ? "#F59E0B" : C.textMuted, lineHeight: 1, borderRadius: 6 }}
+                      >&#8942;</button>
+                      {watchlistMenuArtist === a.id && (<>
+                        <div onClick={(e) => { e.stopPropagation(); setWatchlistMenuArtist(null); }} style={{ position: "fixed", inset: 0, zIndex: 299 }} />
+                        <div style={{ position: "absolute", top: 30, right: 0, zIndex: 300, width: 220, borderRadius: 12, background: "rgba(255,255,255,0.97)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 8px 32px rgba(0,0,0,0.12)", overflow: "hidden" }}>
+                          <div style={{ padding: "10px 14px", borderBottom: "1px solid rgba(0,0,0,0.06)", fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "monospace" }}>Add to Watchlist</div>
+                          {watchlists.map(wl => {
+                            const inList = wl.artistIds.includes(a.id);
+                            return (<div key={wl.id} onClick={(e) => { e.stopPropagation(); inList ? removeFromWatchlist(wl.id, a.id) : addToWatchlist(wl.id, a.id); }} style={{ padding: "10px 14px", fontSize: 13, fontWeight: 500, color: C.text, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                              onMouseEnter={e => e.currentTarget.style.background = "rgba(0,0,0,0.03)"}
+                              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                              <span>{wl.name}</span>
+                              <span style={{ fontSize: 14, color: inList ? "#F59E0B" : C.textMuted }}>{inList ? "\u2605" : "\u2606"}</span>
+                            </div>);
+                          })}
+                          <div onClick={(e) => { e.stopPropagation(); setShowCreateWatchlist(true); setWatchlistMenuArtist(null); }} style={{ padding: "10px 14px", fontSize: 12, fontWeight: 600, color: C.primary, cursor: "pointer", borderTop: "1px solid rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: 6 }}
+                            onMouseEnter={e => e.currentTarget.style.background = "rgba(30,64,175,0.04)"}
+                            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                            <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> New Watchlist
+                          </div>
+                        </div>
+                      </>)}
+                    </div>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 10 }}>
                     <div>
@@ -594,6 +623,128 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
             );
           })}
         </div>
+
+        {/* ── WATCHLISTS SECTION ── */}
+        <div style={{ marginTop: 32 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em" }}>Watchlists</h2>
+            <button onClick={() => setShowCreateWatchlist(true)} style={{
+              padding: "6px 14px", borderRadius: 8, border: "none",
+              fontSize: 12, fontWeight: 600, cursor: "pointer",
+              background: C.primary, color: "#fff",
+              fontFamily: "'Inter', sans-serif",
+            }}>+ New Watchlist</button>
+          </div>
+
+          {watchlists.map(wl => {
+            const wlArtists = artists.filter(a => wl.artistIds.includes(a.id));
+            const totalVal = wlArtists.reduce((s, a) => s + a.price, 0);
+            const avgChange = wlArtists.length > 0 ? wlArtists.reduce((s, a) => s + a.change, 0) / wlArtists.length : 0;
+            const wlUp = avgChange >= 0;
+            return (
+              <Card key={wl.id} style={{ padding: 20, marginBottom: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 15, fontWeight: 700 }}>{wl.name}</span>
+                    <span style={{
+                      padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+                      background: wlUp ? C.greenSoft : C.redSoft, color: wlUp ? C.green : C.red,
+                    }}>{wlArtists.length} artist{wlArtists.length !== 1 ? 's' : ''}</span>
+                    {wlArtists.length > 0 && (
+                      <span style={{ fontSize: 12, fontWeight: 600, color: wlUp ? C.green : C.red }}>
+                        {wlUp ? "+" : ""}{avgChange.toFixed(1)}% avg
+                      </span>
+                    )}
+                  </div>
+                  {wl.id !== "default" && (
+                    <button onClick={() => deleteWatchlist(wl.id)} style={{
+                      background: "none", border: "none", cursor: "pointer",
+                      fontSize: 12, color: C.red, fontWeight: 600, padding: "4px 8px", borderRadius: 6,
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = C.redSoft}
+                    onMouseLeave={e => e.currentTarget.style.background = "none"}
+                    >Delete</button>
+                  )}
+                </div>
+                {wlArtists.length === 0 ? (
+                  <div style={{ padding: "16px 0", textAlign: "center", fontSize: 13, color: C.textMuted }}>
+                    No artists yet — use the &#8942; menu on any artist card to add them
+                  </div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
+                    {wlArtists.map(a => {
+                      const aUp = a.change >= 0;
+                      return (
+                        <div key={a.id} onClick={() => openDetail(artists.indexOf(a))} style={{
+                          padding: 12, borderRadius: 12, cursor: "pointer",
+                          background: "rgba(0,0,0,0.02)", border: "1px solid rgba(0,0,0,0.04)",
+                          transition: "background 0.15s",
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = "rgba(0,0,0,0.04)"}
+                        onMouseLeave={e => e.currentTarget.style.background = "rgba(0,0,0,0.02)"}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                            <img src={avatarUrl(a.name, 44)} alt={a.name} style={{ width: 24, height: 24, borderRadius: 6 }} />
+                            <span style={{
+                              padding: "1px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700,
+                              background: aUp ? C.greenSoft : C.redSoft,
+                              color: aUp ? C.green : C.red, fontFamily: "monospace",
+                            }}>{a.symbol}</span>
+                            <span style={{ fontSize: 13, fontWeight: 600 }}>{a.name}</span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                            <span style={{ fontSize: 16, fontWeight: 700 }}>${a.price.toFixed(2)}</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: aUp ? C.green : C.red }}>
+                              {aUp ? "+" : ""}{a.change.toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Create Watchlist Modal */}
+        {showCreateWatchlist && (<>
+          <div onClick={() => setShowCreateWatchlist(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 400, backdropFilter: "blur(4px)" }} />
+          <div style={{
+            position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+            zIndex: 401, width: 360, borderRadius: 20,
+            background: "#fff", border: "1px solid rgba(0,0,0,0.08)",
+            boxShadow: "0 16px 64px rgba(0,0,0,0.15)", padding: 28,
+          }}>
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, letterSpacing: "-0.02em" }}>Create Watchlist</h3>
+            <input
+              type="text"
+              placeholder="Watchlist name..."
+              value={newWatchlistName}
+              onChange={e => setNewWatchlistName(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && createWatchlist(newWatchlistName)}
+              autoFocus
+              style={{
+                width: "100%", padding: "10px 14px", borderRadius: 10,
+                border: "1px solid rgba(0,0,0,0.1)", fontSize: 14,
+                fontFamily: "'Inter', sans-serif", outline: "none",
+                marginBottom: 16,
+              }}
+            />
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button onClick={() => setShowCreateWatchlist(false)} style={{
+                padding: "8px 18px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.1)",
+                background: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                fontFamily: "'Inter', sans-serif",
+              }}>Cancel</button>
+              <button onClick={() => createWatchlist(newWatchlistName)} style={{
+                padding: "8px 18px", borderRadius: 8, border: "none",
+                background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600,
+                cursor: "pointer", fontFamily: "'Inter', sans-serif",
+              }}>Create</button>
+            </div>
+          </div>
+        </>)}
       </div>
     );
   }
@@ -640,7 +791,8 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
                 {selected.symbol && (
                   <span style={{
                     padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 700,
-                    background: C.primarySoft, color: C.primary, fontFamily: "monospace",
+                    background: selected.change >= 0 ? C.greenSoft : C.redSoft,
+                    color: selected.change >= 0 ? C.green : C.red, fontFamily: "monospace",
                     letterSpacing: "0.08em"
                   }}>{selected.symbol}</span>
                 )}
@@ -649,7 +801,7 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
                   style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em", textTransform: "uppercase", cursor: "pointer", transition: "color 0.2s" }}
                   onMouseEnter={e => e.target.style.color = C.primary}
                   onMouseLeave={e => e.target.style.color = C.text}
-                ><span style={{ fontSize: 11, fontWeight: 700, color: selected.change >= 0 ? "#38BDF8" : "#EF4444", fontFamily: "monospace", marginRight: 6 }}>{selected.ticker || getTicker(selected.name)}</span>{selected.name} / USD</span>
+                ><span style={{ padding: "1px 6px", borderRadius: 4, fontSize: 11, fontWeight: 700, background: selected.change >= 0 ? C.greenSoft : C.redSoft, color: selected.change >= 0 ? C.green : C.red, fontFamily: "monospace", marginRight: 6 }}>{selected.ticker || getTicker(selected.name)}</span>{selected.name} / USD</span>
               </div>
               <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
                 <span style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1 }}>${displayPrice.toFixed(2)}</span>
@@ -810,7 +962,8 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
                 <img src={avatarUrl(a.name, 44)} alt={a.name} style={{ width: 22, height: 22, borderRadius: 6 }} />
                 <span style={{
                   padding: "1px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700,
-                  background: C.primarySoft, color: C.primary, fontFamily: "monospace",
+                  background: a.change >= 0 ? C.greenSoft : C.redSoft,
+                  color: a.change >= 0 ? C.green : C.red, fontFamily: "monospace",
                 }}>{a.symbol || getTicker(a.name)}</span>
                 <span style={{ fontSize: 12, fontWeight: 600 }}>{a.name}</span>
               </div>
@@ -1218,16 +1371,61 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
   const [showOrderHistory, setShowOrderHistory] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [genreFilter, setGenreFilter] = useState("All");
-  const [watchlist, setWatchlist] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("crescendo_watchlist") || "[]"); } catch { return []; }
+  const [showSettings, setShowSettings] = useState(false);
+  // Named watchlists: [{ id, name, artistIds: [] }]
+  const [watchlists, setWatchlists] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("crescendo_watchlists") || "null");
+      if (stored && Array.isArray(stored) && stored.length > 0) return stored;
+      const oldWl = JSON.parse(localStorage.getItem("crescendo_watchlist") || "[]");
+      return [{ id: "default", name: "My Watchlist", artistIds: oldWl }];
+    } catch { return [{ id: "default", name: "My Watchlist", artistIds: [] }]; }
   });
+  const [watchlistMenuArtist, setWatchlistMenuArtist] = useState(null);
+  const [showCreateWatchlist, setShowCreateWatchlist] = useState(false);
+  const [newWatchlistName, setNewWatchlistName] = useState("");
 
+  const saveWatchlists = (wls) => {
+    setWatchlists(wls);
+    localStorage.setItem("crescendo_watchlists", JSON.stringify(wls));
+  };
+
+  const createWatchlist = (name) => {
+    if (!name.trim()) return;
+    const wl = { id: Date.now().toString(), name: name.trim(), artistIds: [] };
+    saveWatchlists([...watchlists, wl]);
+    setNewWatchlistName("");
+    setShowCreateWatchlist(false);
+  };
+
+  const deleteWatchlist = (wlId) => {
+    saveWatchlists(watchlists.filter(w => w.id !== wlId));
+  };
+
+  const addToWatchlist = (wlId, artistId) => {
+    saveWatchlists(watchlists.map(w =>
+      w.id === wlId && !w.artistIds.includes(artistId)
+        ? { ...w, artistIds: [...w.artistIds, artistId] }
+        : w
+    ));
+  };
+
+  const removeFromWatchlist = (wlId, artistId) => {
+    saveWatchlists(watchlists.map(w =>
+      w.id === wlId ? { ...w, artistIds: w.artistIds.filter(id => id !== artistId) } : w
+    ));
+  };
+
+  // Compat: flat list of all watched artist IDs
+  const watchlist = watchlists.flatMap(w => w.artistIds);
   const toggleWatchlist = (artistId) => {
-    setWatchlist(prev => {
-      const next = prev.includes(artistId) ? prev.filter(id => id !== artistId) : [...prev, artistId];
-      localStorage.setItem("crescendo_watchlist", JSON.stringify(next));
-      return next;
-    });
+    const defaultWl = watchlists[0];
+    if (!defaultWl) return;
+    if (defaultWl.artistIds.includes(artistId)) {
+      removeFromWatchlist(defaultWl.id, artistId);
+    } else {
+      addToWatchlist(defaultWl.id, artistId);
+    }
   };
 
   // Live data from API
@@ -1434,6 +1632,17 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
               borderRadius: "50%", background: C.primary, border: "2px solid #fff"
             }} />
           </div>
+          <div
+            onClick={() => setShowSettings(true)}
+            style={{
+              width: 38, height: 38, borderRadius: 12,
+              background: "rgba(255,255,255,0.7)",
+              border: "1px solid rgba(255,255,255,0.9)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", transition: "all 0.2s"
+            }}>
+            <Settings size={18} color={C.text} />
+          </div>
           {isLoggedIn ? (
             <div style={{ position: "relative" }}>
               <div style={{
@@ -1562,6 +1771,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                     borderBottom: i < 4 ? "1px solid rgba(0,0,0,0.05)" : "none",
                     cursor: "pointer", transition: "color 0.2s"
                   }}
+                  onClick={item === "Display & Theme" ? () => setShowSettings(true) : undefined}
                   onMouseEnter={(e) => e.currentTarget.style.color = C.primary}
                   onMouseLeave={(e) => e.currentTarget.style.color = C.text}>
                     <span style={{ fontSize: 14, fontWeight: 500 }}>{item}</span>
@@ -1589,7 +1799,18 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
             genreFilter={genreFilter}
             setGenreFilter={setGenreFilter}
             watchlist={watchlist}
-            toggleWatchlist={toggleWatchlist} />
+            toggleWatchlist={toggleWatchlist}
+            watchlists={watchlists}
+            addToWatchlist={addToWatchlist}
+            removeFromWatchlist={removeFromWatchlist}
+            createWatchlist={createWatchlist}
+            deleteWatchlist={deleteWatchlist}
+            watchlistMenuArtist={watchlistMenuArtist}
+            setWatchlistMenuArtist={setWatchlistMenuArtist}
+            showCreateWatchlist={showCreateWatchlist}
+            setShowCreateWatchlist={setShowCreateWatchlist}
+            newWatchlistName={newWatchlistName}
+            setNewWatchlistName={setNewWatchlistName} />
         }
 
         {/* ─── NEWS PAGE ─── */}
@@ -1879,7 +2100,8 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                           {a.symbol && (
                             <span style={{
                               padding: "1px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700,
-                              background: C.primarySoft, color: C.primary, fontFamily: "monospace",
+                              background: a.change >= 0 ? C.greenSoft : C.redSoft,
+                              color: a.change >= 0 ? C.green : C.red, fontFamily: "monospace",
                             }}>{a.symbol}</span>
                           )}
                           <span style={{ fontSize: 14, fontWeight: 600 }}>{a.name}</span>
@@ -2224,9 +2446,13 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
                     backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
                     fontSize: 12, fontWeight: 600,
                   }}>
-                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.05em", color: C.primary, background: C.primarySoft, padding: "2px 6px", borderRadius: 4, fontFamily: "monospace" }}>
-                      {artists.find(ar => ar.id === a.id)?.symbol || ''}
-                    </span>
+                    {(() => {
+                      const matchedA = artists.find(ar => ar.id === a.id);
+                      const aUp = matchedA ? matchedA.change >= 0 : true;
+                      return <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.05em", color: aUp ? C.green : C.red, background: aUp ? C.greenSoft : C.redSoft, padding: "2px 6px", borderRadius: 4, fontFamily: "monospace" }}>
+                        {matchedA?.symbol || ''}
+                      </span>;
+                    })()}
                     <span style={{ color: C.text, fontWeight: 700 }}>{a.name}</span>
                     <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: 11 }}>${a.price?.toFixed(2)}</span>
                   </div>
@@ -2503,6 +2729,20 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
         isLoggedIn={isLoggedIn}
         auth={auth}
         onTradeComplete={handleTradeComplete} />
+
+      {/* Settings Panel */}
+      {showSettings && (
+        <>
+          <div
+            onClick={() => setShowSettings(false)}
+            style={{
+              position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+              background: "rgba(0,0,0,0.3)", zIndex: 999,
+            }}
+          />
+          <SettingsPanel onClose={() => setShowSettings(false)} />
+        </>
+      )}
 
     </div>
   );

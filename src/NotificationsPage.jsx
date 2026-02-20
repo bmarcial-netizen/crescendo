@@ -18,23 +18,23 @@ const C = {
 
 const notifications = [
   // Price alerts
-  { id: 1, type: "price", title: "Malcom Todd hit $3.88", desc: "Price target of $3.80 reached — up 31.5% this week", time: "12m ago", read: false, icon: "up", artist: "Malcom Todd" },
+  { id: 1, type: "price", title: "malcolm todd hit $3.88", desc: "Price target of $3.80 reached — up 31.5% this week", time: "12m ago", read: false, icon: "up", artist: "malcolm todd" },
   { id: 2, type: "price", title: "King Krule circuit breaker tripped", desc: "Trading halted after rapid 8% decline in 30 minutes", time: "1h ago", read: false, icon: "down", artist: "King Krule" },
   { id: 3, type: "price", title: "2hollis surged +18.3%", desc: "Biggest single-day gain following EP release", time: "3h ago", read: false, icon: "up", artist: "2hollis" },
 
   // Trading
   { id: 4, type: "trade", title: "Buy order filled — Men I Trust", desc: "100 shares @ $3.60 — total $360.00", time: "4h ago", read: true, icon: "buy", artist: "Men I Trust" },
-  { id: 5, type: "trade", title: "Sell order cancelled — Malcom Todd", desc: "10 shares @ $3.80 — order expired", time: "6h ago", read: true, icon: "sell", artist: "Malcom Todd" },
-  { id: 6, type: "trade", title: "Royalty payout received", desc: "$42.50 streaming royalty from Malcom Todd", time: "1d ago", read: true, icon: "royalty", artist: "Malcom Todd" },
+  { id: 5, type: "trade", title: "Sell order cancelled — malcolm todd", desc: "10 shares @ $3.80 — order expired", time: "6h ago", read: true, icon: "sell", artist: "malcolm todd" },
+  { id: 6, type: "trade", title: "Royalty payout received", desc: "$42.50 streaming royalty from malcolm todd", time: "1d ago", read: true, icon: "royalty", artist: "malcolm todd" },
 
   // Social / activity
   { id: 7, type: "social", title: "Snow Strippers dropped new content", desc: "4-night Brooklyn Steel residency announced — all dates sold out", time: "5h ago", read: false, icon: "music", artist: "Snow Strippers" },
   { id: 8, type: "social", title: "2hollis 'Phantom Thread' milestone", desc: "EP crossed 2M streams in first week", time: "8h ago", read: true, icon: "music", artist: "2hollis" },
-  { id: 9, type: "social", title: "Ian signed A24 sync deal", desc: "Exclusive synchronization licensing deal reportedly worth 7 figures", time: "1d ago", read: true, icon: "social", artist: "Ian" },
+  { id: 9, type: "social", title: "iann dior signed A24 sync deal", desc: "Exclusive synchronization licensing deal reportedly worth 7 figures", time: "1d ago", read: true, icon: "social", artist: "iann dior" },
   { id: 10, type: "social", title: "Men I Trust headlining Pitchfork 2026", desc: "Largest headline slot to date — closing Saturday night", time: "2d ago", read: true, icon: "music", artist: "Men I Trust" },
 
   // More price
-  { id: 11, type: "price", title: "Ian dropped -5.4%", desc: "Gradual decline over 48h — consider adjusting stop-loss", time: "2d ago", read: true, icon: "down", artist: "Ian" },
+  { id: 11, type: "price", title: "iann dior dropped -5.4%", desc: "Gradual decline over 48h — consider adjusting stop-loss", time: "2d ago", read: true, icon: "down", artist: "iann dior" },
   { id: 12, type: "trade", title: "Royalty payout received", desc: "$18.30 sync license royalty from Snow Strippers", time: "3d ago", read: true, icon: "royalty", artist: "Snow Strippers" },
 ];
 

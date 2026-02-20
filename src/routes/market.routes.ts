@@ -5,7 +5,7 @@ import { eq, desc, and, gte, lte, asc, sql } from 'drizzle-orm';
 import { getPriceQuote } from '../services/pricing.service';
 import { NotFoundError } from '../utils/errors';
 import { estimateEarningsBand, DEFAULT_PARAMS, EarningsModelParams } from '../model/earningsEstimator';
-import { getDailyCandles, getMarketSummary, computeFinancialAnalysis } from '../services/dailyPrice.service';
+import { getDailyCandles, getMarketSummary, computeFinancialAnalysis, generateIntradayPoints } from '../services/dailyPrice.service';
 
 const router = Router();
 
@@ -109,6 +109,35 @@ router.get('/artists/:id/analysis', async (req: Request, res: Response) => {
     symbol: artist.symbol,
     analysis,
     candleCount: candles.length,
+  });
+});
+
+// Get synthetic intraday data for a specific day (public)
+// Returns 15-min interval points from open → close for the given date
+router.get('/artists/:id/intraday', async (req: Request, res: Response) => {
+  const artistId = req.params.id as string;
+  const date = req.query.date as string; // YYYY-MM-DD
+  const interval = Math.max(5, Math.min(60, parseInt((req.query.interval as string) || '15', 10)));
+
+  const [artist] = await db.select().from(artists).where(eq(artists.id, artistId)).limit(1);
+  if (!artist) throw new NotFoundError('Artist not found');
+
+  const candles = await getDailyCandles(artistId);
+  const targetCandle = date
+    ? candles.find(c => c.t === date)
+    : candles[candles.length - 1]; // default to latest day
+
+  if (!targetCandle) throw new NotFoundError('No candle data for this date');
+
+  const points = generateIntradayPoints(artistId, targetCandle, interval);
+
+  res.json({
+    artistId,
+    symbol: artist.symbol,
+    date: targetCandle.t,
+    intervalMinutes: interval,
+    candle: targetCandle,
+    points,
   });
 });
 

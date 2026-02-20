@@ -52,8 +52,37 @@ function generateOrderBook(bid, ask) {
 // ─── Artist images map (placeholder keys — swap with real uploaded images) ───
 const artistImages = {};
 
-// ─── Top Tracks per artist ───
+// ─── Top Tracks per artist (keys must match DB stageName exactly) ───
 const topTracks = {
+    // Original 5 (real data artists)
+    "EsDeeKid": [
+        { title: "Midnight Run", duration: "3:45", streams: "18.2M", album: "Neon Dreams" },
+        { title: "Static", duration: "2:58", streams: "14.7M", album: "Neon Dreams" },
+        { title: "Echoes", duration: "3:22", streams: "11.3M", album: "Frequency" },
+        { title: "Low Key", duration: "4:01", streams: "9.8M", album: "Frequency" },
+        { title: "Drift", duration: "3:15", streams: "7.4M", album: "Neon Dreams" },
+    ],
+    "beabadoobee": [
+        { title: "Glue Song", duration: "2:37", streams: "520M", album: "Beatopia" },
+        { title: "The Perfect Pair", duration: "3:04", streams: "280M", album: "This Is How Tomorrow Moves" },
+        { title: "Talking", duration: "3:52", streams: "95M", album: "This Is How Tomorrow Moves" },
+        { title: "Coffee", duration: "3:28", streams: "410M", album: "Patched Up" },
+        { title: "Fairy Song", duration: "2:44", streams: "72M", album: "Beatopia" },
+    ],
+    "jane remover": [
+        { title: "Cage Girl", duration: "3:18", streams: "4.2M", album: "Census Designated" },
+        { title: "Lips", duration: "2:52", streams: "3.8M", album: "Census Designated" },
+        { title: "Movies For Guys", duration: "4:14", streams: "2.9M", album: "Census Designated" },
+        { title: "Royal Blue Walls", duration: "3:35", streams: "2.1M", album: "Frailty" },
+        { title: "Video", duration: "3:01", streams: "1.8M", album: "Census Designated" },
+    ],
+    "malcolm todd": [
+        { title: "Amber Light", duration: "3:18", streams: "2.4M", album: "Soft Focus" },
+        { title: "Honey", duration: "3:52", streams: "1.8M", album: "Soft Focus" },
+        { title: "Velvet", duration: "2:44", streams: "1.1M", album: "Velvet (Single)" },
+        { title: "Sunday Morning", duration: "4:08", streams: "890K", album: "Soft Focus" },
+        { title: "Blue Hour", duration: "3:26", streams: "720K", album: "Early Demos" },
+    ],
     "2hollis": [
         { title: "Dissolve", duration: "3:22", streams: "1.2M", album: "Phantom Thread" },
         { title: "Ghost Frequency", duration: "2:48", streams: "890K", album: "Phantom Thread" },
@@ -61,19 +90,27 @@ const topTracks = {
         { title: "Liminal", duration: "3:35", streams: "650K", album: "Early Works" },
         { title: "Static Bloom", duration: "2:56", streams: "410K", album: "Early Works" },
     ],
-    "Snow Strippers": [
-        { title: "Pulse", duration: "3:44", streams: "3.8M", album: "Neon Vein" },
-        { title: "Cold Circuit", duration: "3:12", streams: "2.1M", album: "Neon Vein" },
-        { title: "Wired", duration: "2:58", streams: "1.9M", album: "Wired (Single)" },
-        { title: "Fracture", duration: "4:15", streams: "1.4M", album: "Neon Vein" },
-        { title: "Voltage", duration: "3:30", streams: "980K", album: "Debut EP" },
+    // Synthetic artists
+    "Doechii": [
+        { title: "What It Is", duration: "3:12", streams: "180M", album: "Alligator Bites Never Heal" },
+        { title: "Persuasive", duration: "2:48", streams: "95M", album: "Alligator Bites Never Heal" },
+        { title: "Crazy", duration: "3:35", streams: "62M", album: "Alligator Bites Never Heal" },
+        { title: "Boom Bap", duration: "2:58", streams: "48M", album: "She / Her / Black Bitch" },
+        { title: "Yucky Blucky Fruitcake", duration: "3:44", streams: "35M", album: "Oh the Places You'll Go" },
     ],
-    "Malcom Todd": [
-        { title: "Amber Light", duration: "3:18", streams: "2.4M", album: "Soft Focus" },
-        { title: "Honey", duration: "3:52", streams: "1.8M", album: "Soft Focus" },
-        { title: "Velvet", duration: "2:44", streams: "1.1M", album: "Velvet (Single)" },
-        { title: "Sunday Morning", duration: "4:08", streams: "890K", album: "Soft Focus" },
-        { title: "Blue Hour", duration: "3:26", streams: "720K", album: "Early Demos" },
+    "Leon Thomas": [
+        { title: "Breaking Point", duration: "3:28", streams: "12M", album: "Electric Dusk" },
+        { title: "X2", duration: "3:02", streams: "8.5M", album: "Electric Dusk" },
+        { title: "Slow Motion", duration: "4:16", streams: "6.2M", album: "Electric Dusk" },
+        { title: "Love Jones", duration: "3:44", streams: "4.8M", album: "Genesis" },
+        { title: "Paradise", duration: "3:58", streams: "3.1M", album: "Genesis" },
+    ],
+    "iann dior": [
+        { title: "Mood", duration: "2:22", streams: "2.1B", album: "On to Better Things" },
+        { title: "Sick and Tired", duration: "2:42", streams: "180M", album: "On to Better Things" },
+        { title: "Shots in the Dark", duration: "3:08", streams: "95M", album: "On to Better Things" },
+        { title: "V12", duration: "2:55", streams: "72M", album: "Industry Plant" },
+        { title: "Prospect", duration: "3:18", streams: "58M", album: "I'm Gone" },
     ],
     "Men I Trust": [
         { title: "Oncle Jazz", duration: "3:38", streams: "8.2M", album: "Oncle Jazz" },
@@ -82,6 +119,34 @@ const topTracks = {
         { title: "Tailwhip", duration: "2:56", streams: "4.8M", album: "Oncle Jazz" },
         { title: "Billie Toppy", duration: "3:44", streams: "3.2M", album: "Headroom" },
     ],
+    "Teezo Touchdown": [
+        { title: "Technically", duration: "3:15", streams: "28M", album: "How Do You Sleep at Night?" },
+        { title: "I'm Just a Fan", duration: "2:48", streams: "18M", album: "How Do You Sleep at Night?" },
+        { title: "Social Cues", duration: "3:32", streams: "12M", album: "How Do You Sleep at Night?" },
+        { title: "100 Drums", duration: "2:58", streams: "8.5M", album: "How Do You Sleep at Night?" },
+        { title: "Bad Company", duration: "3:44", streams: "5.2M", album: "How Do You Sleep at Night?" },
+    ],
+    "Snow Strippers": [
+        { title: "Pulse", duration: "3:44", streams: "3.8M", album: "Neon Vein" },
+        { title: "Cold Circuit", duration: "3:12", streams: "2.1M", album: "Neon Vein" },
+        { title: "Wired", duration: "2:58", streams: "1.9M", album: "Wired (Single)" },
+        { title: "Fracture", duration: "4:15", streams: "1.4M", album: "Neon Vein" },
+        { title: "Voltage", duration: "3:30", streams: "980K", album: "Debut EP" },
+    ],
+    "Yves Tumor": [
+        { title: "Gospel for a New Century", duration: "4:02", streams: "32M", album: "Heaven to a Tortured Mind" },
+        { title: "Kerosene!", duration: "3:28", streams: "18M", album: "Heaven to a Tortured Mind" },
+        { title: "Jackie", duration: "3:52", streams: "12M", album: "Praise a Lord..." },
+        { title: "Secrecy Is Incredibly Important to the Both of Them", duration: "4:35", streams: "8.4M", album: "Safe in the Hands of Love" },
+        { title: "Operator", duration: "3:15", streams: "6.1M", album: "Praise a Lord..." },
+    ],
+    "JPEGMAFIA": [
+        { title: "BALD!", duration: "2:45", streams: "42M", album: "All My Heroes Are Cornballs" },
+        { title: "1539 N. Calvert", duration: "3:18", streams: "28M", album: "Veteran" },
+        { title: "Thot Tactics", duration: "2:52", streams: "22M", album: "All My Heroes Are Cornballs" },
+        { title: "HAZARD DUTY PAY!", duration: "2:38", streams: "18M", album: "LP!" },
+        { title: "Baby I'm Bleeding", duration: "3:05", streams: "15M", album: "Veteran" },
+    ],
     "King Krule": [
         { title: "Easy Easy", duration: "3:28", streams: "4.5M", album: "6 Feet Beneath the Moon" },
         { title: "Dum Surfer", duration: "3:02", streams: "3.8M", album: "The OOZ" },
@@ -89,46 +154,126 @@ const topTracks = {
         { title: "Czech One", duration: "3:44", streams: "2.1M", album: "The OOZ" },
         { title: "Seaforth", duration: "3:58", streams: "1.7M", album: "Space Heavy" },
     ],
-    "Ian": [
-        { title: "RUNAWAY", duration: "2:52", streams: "1.8M", album: "RUNAWAY (Single)" },
-        { title: "Apartment", duration: "3:14", streams: "1.2M", album: "Lo-fi Diaries" },
-        { title: "2AM", duration: "3:40", streams: "890K", album: "Lo-fi Diaries" },
-        { title: "Bedroom Floor", duration: "2:58", streams: "650K", album: "Lo-fi Diaries" },
-        { title: "Quiet Storm", duration: "3:22", streams: "420K", album: "Early Works" },
+    "Paris Texas": [
+        { title: "FORCE OF HABIT", duration: "2:52", streams: "5.2M", album: "MID AIR" },
+        { title: "PANIC", duration: "2:38", streams: "3.8M", album: "MID AIR" },
+        { title: "HEAVY METAL", duration: "3:14", streams: "2.9M", album: "Red Hand Akimbo" },
+        { title: "BULLET", duration: "2:45", streams: "1.8M", album: "MID AIR" },
+        { title: "SITUATIONS", duration: "3:22", streams: "1.2M", album: "Red Hand Akimbo" },
+    ],
+    "Feng Suave": [
+        { title: "Sink into the Floor", duration: "3:35", streams: "8.5M", album: "So Much for Gardening" },
+        { title: "People Watching", duration: "3:18", streams: "6.2M", album: "So Much for Gardening" },
+        { title: "Venus Flytrap", duration: "4:01", streams: "4.1M", album: "Warping Youth" },
+        { title: "Toking, Dozing", duration: "3:44", streams: "3.5M", album: "Warping Youth" },
+        { title: "Maybe Another Time", duration: "3:12", streams: "2.8M", album: "So Much for Gardening" },
+    ],
+    "Dave Blunts": [
+        { title: "On My Own", duration: "3:02", streams: "48M", album: "On My Own (Single)" },
+        { title: "Never Left", duration: "3:28", streams: "12M", album: "Never Left (Single)" },
+        { title: "Close to Me", duration: "3:44", streams: "8.5M", album: "Early Sessions" },
+        { title: "Moving On", duration: "2:58", streams: "5.2M", album: "Early Sessions" },
+        { title: "Cold Nights", duration: "3:15", streams: "3.1M", album: "Early Sessions" },
+    ],
+    "The Twolips": [
+        { title: "Bloom", duration: "3:22", streams: "45K", album: "First Light" },
+        { title: "Garden State", duration: "2:58", streams: "32K", album: "First Light" },
+        { title: "Petal", duration: "3:44", streams: "28K", album: "First Light" },
+        { title: "Willow", duration: "4:01", streams: "18K", album: "Demos" },
+        { title: "Sunrise", duration: "3:15", streams: "12K", album: "Demos" },
     ],
 };
 
-// ─── Recent Releases per artist ───
+// ─── Recent Releases per artist (keys must match DB stageName exactly) ───
 const recentReleases = {
+    "EsDeeKid": [
+        { title: "Neon Dreams", type: "Album", year: "2026", tracks: 14, cover: null },
+        { title: "Frequency", type: "Album", year: "2025", tracks: 11, cover: null },
+        { title: "Late Nights", type: "EP", year: "2024", tracks: 6, cover: null },
+    ],
+    "beabadoobee": [
+        { title: "This Is How Tomorrow Moves", type: "Album", year: "2024", tracks: 14, cover: null },
+        { title: "Beatopia", type: "Album", year: "2022", tracks: 14, cover: null },
+        { title: "Fake It Flowers", type: "Album", year: "2020", tracks: 12, cover: null },
+    ],
+    "jane remover": [
+        { title: "Census Designated", type: "Album", year: "2023", tracks: 16, cover: null },
+        { title: "Frailty", type: "Album", year: "2021", tracks: 11, cover: null },
+        { title: "Fingers Crossed", type: "EP", year: "2020", tracks: 5, cover: null },
+    ],
+    "malcolm todd": [
+        { title: "Soft Focus", type: "Album", year: "2026", tracks: 11, cover: null },
+        { title: "Velvet", type: "Single", year: "2025", tracks: 1, cover: null },
+        { title: "Early Demos", type: "EP", year: "2024", tracks: 7, cover: null },
+    ],
     "2hollis": [
         { title: "Phantom Thread", type: "EP", year: "2026", tracks: 5, cover: null },
         { title: "Vapor Trail", type: "Single", year: "2025", tracks: 1, cover: null },
         { title: "Early Works", type: "Album", year: "2024", tracks: 10, cover: null },
+    ],
+    "Doechii": [
+        { title: "Alligator Bites Never Heal", type: "Album", year: "2024", tracks: 19, cover: null },
+        { title: "She / Her / Black Bitch", type: "EP", year: "2022", tracks: 6, cover: null },
+        { title: "Oh the Places You'll Go", type: "EP", year: "2020", tracks: 7, cover: null },
+    ],
+    "Leon Thomas": [
+        { title: "Electric Dusk", type: "Album", year: "2024", tracks: 14, cover: null },
+        { title: "Genesis", type: "Album", year: "2023", tracks: 10, cover: null },
+        { title: "Metro Vibes", type: "EP", year: "2022", tracks: 5, cover: null },
+    ],
+    "iann dior": [
+        { title: "On to Better Things", type: "Album", year: "2022", tracks: 16, cover: null },
+        { title: "Industry Plant", type: "Album", year: "2020", tracks: 17, cover: null },
+        { title: "I'm Gone", type: "Album", year: "2019", tracks: 11, cover: null },
+    ],
+    "Men I Trust": [
+        { title: "Headroom", type: "Album", year: "2026", tracks: 10, cover: null },
+        { title: "Untourable Album", type: "Album", year: "2021", tracks: 14, cover: null },
+        { title: "Oncle Jazz", type: "Album", year: "2019", tracks: 17, cover: null },
+    ],
+    "Teezo Touchdown": [
+        { title: "How Do You Sleep at Night?", type: "Album", year: "2023", tracks: 15, cover: null },
+        { title: "First Hand", type: "EP", year: "2022", tracks: 6, cover: null },
+        { title: "Did You Get the Message?", type: "EP", year: "2021", tracks: 5, cover: null },
     ],
     "Snow Strippers": [
         { title: "Neon Vein", type: "Album", year: "2026", tracks: 12, cover: null },
         { title: "Wired", type: "Single", year: "2025", tracks: 1, cover: null },
         { title: "Debut EP", type: "EP", year: "2024", tracks: 6, cover: null },
     ],
-    "Malcom Todd": [
-        { title: "Soft Focus", type: "Album", year: "2026", tracks: 11, cover: null },
-        { title: "Velvet", type: "Single", year: "2025", tracks: 1, cover: null },
-        { title: "Early Demos", type: "EP", year: "2024", tracks: 7, cover: null },
+    "Yves Tumor": [
+        { title: "Praise a Lord Who Chews but Which Does Not Consume", type: "Album", year: "2023", tracks: 12, cover: null },
+        { title: "Heaven to a Tortured Mind", type: "Album", year: "2020", tracks: 13, cover: null },
+        { title: "Safe in the Hands of Love", type: "Album", year: "2018", tracks: 13, cover: null },
     ],
-    "Men I Trust": [
-        { title: "Headroom", type: "Album", year: "2026", tracks: 10, cover: null },
-        { title: "Untourable Album", type: "Album", year: "2025", tracks: 14, cover: null },
-        { title: "Oncle Jazz", type: "Album", year: "2024", tracks: 17, cover: null },
+    "JPEGMAFIA": [
+        { title: "I LAY DOWN MY LIFE FOR YOU", type: "Album", year: "2024", tracks: 15, cover: null },
+        { title: "LP!", type: "Album", year: "2021", tracks: 18, cover: null },
+        { title: "All My Heroes Are Cornballs", type: "Album", year: "2019", tracks: 18, cover: null },
     ],
     "King Krule": [
-        { title: "Concrete Garden", type: "Album", year: "2026", tracks: 13, cover: null },
-        { title: "Space Heavy", type: "Album", year: "2025", tracks: 10, cover: null },
-        { title: "You Heat Me Up", type: "Film", year: "2024", tracks: 8, cover: null },
+        { title: "Space Heavy", type: "Album", year: "2023", tracks: 10, cover: null },
+        { title: "Man Alive!", type: "Album", year: "2020", tracks: 14, cover: null },
+        { title: "The OOZ", type: "Album", year: "2017", tracks: 19, cover: null },
     ],
-    "Ian": [
-        { title: "RUNAWAY", type: "Single", year: "2026", tracks: 1, cover: null },
-        { title: "Lo-fi Diaries", type: "Album", year: "2025", tracks: 9, cover: null },
-        { title: "Early Works", type: "EP", year: "2024", tracks: 5, cover: null },
+    "Paris Texas": [
+        { title: "MID AIR", type: "Album", year: "2023", tracks: 12, cover: null },
+        { title: "Red Hand Akimbo", type: "EP", year: "2022", tracks: 7, cover: null },
+        { title: "BOY ANONYMOUS", type: "EP", year: "2021", tracks: 6, cover: null },
+    ],
+    "Feng Suave": [
+        { title: "So Much for Gardening", type: "Album", year: "2023", tracks: 10, cover: null },
+        { title: "Warping Youth", type: "EP", year: "2019", tracks: 6, cover: null },
+        { title: "Venus Flytrap", type: "Single", year: "2018", tracks: 1, cover: null },
+    ],
+    "Dave Blunts": [
+        { title: "On My Own", type: "Single", year: "2025", tracks: 1, cover: null },
+        { title: "Never Left", type: "Single", year: "2024", tracks: 1, cover: null },
+        { title: "Early Sessions", type: "EP", year: "2024", tracks: 5, cover: null },
+    ],
+    "The Twolips": [
+        { title: "First Light", type: "EP", year: "2025", tracks: 4, cover: null },
+        { title: "Demos", type: "EP", year: "2024", tracks: 3, cover: null },
     ],
 };
 

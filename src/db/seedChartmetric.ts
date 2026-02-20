@@ -1,13 +1,43 @@
 /**
- * Seed ESDK and BBDB artists with daily Chartmetric metrics.
- * Data range: 2026-01-20 → 2026-02-18 (30 days).
+ * Seed artists with daily Chartmetric metrics.
+ * Original 5 artists use real data; 13 new artists use synthetic data
+ * generated from a seeded PRNG for deterministic reproducibility.
+ *
+ * Data range: ~30 days ending 2026-02-18.
  *
  * Usage: npx tsx src/db/seedChartmetric.ts
  */
 import { db, client } from './index';
-import { users, artists, ledgerAccounts, artistMetricSnapshots } from './schema';
+import { users, artists, ledgerAccounts, artistMetricSnapshots, tractionIndexSnapshots } from './schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
+
+// ── Seeded PRNG (mulberry32) ──────────────────────────────────────────────
+
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  }
+  return h >>> 0;
+}
+
+function mulberry32(seed: number) {
+  let s = seed | 0;
+  return () => {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Box-Muller Gaussian with mean=0, stddev=1 */
+function gaussian(rng: () => number): number {
+  const u1 = rng();
+  const u2 = rng();
+  return Math.sqrt(-2 * Math.log(Math.max(u1, 1e-10))) * Math.cos(2 * Math.PI * u2);
+}
 
 // ── Artist definitions ────────────────────────────────────────────────────
 
@@ -20,53 +50,141 @@ interface ArtistDef {
   sharesOutstanding: number;
   maxShares: number;
   basePrice: string;
+  /** If set, use synthetic data with these params */
+  synthetic?: {
+    baseListeners: number;     // Spotify monthly listeners starting point
+    trendPct: number;          // Overall 30-day trend percentage
+    volatility: number;        // Noise multiplier (0.01 = 1%)
+  };
 }
 
 const ARTIST_DEFS: ArtistDef[] = [
+  // ── Original artists (real data) ──
   {
-    symbol: 'ESDK',
-    name: 'EsDeeKid',
+    symbol: 'ESDK', name: 'EsDeeKid',
     email: 'esdeekid@seed.crescendo.io',
-    description: 'Seed artist for Crescendo markets (Chartmetric manual daily trends ingestion).',
-    revenueSharePct: '0.1000',
-    sharesOutstanding: 1_000_000,
-    maxShares: 2_000_000,
-    basePrice: '1.0000',
+    description: 'Experimental hip-hop artist with 22M+ monthly listeners. Known for genre-bending production and raw lyricism.',
+    revenueSharePct: '0.1000', sharesOutstanding: 1_000_000, maxShares: 2_000_000, basePrice: '1.0000',
   },
   {
-    symbol: 'BBDB',
-    name: 'beabadoobee',
+    symbol: 'BBDB', name: 'beabadoobee',
     email: 'beabadoobee@seed.crescendo.io',
-    description: 'Seed artist for Crescendo markets (Chartmetric manual daily trends ingestion).',
-    revenueSharePct: '0.1000',
-    sharesOutstanding: 1_000_000,
-    maxShares: 2_000_000,
-    basePrice: '1.0000',
+    description: 'Filipino-British indie pop artist. Bedroom-pop breakout turned arena headliner with devoted fanbase.',
+    revenueSharePct: '0.1000', sharesOutstanding: 1_000_000, maxShares: 2_000_000, basePrice: '1.0000',
   },
   {
-    symbol: 'JRJR',
-    name: 'jane remover',
+    symbol: 'JRJR', name: 'jane remover',
     email: 'janeremover@seed.crescendo.io',
-    description: 'Seed artist for Crescendo markets (Chartmetric manual daily trends ingestion).',
-    revenueSharePct: '0.1000',
-    sharesOutstanding: 1_000_000,
-    maxShares: 2_000_000,
-    basePrice: '1.0000',
+    description: 'Hyperpop and shoegaze pioneer. Leading voice of the online experimental music scene.',
+    revenueSharePct: '0.1000', sharesOutstanding: 1_000_000, maxShares: 2_000_000, basePrice: '1.0000',
   },
   {
-    symbol: 'MCTD',
-    name: 'malcolm todd',
+    symbol: 'MCTD', name: 'malcolm todd',
     email: 'malcolmtodd@seed.crescendo.io',
-    description: 'Seed artist for Crescendo markets (Chartmetric manual daily trends ingestion).',
-    revenueSharePct: '0.1000',
-    sharesOutstanding: 1_000_000,
-    maxShares: 2_000_000,
-    basePrice: '1.0000',
+    description: 'Austin-based R&B vocalist crafting intimate, genre-bending soul music. Rapid streaming growth.',
+    revenueSharePct: '0.1000', sharesOutstanding: 1_000_000, maxShares: 2_000_000, basePrice: '1.0000',
+  },
+  {
+    symbol: 'HLLS', name: '2hollis',
+    email: '2hollis@seed.crescendo.io',
+    description: 'Experimental hip-hop artist blending ambient production with raw lyricism. Rising underground presence.',
+    revenueSharePct: '0.1000', sharesOutstanding: 1_000_000, maxShares: 2_000_000, basePrice: '1.0000',
+  },
+  // ── New artists (synthetic data) ──
+  {
+    symbol: 'DCHI', name: 'Doechii',
+    email: 'doechii@seed.crescendo.io',
+    description: 'Grammy-nominated rapper/singer. Massive streaming presence.',
+    revenueSharePct: '0.1000', sharesOutstanding: 1_000_000, maxShares: 2_000_000, basePrice: '1.0000',
+    synthetic: { baseListeners: 28_900_000, trendPct: 12, volatility: 0.008 },
+  },
+  {
+    symbol: 'LNTH', name: 'Leon Thomas',
+    email: 'leonthomas@seed.crescendo.io',
+    description: 'R&B singer-songwriter and producer. Rising star with crossover appeal.',
+    revenueSharePct: '0.1000', sharesOutstanding: 1_000_000, maxShares: 2_000_000, basePrice: '1.0000',
+    synthetic: { baseListeners: 14_000_000, trendPct: 9, volatility: 0.010 },
+  },
+  {
+    symbol: 'IANN', name: 'iann dior',
+    email: 'ianndior@seed.crescendo.io',
+    description: 'Pop-punk / hip-hop crossover artist. Chart-proven hitmaker.',
+    revenueSharePct: '0.1000', sharesOutstanding: 1_000_000, maxShares: 2_000_000, basePrice: '1.0000',
+    synthetic: { baseListeners: 8_800_000, trendPct: -2.5, volatility: 0.012 },
+  },
+  {
+    symbol: 'MNIT', name: 'Men I Trust',
+    email: 'menitrust@seed.crescendo.io',
+    description: 'Canadian dream-pop/indie trio with a cult following.',
+    revenueSharePct: '0.1000', sharesOutstanding: 1_000_000, maxShares: 2_000_000, basePrice: '1.0000',
+    synthetic: { baseListeners: 7_200_000, trendPct: 6, volatility: 0.009 },
+  },
+  {
+    symbol: 'TZTO', name: 'Teezo Touchdown',
+    email: 'teezotouchdown@seed.crescendo.io',
+    description: 'Avant-garde rapper and visual artist. Genre-bending experimentalist.',
+    revenueSharePct: '0.1000', sharesOutstanding: 1_000_000, maxShares: 2_000_000, basePrice: '1.0000',
+    synthetic: { baseListeners: 7_000_000, trendPct: 7, volatility: 0.015 },
+  },
+  {
+    symbol: 'SNST', name: 'Snow Strippers',
+    email: 'snowstrippers@seed.crescendo.io',
+    description: 'Electronic / industrial pop duo. Fast-rising streaming numbers.',
+    revenueSharePct: '0.1000', sharesOutstanding: 1_000_000, maxShares: 2_000_000, basePrice: '1.0000',
+    synthetic: { baseListeners: 5_900_000, trendPct: 14, volatility: 0.018 },
+  },
+  {
+    symbol: 'YVTM', name: 'Yves Tumor',
+    email: 'yvestumor@seed.crescendo.io',
+    description: 'Experimental rock/art pop icon. Critical darling with devoted fanbase.',
+    revenueSharePct: '0.1000', sharesOutstanding: 1_000_000, maxShares: 2_000_000, basePrice: '1.0000',
+    synthetic: { baseListeners: 5_300_000, trendPct: 5, volatility: 0.013 },
+  },
+  {
+    symbol: 'JPEG', name: 'JPEGMAFIA',
+    email: 'jpegmafia@seed.crescendo.io',
+    description: 'Experimental hip-hop producer and MC. Underground icon.',
+    revenueSharePct: '0.1000', sharesOutstanding: 1_000_000, maxShares: 2_000_000, basePrice: '1.0000',
+    synthetic: { baseListeners: 2_700_000, trendPct: 8.5, volatility: 0.020 },
+  },
+  {
+    symbol: 'KGKR', name: 'King Krule',
+    email: 'kingkrule@seed.crescendo.io',
+    description: 'London-based artist blending jazz, punk, and electronic. Cult following.',
+    revenueSharePct: '0.1000', sharesOutstanding: 1_000_000, maxShares: 2_000_000, basePrice: '1.0000',
+    synthetic: { baseListeners: 1_800_000, trendPct: 4, volatility: 0.016 },
+  },
+  {
+    symbol: 'PRTX', name: 'Paris Texas',
+    email: 'paristexas@seed.crescendo.io',
+    description: 'Rap duo from Los Angeles. Raw, energetic, building a following.',
+    revenueSharePct: '0.1000', sharesOutstanding: 1_000_000, maxShares: 2_000_000, basePrice: '1.0000',
+    synthetic: { baseListeners: 521_000, trendPct: 3.8, volatility: 0.025 },
+  },
+  {
+    symbol: 'FENG', name: 'Feng Suave',
+    email: 'fengsuave@seed.crescendo.io',
+    description: 'Indie/neo-soul artist from the Netherlands. Smooth, chill vibes.',
+    revenueSharePct: '0.1000', sharesOutstanding: 1_000_000, maxShares: 2_000_000, basePrice: '1.0000',
+    synthetic: { baseListeners: 416_000, trendPct: 1.5, volatility: 0.022 },
+  },
+  {
+    symbol: 'DVBL', name: 'Dave Blunts',
+    email: 'daveblunts@seed.crescendo.io',
+    description: 'Viral vocalist and emerging artist. Explosive growth potential.',
+    revenueSharePct: '0.1000', sharesOutstanding: 1_000_000, maxShares: 2_000_000, basePrice: '1.0000',
+    synthetic: { baseListeners: 207_000, trendPct: 22, volatility: 0.035 },
+  },
+  {
+    symbol: 'TWLP', name: 'The Twolips',
+    email: 'thetwolips@seed.crescendo.io',
+    description: 'Emerging indie band. Very early stage with high upside potential.',
+    revenueSharePct: '0.1000', sharesOutstanding: 1_000_000, maxShares: 2_000_000, basePrice: '1.0000',
+    synthetic: { baseListeners: 1_400, trendPct: 35, volatility: 0.055 },
   },
 ];
 
-// ── ESDK daily metrics (2026-01-20 → 2026-02-18) ─────────────────────────
-// Note: ESDK has no spotifyPopularity data
+// ── Synthetic data generator ──────────────────────────────────────────────
 
 interface DailyRow {
   date: string;
@@ -81,6 +199,93 @@ interface DailyRow {
   fanConversionRate: number;
   spotifyListenerToFollowerRatio: number;
 }
+
+function generateSyntheticDaily(
+  symbol: string,
+  baseListeners: number,
+  trendPct: number,
+  volatility: number,
+  days: number = 30,
+): DailyRow[] {
+  const rng = mulberry32(hashStr(symbol + '_seed_v2'));
+
+  // Derive starting metrics proportionally from listeners
+  const followerRatio = 0.05 + rng() * 0.15; // 5-20% of listeners
+  const baseFollowers = Math.round(baseListeners * followerRatio);
+  const basePlaylistReach = Math.round(baseListeners * (2 + rng() * 8));
+  const baseTiktok = Math.round(baseListeners * (0.02 + rng() * 0.15));
+  const baseInstagram = Math.round(baseListeners * (0.03 + rng() * 0.12));
+  const baseYtSubs = Math.round(baseListeners * (0.01 + rng() * 0.05));
+  const baseYtViews = Math.round(baseYtSubs * (200 + rng() * 800));
+
+  // Daily compound growth rate to hit trendPct over the period
+  const dailyGrowth = Math.pow(1 + trendPct / 100, 1 / days);
+
+  // Start date: 30 days before 2026-02-18
+  const endDate = new Date('2026-02-18');
+  const startDate = new Date(endDate);
+  startDate.setDate(startDate.getDate() - (days - 1));
+
+  const rows: DailyRow[] = [];
+
+  // Running values for each metric
+  let listeners = baseListeners;
+  let followers = baseFollowers;
+  let playlistReach = basePlaylistReach;
+  let tiktok = baseTiktok;
+  let instagram = baseInstagram;
+  let ytSubs = baseYtSubs;
+  let ytViews = baseYtViews;
+
+  for (let d = 0; d < days; d++) {
+    const date = new Date(startDate);
+    date.setDate(date.getDate() + d);
+    const dateStr = date.toISOString().slice(0, 10);
+
+    if (d > 0) {
+      // Apply growth + noise to each metric independently
+      const noise = () => gaussian(rng) * volatility;
+
+      listeners = Math.max(1, Math.round(listeners * (dailyGrowth + noise())));
+      followers = Math.max(1, Math.round(followers * (1 + (dailyGrowth - 1) * 0.4 + noise() * 0.3)));
+      playlistReach = Math.max(1, Math.round(playlistReach * (1 + (dailyGrowth - 1) * 1.2 + noise() * 0.8)));
+      tiktok = Math.max(1, Math.round(tiktok * (1 + (dailyGrowth - 1) * 0.6 + noise() * 0.5)));
+      instagram = Math.max(1, Math.round(instagram * (1 + (dailyGrowth - 1) * 0.5 + noise() * 0.4)));
+      ytSubs = Math.max(1, Math.round(ytSubs * (1 + (dailyGrowth - 1) * 0.3 + noise() * 0.2)));
+      ytViews = Math.max(1, Math.round(ytViews * (1 + (dailyGrowth - 1) * 0.8 + noise() * 0.3)));
+    }
+
+    const fanConversion = followers > 0 && listeners > 0
+      ? Math.round((followers / listeners) * 1000000) / 1000000
+      : 0;
+    const listenerFollowerRatio = followers > 0
+      ? Math.round((listeners / followers) * 1000000) / 1000000
+      : 0;
+
+    // Spotify popularity: log-scaled from listeners (0-100)
+    const pop = Math.min(100, Math.max(0,
+      Math.round(Math.log10(Math.max(listeners, 1)) / Math.log10(50_000_000) * 80 + gaussian(rng) * 2)
+    ));
+
+    rows.push({
+      date: dateStr,
+      spotifyMonthlyListeners: listeners,
+      spotifyFollowers: followers,
+      spotifyPopularity: pop,
+      playlistReach: playlistReach,
+      tiktokFollowers: tiktok,
+      instagramFollowers: instagram,
+      youtubeSubscribers: ytSubs,
+      youtubeChannelViews: ytViews,
+      fanConversionRate: fanConversion,
+      spotifyListenerToFollowerRatio: listenerFollowerRatio,
+    });
+  }
+
+  return rows;
+}
+
+// ── ESDK daily metrics (2026-01-20 → 2026-02-18) ─────────────────────────
 
 const ESDK_DAILY: DailyRow[] = [
   { date: '2026-01-20', spotifyMonthlyListeners: 22375558, spotifyFollowers: 1359275, spotifyPopularity: null, playlistReach: 150677777, tiktokFollowers: 905800, instagramFollowers: 1185926, youtubeSubscribers: 316000, youtubeChannelViews: 128609670, fanConversionRate: 0.06073907, spotifyListenerToFollowerRatio: 16.45967328 },
@@ -151,7 +356,6 @@ const BBDB_DAILY: DailyRow[] = [
 ];
 
 // ── JRJR daily metrics (2026-01-21 → 2026-02-19) ─────────────────────────
-// Note: JRJR has no spotifyPopularity data
 
 const JRJR_DAILY: DailyRow[] = [
   { date: '2026-01-21', spotifyMonthlyListeners: 816431, spotifyFollowers: 204416, spotifyPopularity: null, playlistReach: 10180955, tiktokFollowers: 82933, instagramFollowers: 200232, youtubeSubscribers: 56300, youtubeChannelViews: 14704961, fanConversionRate: 0.250378, spotifyListenerToFollowerRatio: 3.993968 },
@@ -187,7 +391,6 @@ const JRJR_DAILY: DailyRow[] = [
 ];
 
 // ── MCTD daily metrics (2026-01-21 → 2026-02-19) ─────────────────────────
-// Note: MCTD has no spotifyPopularity data
 
 const MCTD_DAILY: DailyRow[] = [
   { date: '2026-01-21', spotifyMonthlyListeners: 12469599, spotifyFollowers: 1080333, spotifyPopularity: null, playlistReach: 41619951, tiktokFollowers: 925575, instagramFollowers: 498875, youtubeSubscribers: 275500, youtubeChannelViews: 138389860, fanConversionRate: 0.086637, spotifyListenerToFollowerRatio: 11.542366 },
@@ -222,18 +425,64 @@ const MCTD_DAILY: DailyRow[] = [
   { date: '2026-02-19', spotifyMonthlyListeners: 13871936, spotifyFollowers: 1198753, spotifyPopularity: null, playlistReach: 48790088, tiktokFollowers: 999200, instagramFollowers: 556172, youtubeSubscribers: 293000, youtubeChannelViews: 150717700, fanConversionRate: 0.086416, spotifyListenerToFollowerRatio: 11.571972 },
 ];
 
-const DAILY_DATA: Record<string, DailyRow[]> = {
-  ESDK: ESDK_DAILY,
-  BBDB: BBDB_DAILY,
-  JRJR: JRJR_DAILY,
-  MCTD: MCTD_DAILY,
-};
+// 2hollis (HLLS) — no metric data yet
+const HLLS_DAILY: DailyRow[] = [];
+
+// ── Build daily data map (real + synthetic) ───────────────────────────────
+
+function buildDailyDataMap(): Record<string, DailyRow[]> {
+  const map: Record<string, DailyRow[]> = {
+    ESDK: ESDK_DAILY,
+    BBDB: BBDB_DAILY,
+    JRJR: JRJR_DAILY,
+    MCTD: MCTD_DAILY,
+    HLLS: HLLS_DAILY,
+  };
+
+  // Generate synthetic data for new artists
+  for (const def of ARTIST_DEFS) {
+    if (def.synthetic) {
+      map[def.symbol] = generateSyntheticDaily(
+        def.symbol,
+        def.synthetic.baseListeners,
+        def.synthetic.trendPct,
+        def.synthetic.volatility,
+      );
+    }
+  }
+
+  return map;
+}
+
+// ── Fake artists to remove ─────────────────────────────────────────────
+const FAKE_STAGE_NAMES = ['Marco Beats', 'Luna Vega', 'Sable Noir'];
 
 // ── Main seed function ────────────────────────────────────────────────────
 
 async function seedChartmetric() {
   console.log('=== Chartmetric Artist Seed ===\n');
 
+  // ── 0. Remove fake artists ──────────────────────────────────────────────
+  console.log('--- Removing fake artists ---');
+  for (const fakeName of FAKE_STAGE_NAMES) {
+    const [found] = await db
+      .select({ id: artists.id, symbol: artists.symbol })
+      .from(artists)
+      .where(eq(artists.stageName, fakeName))
+      .limit(1);
+
+    if (found) {
+      // Delete in FK order: traction → metric snapshots → artist
+      await db.delete(tractionIndexSnapshots).where(eq(tractionIndexSnapshots.artistId, found.id));
+      await db.delete(artistMetricSnapshots).where(eq(artistMetricSnapshots.artistId, found.id));
+      await db.delete(artists).where(eq(artists.id, found.id));
+      console.log(`  Removed "${fakeName}" (${found.symbol})`);
+    } else {
+      console.log(`  "${fakeName}" not found, skipping`);
+    }
+  }
+
+  const DAILY_DATA = buildDailyDataMap();
   const passwordHash = await bcrypt.hash('seed1234', 10);
   const artistIdBySymbol: Record<string, string> = {};
 
@@ -311,14 +560,13 @@ async function seedChartmetric() {
 
   for (const def of ARTIST_DEFS) {
     const artistId = artistIdBySymbol[def.symbol];
-    const rows = DAILY_DATA[def.symbol];
+    const rows = DAILY_DATA[def.symbol] || [];
     let inserted = 0;
     let skipped = 0;
 
     for (const row of rows) {
       const capturedAt = new Date(row.date + 'T00:00:00Z');
 
-      // Check for existing snapshot on this date (using unique index)
       try {
         await db.insert(artistMetricSnapshots).values({
           artistId,
@@ -340,7 +588,6 @@ async function seedChartmetric() {
         inserted++;
       } catch (err: any) {
         if (err.code === '23505' || err?.cause?.code === '23505') {
-          // Unique constraint violation — row already exists
           skipped++;
         } else {
           throw err;
@@ -358,7 +605,6 @@ async function seedChartmetric() {
     const { recomputeArtistBasePrices, getDailyCandles } = await import('../services/dailyPrice.service');
     await recomputeArtistBasePrices();
 
-    // Log the computed prices for each artist
     for (const def of ARTIST_DEFS) {
       const artId = artistIdBySymbol[def.symbol];
       const candles = await getDailyCandles(artId);
@@ -390,10 +636,6 @@ async function seedChartmetric() {
   }
 
   // ── 5. FINAL: Re-apply deterministic prices & reset all circuit breakers
-  // The traction index in step 4 may have changed prices and tripped breakers.
-  // We re-run recomputeArtistBasePrices() as the FINAL step to ensure:
-  //   - Prices are deterministic (derived from metrics, not traction index)
-  //   - All circuit breakers are closed
   console.log('\n--- Final price recompute & circuit breaker reset ---');
 
   try {

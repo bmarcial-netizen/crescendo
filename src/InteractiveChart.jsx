@@ -263,6 +263,7 @@ export default function InteractiveChart({
           {[
             { key: "line", label: "Line" },
             { key: "candlestick", label: "Candles" },
+            { key: "scatter", label: "Dots" },
           ].map((m) => (
             <button
               key={m.key}
@@ -478,6 +479,81 @@ export default function InteractiveChart({
                   />
                 </>
               )}
+            </>
+          ) : mode === "scatter" ? (
+            <>
+              {/* Y-axis grid lines with price labels */}
+              {[0, 0.25, 0.5, 0.75, 1].map((frac) => {
+                const priceVal = min + (1 - frac) * range;
+                return (
+                  <text
+                    key={`y-${frac}`}
+                    x={PAD.left + 2}
+                    y={PAD.top + frac * chartH - 3}
+                    fill="rgba(0,0,0,0.25)"
+                    fontSize="8"
+                    fontFamily="'Inter', monospace"
+                  >
+                    ${priceVal.toFixed(2)}
+                  </text>
+                );
+              })}
+
+              {/* Scatter dots: each data point as a circle on the x-y plane */}
+              {pts.map((p, i) => {
+                const isHovered = hoverIdx === i;
+                const dotColor = viewData[i]?.v >= (i > 0 ? viewData[i-1]?.v : viewData[i]?.v) ? C.green : C.red;
+                return (
+                  <g key={i}>
+                    {/* Subtle connecting line between dots */}
+                    {i > 0 && (
+                      <line
+                        x1={pts[i-1].x}
+                        y1={pts[i-1].y}
+                        x2={p.x}
+                        y2={p.y}
+                        stroke={dotColor}
+                        strokeWidth="0.5"
+                        strokeDasharray="2 3"
+                        opacity="0.3"
+                      />
+                    )}
+                    {/* Outer glow on hover */}
+                    {isHovered && (
+                      <circle
+                        cx={p.x}
+                        cy={p.y}
+                        r="10"
+                        fill={dotColor}
+                        fillOpacity="0.15"
+                      />
+                    )}
+                    {/* Main dot */}
+                    <circle
+                      cx={p.x}
+                      cy={p.y}
+                      r={isHovered ? 5 : 3.5}
+                      fill={dotColor}
+                      fillOpacity={isHovered ? 1 : 0.8}
+                      stroke="#fff"
+                      strokeWidth={isHovered ? 1.5 : 0.5}
+                      style={{ transition: "r 0.1s, fill-opacity 0.1s" }}
+                    />
+                  </g>
+                );
+              })}
+
+              {/* Comparison scatter dots */}
+              {comparisonData && compPts.length > 0 && compPts.map((p, i) => (
+                <circle
+                  key={`comp-${i}`}
+                  cx={p.x}
+                  cy={p.y}
+                  r={hoverIdx === i ? 4 : 2.5}
+                  fill={comparisonColor}
+                  fillOpacity={0.7}
+                />
+              ))}
             </>
           ) : (
             effectiveOhlc.map((candle, i) => {

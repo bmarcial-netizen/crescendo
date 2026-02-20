@@ -1,16 +1,18 @@
 /**
- * Daily Price Series Service — Growth-Based Pricing
+ * Daily Price Series Service — Growth-Based Pricing with Volatility Noise
  *
  * Computes a deterministic daily close price for each artist from their
- * daily metric snapshots. NO randomness, NO dependency on trade state.
+ * daily metric snapshots, with per-artist seeded noise for realistic
+ * volatility. Also generates synthetic intraday points (every 15–30 min).
  *
  * Approach:
- *   1. For each artist, fetch ALL metric snapshots sorted by date
- *   2. Compute an initial base price from first-day popularity (so bigger artists start higher)
- *   3. For each subsequent day, compute the WEIGHTED GROWTH RATE across all metrics
- *   4. Apply an amplification factor so realistic ~5% monthly growth → visible price movement
- *   5. Clamp daily returns to ±12% to avoid wild swings
- *   6. Generate OHLC deterministically from close series
+ *   1. Fetch ALL metric snapshots sorted by date
+ *   2. Compute a base price from first-day popularity (listeners weighted heavily)
+ *   3. For each day, compute WEIGHTED GROWTH RATE across metrics
+ *   4. Add deterministic noise (seeded by artistId + date) for volatility
+ *   5. Clamp daily returns to ±12%
+ *   6. Generate OHLC from close series, with realistic wicks from noise
+ *   7. Optionally generate intraday synthetic candles (15 min intervals)
  *
  * Key principle: "the stock goes up on growth regardless of numbers, more on percentages"
  */
@@ -28,6 +30,11 @@ export interface DailyCandle {
   l: number;   // low
   c: number;   // close
   v: number;   // volume (0 for metric-derived)
+}
+
+export interface IntradayPoint {
+  t: string;   // ISO datetime string
+  p: number;   // price
 }
 
 export interface MarketSummary {
@@ -68,53 +75,81 @@ const METRIC_WEIGHTS = [
   { key: 'youtubeChannelViews' as const,     weight: 10 },
 ];
 
-/**
- * Growth amplification factor.
- * Real-world monthly growth of ~5% across metrics → ~15-25% price movement.
- * This makes charts visually interesting and realistic for a stock-like platform.
- */
+/** Growth amplification factor. */
 const GROWTH_AMPLIFICATION = 3.5;
 
+/** Deterministic noise amplitude (fraction of price). ±2.5% daily noise. */
+const NOISE_AMPLITUDE = 0.025;
+
+// ── Seeded PRNG ─────────────────────────────────────────────────────────
+
+/** Mulberry32: deterministic PRNG. Same seed → same sequence. */
+function seededRng(seed: number): () => number {
+  let t = seed | 0;
+  return () => {
+    t = (t + 0x6D2B79F5) | 0;
+    let x = Math.imul(t ^ (t >>> 15), 1 | t);
+    x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x;
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Hash a string to a 32-bit integer for use as RNG seed. */
+function hashString(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  }
+  return h;
+}
+
+// ── Popularity & Base Price ─────────────────────────────────────────────
+
 /**
- * Compute a popularity score from a metric snapshot (log-scale).
- * Used ONLY for setting the initial base price so bigger artists start higher.
+ * Compute popularity score using a TWO-TIER approach.
+ * Tier 1: Spotify monthly listeners (sqrt scale) — dominates to ensure
+ *         artists with very different listener counts get different prices.
+ * Tier 2: Other social/platform metrics (log scale) — secondary signal.
  */
 function computePopularityScore(row: MetricRow): number {
+  // Tier 1: listeners on sqrt scale for better spread across magnitudes
+  const listeners = numOrNull(row.spotifyMonthlyListeners);
+  const listenerScore = listeners && listeners > 0 ? Math.sqrt(listeners) : 0;
+  const listenerNorm = listenerScore / 1000; // sqrt(22M)≈4.69, sqrt(6M)≈2.45, sqrt(800K)≈0.89
+
+  // Tier 2: non-listener metrics on log scale
+  const otherWeights = METRIC_WEIGHTS.filter(m => m.key !== 'spotifyMonthlyListeners');
   let totalWeight = 0;
   let weightedSum = 0;
-
-  for (const m of METRIC_WEIGHTS) {
+  for (const m of otherWeights) {
     const val = numOrNull(row[m.key]);
     if (val !== null && val > 0) {
       weightedSum += m.weight * Math.log1p(val);
       totalWeight += m.weight;
     }
   }
+  const otherScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
 
-  if (totalWeight === 0) return 0;
-  return weightedSum / totalWeight;
+  // Blend: listeners dominate (55%) for differentiation
+  return listenerNorm * 0.55 + otherScore * 0.45;
 }
 
 /**
- * Compute the initial base price for an artist based on their first metric snapshot.
- * More popular artists = higher price.
- *
+ * Base price from first-day popularity.
  * Approximate mapping:
- *   log1p(22M) ≈ 16.9 → ~$4.50  (ESDK)
- *   log1p(12M) ≈ 16.3 → ~$3.80  (MCTD)
- *   log1p(6M)  ≈ 15.6 → ~$3.00  (BBDB)
- *   log1p(800K) ≈ 13.6 → ~$1.60 (JRJR)
+ *   ESDK (22M listeners): ~$5.20
+ *   MCTD (12M listeners): ~$3.90
+ *   BBDB (6M listeners):  ~$2.80
+ *   JRJR (800K listeners): ~$1.50
  */
 function computeInitialBasePrice(firstDayScore: number): number {
   if (firstDayScore <= 0) return 1.0;
-  const price = 0.15 * Math.pow(firstDayScore, 1.2);
+  const price = 0.35 * Math.pow(firstDayScore, 1.05);
   return round4(Math.max(0.10, price));
 }
 
 /**
- * Compute the weighted average growth rate between two metric rows.
- * Returns a fractional growth rate (e.g., 0.005 = +0.5%).
- * Metrics that are NULL in either row are excluded.
+ * Weighted average growth rate between two metric rows.
  */
 function computeGrowthRate(current: MetricRow, previous: MetricRow): number {
   let totalWeight = 0;
@@ -137,23 +172,15 @@ function computeGrowthRate(current: MetricRow, previous: MetricRow): number {
 // ── Main Functions ─────────────────────────────────────────────────────────
 
 /**
- * Generate daily OHLCV candles for an artist within a date range.
- * 100% deterministic — same inputs always produce same outputs.
- *
- * Pricing model:
- *   - Base price from first-day popularity (differentiation)
- *   - Daily price driven by GROWTH RATES of metrics (percentage-based)
- *   - Amplified to produce meaningful stock-like price movement
- *   - Clamped to ±12% per day
+ * Generate daily OHLCV candles for an artist.
+ * Deterministic: same artistId + data → same output.
+ * Includes per-artist seeded noise for realistic volatility.
  */
 export async function getDailyCandles(
   artistId: string,
   startDate?: string,
   endDate?: string,
 ): Promise<DailyCandle[]> {
-  // ALWAYS fetch ALL metric snapshots for this artist to compute correct prices.
-  // We need the full history to get the right base price and cumulative growth.
-  // We'll filter the OUTPUT candles by date range after computation.
   const allRows = await db
     .select({
       capturedAt: artistMetricSnapshots.capturedAt,
@@ -172,63 +199,81 @@ export async function getDailyCandles(
 
   if (allRows.length === 0) return [];
 
-  // Compute initial base price from first day popularity
   const baselineScore = computePopularityScore(allRows[0]);
   const basePrice = computeInitialBasePrice(baselineScore);
 
-  // Generate close prices using day-over-day growth rates
-  const closes: { date: string; close: number }[] = [];
-  let prevClose = basePrice;
+  // Seed the RNG from artistId for per-artist noise patterns
+  const rng = seededRng(hashString(artistId));
 
-  for (let i = 0; i < allRows.length; i++) {
-    const date = allRows[i].capturedAt.toISOString().slice(0, 10);
+  // ── Pass 1: compute "clean" close prices from metric growth ──────────
+  const cleanCloses: number[] = [basePrice];
+  for (let i = 1; i < allRows.length; i++) {
+    const dailyGrowth = computeGrowthRate(allRows[i], allRows[i - 1]);
+    const amplifiedReturn = dailyGrowth * GROWTH_AMPLIFICATION;
+    let rawClose = cleanCloses[i - 1] * (1 + amplifiedReturn);
 
-    if (i === 0) {
-      closes.push({ date, close: basePrice });
-      prevClose = basePrice;
+    // Clamp
+    const maxClose = cleanCloses[i - 1] * 1.12;
+    const minClose = cleanCloses[i - 1] * 0.88;
+    rawClose = Math.max(minClose, Math.min(maxClose, rawClose));
+
+    cleanCloses.push(round4(Math.max(0.01, rawClose)));
+  }
+
+  // ── Pass 2: add noise that mean-reverts to the clean trajectory ──────
+  // For each day, add a noise offset. On the LAST day, snap back to clean close.
+  const noisyCloses: number[] = [];
+  let accNoise = 0; // accumulated noise offset (as fraction of price)
+
+  for (let i = 0; i < cleanCloses.length; i++) {
+    const isLastDay = i === cleanCloses.length - 1;
+
+    if (i === 0 || isLastDay) {
+      // First and last day: no noise (exact match)
+      noisyCloses.push(cleanCloses[i]);
+      accNoise = 0;
       continue;
     }
 
-    // Compute day-over-day growth rate across all metrics
-    const dailyGrowth = computeGrowthRate(allRows[i], allRows[i - 1]);
+    // Noise term: gaussian-ish from uniform via Box-Muller lite
+    const u1 = rng();
+    const u2 = rng();
+    const gaussish = Math.sqrt(-2 * Math.log(Math.max(u1, 0.0001))) * Math.cos(2 * Math.PI * u2);
 
-    // Amplify the growth to make price movements meaningful
-    const amplifiedReturn = dailyGrowth * GROWTH_AMPLIFICATION;
+    // Daily noise: random walk with mean-reversion toward clean trajectory
+    const reversion = -accNoise * 0.3; // pull 30% back toward clean line each day
+    const dailyNoise = gaussish * NOISE_AMPLITUDE + reversion;
+    accNoise += dailyNoise;
 
-    // Compute raw close from previous close + amplified growth
-    let rawClose = round4(prevClose * (1 + amplifiedReturn));
+    // Clamp accumulated noise to ±8% of price
+    accNoise = Math.max(-0.08, Math.min(0.08, accNoise));
 
-    // Clamp daily return to ±12%
-    const maxClose = round4(prevClose * 1.12);
-    const minClose = round4(prevClose * 0.88);
-    rawClose = Math.max(minClose, Math.min(maxClose, rawClose));
-
-    const close = round4(Math.max(0.01, rawClose));
-    closes.push({ date, close });
-    prevClose = close;
+    const noisyClose = round4(Math.max(0.01, cleanCloses[i] * (1 + accNoise)));
+    noisyCloses.push(noisyClose);
   }
 
-  // Generate OHLC deterministically from close series
+  // ── Pass 3: generate OHLC from noisy closes with realistic wicks ─────
   const allCandles: DailyCandle[] = [];
-  for (let i = 0; i < closes.length; i++) {
-    const { date, close } = closes[i];
-    const open = i === 0 ? close : closes[i - 1].close;
+  for (let i = 0; i < noisyCloses.length; i++) {
+    const date = allRows[i].capturedAt.toISOString().slice(0, 10);
+    const close = noisyCloses[i];
+    const open = i === 0 ? close : noisyCloses[i - 1];
 
-    // High/Low: deterministic spread based on open-close range
     const bodyHigh = Math.max(open, close);
     const bodyLow = Math.min(open, close);
     const bodyRange = bodyHigh - bodyLow;
 
-    // Wick extends by 30% of body range (minimum 0.4% of price)
-    const wickExtension = Math.max(bodyRange * 0.3, close * 0.004);
+    // Wicks: seeded random extension for varied candle shapes
+    const wickUp = Math.max(bodyRange * 0.3, close * 0.004) * (0.5 + rng());
+    const wickDown = Math.max(bodyRange * 0.3, close * 0.004) * (0.5 + rng());
 
     allCandles.push({
       t: date,
       o: round4(open),
-      h: round4(bodyHigh + wickExtension),
-      l: round4(Math.max(0.01, bodyLow - wickExtension)),
+      h: round4(bodyHigh + wickUp),
+      l: round4(Math.max(0.01, bodyLow - wickDown)),
       c: round4(close),
-      v: 0,
+      v: Math.floor(rng() * 5000 + 500), // synthetic volume
     });
   }
 
@@ -245,6 +290,58 @@ export async function getDailyCandles(
 }
 
 /**
+ * Generate synthetic intraday points (every 15 min) for a single daily candle.
+ * Creates a random-walk path from open → close that hits high/low along the way.
+ * Fully deterministic via artistId + date seed.
+ */
+export function generateIntradayPoints(
+  artistId: string,
+  candle: DailyCandle,
+  intervalMinutes: number = 15,
+): IntradayPoint[] {
+  const steps = Math.floor((16 * 60) / intervalMinutes); // 16 trading hours
+  const rng = seededRng(hashString(artistId + candle.t));
+  const { o, h, l, c } = candle;
+  const points: IntradayPoint[] = [];
+
+  // Generate a random walk path that starts at open and ends at close
+  // while touching the high and low at some point
+  const rawPath: number[] = [o];
+  for (let i = 1; i < steps; i++) {
+    const progress = i / (steps - 1); // 0 → 1
+    // Interpolate toward close with noise
+    const target = o + (c - o) * progress;
+    const noise = (rng() - 0.5) * (h - l) * 0.4;
+    let price = target + noise;
+    // Keep within high/low bounds
+    price = Math.max(l, Math.min(h, price));
+    rawPath.push(round4(price));
+  }
+  // Last point is exactly the close
+  rawPath[rawPath.length - 1] = c;
+
+  // Inject the high and low at random positions
+  const hiIdx = Math.floor(rng() * (steps * 0.6)) + Math.floor(steps * 0.1);
+  const loIdx = Math.floor(rng() * (steps * 0.6)) + Math.floor(steps * 0.3);
+  if (hiIdx < rawPath.length) rawPath[hiIdx] = h;
+  if (loIdx < rawPath.length) rawPath[loIdx] = l;
+
+  // Generate timestamps starting at 09:30 ET
+  const baseDate = candle.t; // YYYY-MM-DD
+  for (let i = 0; i < rawPath.length; i++) {
+    const totalMinutes = 9 * 60 + 30 + i * intervalMinutes;
+    const hrs = Math.floor(totalMinutes / 60).toString().padStart(2, '0');
+    const mins = (totalMinutes % 60).toString().padStart(2, '0');
+    points.push({
+      t: `${baseDate}T${hrs}:${mins}:00`,
+      p: rawPath[i],
+    });
+  }
+
+  return points;
+}
+
+/**
  * Get market summary for an artist.
  */
 export async function getMarketSummary(artistId: string): Promise<MarketSummary | null> {
@@ -256,7 +353,6 @@ export async function getMarketSummary(artistId: string): Promise<MarketSummary 
 
   if (!artist) return null;
 
-  // Get ALL candles (no date filter) for accurate pricing
   const candles = await getDailyCandles(artistId);
 
   let lastPrice = parseFloat(artist.currentPrice);
@@ -275,7 +371,7 @@ export async function getMarketSummary(artistId: string): Promise<MarketSummary 
   }
 
   const pctChange = prevClose > 0 ? round4((lastPrice - prevClose) / prevClose * 100) : 0;
-  const spreadBps = 500; // 5% default spread
+  const spreadBps = 500;
   const halfSpread = lastPrice * (spreadBps / 10000 / 2);
 
   return {
@@ -296,12 +392,12 @@ export async function getMarketSummary(artistId: string): Promise<MarketSummary 
  * Compute financial analysis from candle series.
  */
 export interface FinancialAnalysis {
-  returnPct: number;        // Total return over period
-  annualizedVolatility: number; // Annualized volatility
-  maxDrawdown: number;      // Max drawdown as negative pct
-  bestDayReturn: number;    // Best single day return pct
-  worstDayReturn: number;   // Worst single day return pct
-  sharpeRatio: number;      // Simplified Sharpe (0% risk-free)
+  returnPct: number;
+  annualizedVolatility: number;
+  maxDrawdown: number;
+  bestDayReturn: number;
+  worstDayReturn: number;
+  sharpeRatio: number;
   totalDays: number;
 }
 
@@ -311,7 +407,6 @@ export function computeFinancialAnalysis(candles: DailyCandle[]): FinancialAnaly
   const closes = candles.map(c => c.c);
   const n = closes.length;
 
-  // Daily returns
   const dailyReturns: number[] = [];
   for (let i = 1; i < n; i++) {
     if (closes[i - 1] > 0) {
@@ -321,16 +416,12 @@ export function computeFinancialAnalysis(candles: DailyCandle[]): FinancialAnaly
 
   if (dailyReturns.length === 0) return null;
 
-  // Total return
   const returnPct = round4((closes[n - 1] / closes[0] - 1) * 100);
-
-  // Volatility (annualized)
   const mean = dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length;
   const variance = dailyReturns.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / dailyReturns.length;
   const dailyVol = Math.sqrt(variance);
   const annualizedVolatility = round4(dailyVol * Math.sqrt(365) * 100);
 
-  // Max drawdown
   let peak = closes[0];
   let maxDrawdown = 0;
   for (const close of closes) {
@@ -339,11 +430,8 @@ export function computeFinancialAnalysis(candles: DailyCandle[]): FinancialAnaly
     if (drawdown < maxDrawdown) maxDrawdown = drawdown;
   }
 
-  // Best/worst day
   const bestDayReturn = round4(Math.max(...dailyReturns) * 100);
   const worstDayReturn = round4(Math.min(...dailyReturns) * 100);
-
-  // Sharpe ratio (simplified, 0% risk-free rate)
   const sharpeRatio = dailyVol > 0 ? round4((mean / dailyVol) * Math.sqrt(365)) : 0;
 
   return {
@@ -359,7 +447,6 @@ export function computeFinancialAnalysis(candles: DailyCandle[]): FinancialAnaly
 
 /**
  * Recompute and update artist base prices based on their actual metrics.
- * Called after seed to set proper base prices and reset circuit breakers.
  */
 export async function recomputeArtistBasePrices(): Promise<void> {
   const allArtists = await db.select().from(artists);
@@ -370,7 +457,6 @@ export async function recomputeArtistBasePrices(): Promise<void> {
 
     const lastCandle = candles[candles.length - 1];
     const firstCandle = candles[0];
-
     const spreadBps = 500;
     const halfSpread = lastCandle.c * (spreadBps / 10000 / 2);
 
@@ -381,7 +467,6 @@ export async function recomputeArtistBasePrices(): Promise<void> {
         currentPrice: lastCandle.c.toString(),
         currentBid: round4(lastCandle.c - halfSpread).toString(),
         currentAsk: round4(lastCandle.c + halfSpread).toString(),
-        // Reset circuit breaker since we're recomputing from scratch
         circuitBreakerStatus: 'closed',
         circuitBreakerTrippedAt: null,
         updatedAt: new Date(),

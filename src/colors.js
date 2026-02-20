@@ -31,6 +31,20 @@ export const GENRE_MAP = {
   BBDB: "Indie Pop",
   JRJR: "Hyperpop / Shoegaze",
   MCTD: "R&B / Soul",
+  HLLS: "Experimental Hip-Hop",
+  DCHI: "Hip-Hop / Rap",
+  LNTH: "R&B / Soul",
+  IANN: "Pop-Punk / Hip-Hop",
+  MNIT: "Dream Pop / Indie",
+  TZTO: "Experimental Hip-Hop",
+  SNST: "Electronic / Industrial",
+  YVTM: "Art Rock / Experimental",
+  JPEG: "Experimental Hip-Hop",
+  KGKR: "Art Rock / Jazz Punk",
+  PRTX: "Hip-Hop / Rap",
+  FENG: "Indie / Neo-Soul",
+  DVBL: "R&B / Vocal",
+  TWLP: "Indie Rock",
 };
 
 // Format large numbers for display
