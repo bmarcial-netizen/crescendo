@@ -11,6 +11,8 @@ export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
   databaseUrl: required('DATABASE_URL'),
   jwtSecret: required('JWT_SECRET'),
+  /** When true, all price math is fully deterministic (no noise). Currently always deterministic. */
+  pricingDeterministic: (process.env.PRICING_DETERMINISTIC ?? 'true') !== 'false',
   stripe: {
     secretKey: process.env.STRIPE_SECRET_KEY || '',
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',

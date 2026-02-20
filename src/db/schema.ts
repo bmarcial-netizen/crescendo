@@ -401,6 +401,25 @@ export const dailyTradeTracking = pgTable('daily_trade_tracking', {
   uniqueIndex('idx_daily_tracking_user_artist_date').on(table.userId, table.artistId, table.tradeDate),
 ]);
 
+// ── Artist Candles (OHLCV) ───────────────────────────────────────────────────
+
+export const artistCandles = pgTable('artist_candles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  artistId: uuid('artist_id').notNull().references(() => artists.id),
+  interval: varchar('interval', { length: 10 }).notNull().default('1h'),
+  startTime: timestamp('start_time', { withTimezone: true }).notNull(),
+  open: decimal('open', { precision: 12, scale: 4 }).notNull(),
+  high: decimal('high', { precision: 12, scale: 4 }).notNull(),
+  low: decimal('low', { precision: 12, scale: 4 }).notNull(),
+  close: decimal('close', { precision: 12, scale: 4 }).notNull(),
+  volume: integer('volume').notNull().default(0),
+  tradeCount: integer('trade_count').notNull().default(0),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('idx_candles_artist_interval_start').on(table.artistId, table.interval, table.startTime),
+  index('idx_candles_artist').on(table.artistId),
+]);
+
 // ── Earnings Model Parameters ────────────────────────────────────────────────
 
 export const earningsModelParams = pgTable('earnings_model_params', {

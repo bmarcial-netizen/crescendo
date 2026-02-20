@@ -62,3 +62,22 @@ export class CooldownError extends AppError {
     super(429, `Trade cooldown active until ${expiresAt.toISOString()}`, 'COOLDOWN_ACTIVE');
   }
 }
+
+export class PriceBandError extends AppError {
+  public fillPrice: number;
+  public referencePrice: number;
+  public deviation: number;
+  public bandPct: number;
+
+  constructor(fillPrice: number, referencePrice: number, deviation: number, bandPct: number) {
+    super(
+      422,
+      `Trade rejected: fill price $${fillPrice.toFixed(4)} deviates ${(deviation * 100).toFixed(2)}% from reference $${referencePrice.toFixed(4)} (max ±${(bandPct * 100).toFixed(0)}%)`,
+      'PRICE_BAND_VIOLATION',
+    );
+    this.fillPrice = fillPrice;
+    this.referencePrice = referencePrice;
+    this.deviation = deviation;
+    this.bandPct = bandPct;
+  }
+}

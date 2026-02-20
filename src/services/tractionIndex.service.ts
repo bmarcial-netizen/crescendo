@@ -3,6 +3,7 @@ import { artists, artistMetricSnapshots, tractionIndexSnapshots, riskControls } 
 import { eq, desc, sql } from 'drizzle-orm';
 import { computeTractionIndexCohort, ArtistSnapshot, TractionResult } from '../model/tractionIndex';
 import { computePrice, getSpreadBps } from './pricing.service';
+import { clampDailyReturn, shouldCircuitBreakerTrip } from '../model/priceGuard';
 
 /**
  * Build ArtistSnapshot from a DB metric snapshot row.
@@ -81,6 +82,12 @@ async function fetchCohortSnapshots(): Promise<ArtistSnapshot[]> {
 
 /**
  * Persist a TractionResult: update the artist's price and insert a traction_index_snapshot.
+ *
+ * Safety mechanisms:
+ *   1. Circuit breaker: if the RAW price move exceeds the threshold, trip the
+ *      breaker and BLOCK the price write. A snapshot is still inserted (for audit)
+ *      with computedPrice = the old (unchanged) price.
+ *   2. Daily return cap: clamp the actual price move to ±12% of the previous price.
  */
 async function persistResult(result: TractionResult) {
   const [artist] = await db
@@ -90,17 +97,10 @@ async function persistResult(result: TractionResult) {
     .limit(1);
   if (!artist) return;
 
-  const newPrice = computePrice(parseFloat(artist.basePrice), result.tractionIndex);
-  const spreadBps = await getSpreadBps(result.artistId);
-  const halfSpread = newPrice * (spreadBps / 10000 / 2);
-  const bid = Math.round((newPrice - halfSpread) * 10000) / 10000;
-  const ask = Math.round((newPrice + halfSpread) * 10000) / 10000;
+  const rawNewPrice = computePrice(parseFloat(artist.basePrice), result.tractionIndex);
+  const oldPrice = parseFloat(artist.currentPrice);
 
   await db.transaction(async (tx) => {
-    // Check circuit breaker
-    const oldPrice = parseFloat(artist.currentPrice);
-    const pctChange = oldPrice > 0 ? Math.abs((newPrice - oldPrice) / oldPrice) : 0;
-
     const [control] = await tx
       .select()
       .from(riskControls)
@@ -108,7 +108,9 @@ async function persistResult(result: TractionResult) {
       .limit(1);
     const threshold = parseFloat(control?.circuitBreakerThresholdPct ?? '0.20');
 
-    if (pctChange > threshold && oldPrice > 0) {
+    // 1. Circuit breaker check on RAW (unclamped) price change
+    if (shouldCircuitBreakerTrip(rawNewPrice, oldPrice, threshold)) {
+      // Trip the breaker
       await tx
         .update(artists)
         .set({
@@ -117,29 +119,57 @@ async function persistResult(result: TractionResult) {
           updatedAt: new Date(),
         })
         .where(eq(artists.id, result.artistId));
+
+      // Insert audit snapshot with OLD price (price was NOT updated)
+      await tx.insert(tractionIndexSnapshots).values({
+        artistId: result.artistId,
+        albumVelocityScore: '0',
+        catalogSizeScore: '0',
+        revenueGrowthScore: '0',
+        socialFollowersScore: result.followersScore.toString(),
+        externalPopularityScore: '0',
+        stageScore: result.stageScore.toString(),
+        followersScore: result.followersScore.toString(),
+        fanConversionModifier: result.fanConversionModifier.toString(),
+        listenerFollowerModifier: result.listenerFollowerModifier.toString(),
+        metricSnapshotId: result.metricSnapshotId || null,
+        tractionDebugJson: result.debug as unknown as Record<string, unknown>,
+        tractionScore: result.tractionIndex.toString(),
+        computedPrice: oldPrice.toString(), // unchanged — breaker blocked
+      });
+
+      // BLOCK: do NOT update price
+      return;
     }
 
-    // Update artist price
+    // 2. Apply daily return cap (±12%)
+    const { clampedPrice } = clampDailyReturn(rawNewPrice, oldPrice);
+
+    // Recompute bid/ask from the clamped price
+    const spreadBps = await getSpreadBps(result.artistId);
+    const halfSpread = clampedPrice * (spreadBps / 10000 / 2);
+    const bid = Math.round((clampedPrice - halfSpread) * 10000) / 10000;
+    const ask = Math.round((clampedPrice + halfSpread) * 10000) / 10000;
+
+    // 3. Update artist price with clamped value
     await tx
       .update(artists)
       .set({
-        currentPrice: newPrice.toString(),
+        currentPrice: clampedPrice.toString(),
         currentBid: bid.toString(),
         currentAsk: ask.toString(),
         updatedAt: new Date(),
       })
       .where(eq(artists.id, result.artistId));
 
-    // Insert traction index snapshot with new Chartmetric-driven fields
+    // 4. Insert traction index snapshot
     await tx.insert(tractionIndexSnapshots).values({
       artistId: result.artistId,
-      // Legacy fields — fill with the new model's decomposition
       albumVelocityScore: '0',
       catalogSizeScore: '0',
       revenueGrowthScore: '0',
       socialFollowersScore: result.followersScore.toString(),
       externalPopularityScore: '0',
-      // New Chartmetric-driven fields
       stageScore: result.stageScore.toString(),
       followersScore: result.followersScore.toString(),
       fanConversionModifier: result.fanConversionModifier.toString(),
@@ -147,11 +177,31 @@ async function persistResult(result: TractionResult) {
       metricSnapshotId: result.metricSnapshotId || null,
       tractionDebugJson: result.debug as unknown as Record<string, unknown>,
       tractionScore: result.tractionIndex.toString(),
-      computedPrice: newPrice.toString(),
+      computedPrice: clampedPrice.toString(),
     });
   });
 
-  return { artistId: result.artistId, tractionIndex: result.tractionIndex, newPrice, bid, ask };
+  // If breaker tripped, the inner `return` exits the transaction callback.
+  // We still return the old price so the caller sees it as "no change".
+  const spreadBps = await getSpreadBps(result.artistId);
+  // Re-read artist to get whatever price ended up persisted
+  const [updated] = await db
+    .select()
+    .from(artists)
+    .where(eq(artists.id, result.artistId))
+    .limit(1);
+  if (!updated) return;
+
+  const finalPrice = parseFloat(updated.currentPrice);
+  const halfSpread = finalPrice * (spreadBps / 10000 / 2);
+
+  return {
+    artistId: result.artistId,
+    tractionIndex: result.tractionIndex,
+    newPrice: finalPrice,
+    bid: Math.round((finalPrice - halfSpread) * 10000) / 10000,
+    ask: Math.round((finalPrice + halfSpread) * 10000) / 10000,
+  };
 }
 
 // ── Public API ─────────────────────────────────────────────────────────────

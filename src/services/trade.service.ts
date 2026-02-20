@@ -12,10 +12,13 @@ import { eq, and, sql } from 'drizzle-orm';
 import { createDoubleEntry, getUserWalletAccount, getPlatformAccount } from './ledger.service';
 import { getPriceQuote, getSpreadBps } from './pricing.service';
 import { runRiskChecks } from './risk.service';
+import { checkPriceBand, PRICE_BAND_PCT } from '../model/priceGuard';
+import { recordTradeCandle } from './candle.service';
 import {
   NotFoundError,
   InsufficientFundsError,
   BadRequestError,
+  PriceBandError,
 } from '../utils/errors';
 
 export async function executeBuy(userId: string, artistId: string, quantity: number) {
@@ -35,6 +38,13 @@ export async function executeBuy(userId: string, artistId: string, quantity: num
       .limit(1);
 
     if (!artist) throw new NotFoundError('Artist not found');
+
+    // Price band check: ensure fill price hasn't drifted from locked reference
+    const referencePrice = parseFloat(artist.currentPrice);
+    const bandCheck = checkPriceBand(quote.ask, referencePrice);
+    if (!bandCheck.allowed) {
+      throw new PriceBandError(quote.ask, referencePrice, bandCheck.deviation, PRICE_BAND_PCT);
+    }
 
     // Run risk checks
     await runRiskChecks(tx, { userId, artistId, quantity, totalCost, side: 'buy' });
@@ -183,6 +193,11 @@ export async function executeBuy(userId: string, artistId: string, quantity: num
     return order;
   });
 
+  // Fire-and-forget: record OHLCV candle for this trade
+  recordTradeCandle(artistId, quote.ask, quantity).catch((err) =>
+    console.error('Candle update failed (buy):', err)
+  );
+
   return result;
 }
 
@@ -203,6 +218,13 @@ export async function executeSell(userId: string, artistId: string, quantity: nu
       .limit(1);
 
     if (!artist) throw new NotFoundError('Artist not found');
+
+    // Price band check: ensure fill price hasn't drifted from locked reference
+    const referencePrice = parseFloat(artist.currentPrice);
+    const bandCheck = checkPriceBand(quote.bid, referencePrice);
+    if (!bandCheck.allowed) {
+      throw new PriceBandError(quote.bid, referencePrice, bandCheck.deviation, PRICE_BAND_PCT);
+    }
 
     // Run risk checks
     await runRiskChecks(tx, { userId, artistId, quantity, totalCost: totalProceeds, side: 'sell' });
@@ -333,6 +355,11 @@ export async function executeSell(userId: string, artistId: string, quantity: nu
 
     return order;
   });
+
+  // Fire-and-forget: record OHLCV candle for this trade
+  recordTradeCandle(artistId, quote.bid, quantity).catch((err) =>
+    console.error('Candle update failed (sell):', err)
+  );
 
   return result;
 }

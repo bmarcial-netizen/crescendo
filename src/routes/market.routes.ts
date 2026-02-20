@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { artists, tractionIndexSnapshots, artistMetricSnapshots, earningsModelParams } from '../db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { artists, tractionIndexSnapshots, artistMetricSnapshots, earningsModelParams, artistCandles } from '../db/schema';
+import { eq, desc, and } from 'drizzle-orm';
 import { getPriceQuote } from '../services/pricing.service';
 import { NotFoundError } from '../utils/errors';
 import { estimateEarningsBand, DEFAULT_PARAMS, EarningsModelParams } from '../model/earningsEstimator';
@@ -47,6 +47,34 @@ router.get('/artists/:id/traction-history', async (req: Request, res: Response) 
     .limit(30);
 
   res.json({ artist: { id: artist.id, stageName: artist.stageName }, snapshots });
+});
+
+// Get OHLCV candles for an artist (public)
+router.get('/artists/:id/candles', async (req: Request, res: Response) => {
+  const artistId = req.params.id as string;
+  const interval = (req.query.interval as string) || '1h';
+  const limit = Math.min(parseInt((req.query.limit as string) || '100', 10), 500);
+
+  const [artist] = await db.select().from(artists).where(eq(artists.id, artistId)).limit(1);
+  if (!artist) throw new NotFoundError('Artist not found');
+
+  const candles = await db
+    .select()
+    .from(artistCandles)
+    .where(
+      and(
+        eq(artistCandles.artistId, artistId),
+        eq(artistCandles.interval, interval),
+      )
+    )
+    .orderBy(desc(artistCandles.startTime))
+    .limit(limit);
+
+  res.json({
+    artistId,
+    interval,
+    candles: candles.reverse(), // chronological order
+  });
 });
 
 // Get earnings band estimate for an artist (public)
