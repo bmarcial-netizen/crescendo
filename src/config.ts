@@ -46,9 +46,14 @@ const corsOrigins: string[] = [
   ...(vercelUrl ? [vercelUrl] : []),
 ].filter(Boolean);
 
+// ── Trading defaults ─────────────────────────────────────────────────────────
+
+const defaultStartingBalance = '1000.0000';
+
 // ── Export ───────────────────────────────────────────────────────────────────
 
 export const config = {
+  defaultStartingBalance,
   nodeEnv,
   port,
   databaseUrl,
