@@ -2,12 +2,12 @@ import { useState, useEffect } from "react";
 import * as api from "./api";
 
 const C = {
-  primary: "#4338CA",
-  accent: "#50E3C2",
+  primary: "#1E40AF",
+  accent: "#38BDF8",
   green: "#36D7B7",
   red: "#EF4444",
   text: "#0F172A",
-  textSec: "#64748B",
+  textSec: "#475569",
   textMuted: "#94A3B8",
 };
 

@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
-import { AlertTriangle, Play, Disc3, Clock, ExternalLink, Music } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { AlertTriangle, Play, Disc3, Clock, ExternalLink, Music, TrendingUp, TrendingDown } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import * as api from "./api";
 import EarningsBand from "./EarningsBand";
+import { formatNumber, formatPctChange, GENRE_MAP } from "./colors";
 
 // ─── Artist Detail / Invest Modal ─── glassmorphic slide-in panel ───
 
@@ -13,8 +15,8 @@ const C = {
     primary: "#1E40AF",
     accent: "#38BDF8",
     accentDark: "#0EA5E9",
-    green: "#38BDF8",
-    greenSoft: "rgba(56,189,248,0.1)",
+    green: "#36D7B7",
+    greenSoft: "rgba(54,215,183,0.1)",
     red: "#EF4444",
     redSoft: "rgba(239,68,68,0.1)",
     text: "#0F172A",
@@ -301,6 +303,9 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
     const [tradeError, setTradeError] = useState("");
     const [tradeLoading, setTradeLoading] = useState(false);
     const [liveQuote, setLiveQuote] = useState(null);
+    const [metricsData, setMetricsData] = useState([]);
+    const [metricsLoading, setMetricsLoading] = useState(false);
+    const [activeMetric, setActiveMetric] = useState("spotifyMonthlyListeners");
 
     useEffect(() => {
         if (artist) {
@@ -312,11 +317,72 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
             setLimitPrice(artist.price?.toFixed(2) || "0.00");
             setShowTraction(false);
             setLiveQuote(null);
+            setMetricsData([]);
             api.getQuote(artist.id).then(q => setLiveQuote(q)).catch(() => {});
+            // Fetch real metrics if artist has a symbol — get all available data
+            if (artist.symbol) {
+                setMetricsLoading(true);
+                api.getMetrics(artist.symbol)
+                    .then(data => { setMetricsData(data || []); })
+                    .catch(() => {})
+                    .finally(() => setMetricsLoading(false));
+            }
         } else {
             setVisible(false);
         }
     }, [artist]);
+
+    // Time period filter for metrics
+    const filteredMetrics = useMemo(() => {
+        if (!metricsData.length) return [];
+        const now = new Date();
+        const periodDays = { "1M": 30, "2W": 14, "1W": 7, "5D": 5, "1D": 1 };
+        const days = periodDays[chartPeriod] || 30;
+        const cutoff = new Date(now.getTime() - days * 86400000);
+        return metricsData.filter(m => {
+            const d = new Date(m.capturedAt || m.snapshotDate || m.createdAt);
+            return d >= cutoff;
+        }).map(m => ({
+            ...m,
+            date: new Date(m.capturedAt || m.snapshotDate || m.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        }));
+    }, [metricsData, chartPeriod]);
+
+    // Growth analytics: compare first and last metric snapshot
+    const growthAnalytics = useMemo(() => {
+        if (metricsData.length < 2) return null;
+        const first = metricsData[0];
+        const last = metricsData[metricsData.length - 1];
+        const metrics = [
+            { key: "spotifyMonthlyListeners", label: "Monthly Listeners" },
+            { key: "spotifyFollowers", label: "Spotify Followers" },
+            { key: "playlistReach", label: "Playlist Reach" },
+            { key: "tiktokFollowers", label: "TikTok Followers" },
+            { key: "instagramFollowers", label: "Instagram Followers" },
+            { key: "youtubeSubscribers", label: "YouTube Subs" },
+        ];
+        return metrics.map(m => {
+            const oldVal = first[m.key];
+            const newVal = last[m.key];
+            if (oldVal == null || newVal == null) return null;
+            const change = formatPctChange(newVal, oldVal);
+            return { ...m, current: newVal, previous: oldVal, change };
+        }).filter(Boolean);
+    }, [metricsData]);
+
+    // Compute volatility from metrics
+    const volatilityEstimate = useMemo(() => {
+        if (metricsData.length < 3) return null;
+        const listeners = metricsData.map(m => m.spotifyMonthlyListeners).filter(v => v != null && v > 0);
+        if (listeners.length < 3) return null;
+        const pctChanges = [];
+        for (let i = 1; i < listeners.length; i++) {
+            pctChanges.push((listeners[i] - listeners[i-1]) / listeners[i-1]);
+        }
+        const mean = pctChanges.reduce((a, b) => a + b, 0) / pctChanges.length;
+        const variance = pctChanges.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / pctChanges.length;
+        return (Math.sqrt(variance) * 100).toFixed(1);
+    }, [metricsData]);
 
     if (!artist) return null;
 
@@ -434,7 +500,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
 
                 <div style={{ padding: "28px 32px 40px" }}>
 
-                    {/* ─── CIRCUIT BREAKER WARNING ─── */}
+                    {/* ─── CIRCUIT BREAKER WARNING (info only, doesn't block) ─── */}
                     {isTripped && (
                         <div style={{
                             display: "flex", alignItems: "center", gap: 10, padding: "12px 16px",
@@ -442,7 +508,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                             background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
                             color: C.red, fontSize: 13, fontWeight: 600
                         }}>
-                            <AlertTriangle size={18} /> Trading halted — circuit breaker tripped
+                            <AlertTriangle size={18} /> Trading paused — circuit breaker active. Prices may be volatile.
                         </div>
                     )}
 
@@ -460,6 +526,13 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                         />
                         <div style={{ flex: 1 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 2, flexWrap: "wrap" }}>
+                                {artist.symbol && (
+                                    <span style={{
+                                        padding: "3px 10px", borderRadius: 6, fontSize: 13, fontWeight: 800,
+                                        background: C.primary + "12", color: C.primary,
+                                        fontFamily: "monospace", letterSpacing: "0.08em",
+                                    }}>{artist.symbol}</span>
+                                )}
                                 <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.03em", margin: 0 }}>
                                     {artist.name}
                                 </h1>
@@ -538,7 +611,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                                     display: "inline-flex", gap: 1, background: "rgba(0,0,0,0.04)",
                                     borderRadius: 8, padding: 2,
                                 }}>
-                                    {["1D", "1W", "1M", "3M"].map(p => (
+                                    {["1M", "2W", "1W", "5D", "1D"].map(p => (
                                         <button key={p} onClick={() => setChartPeriod(p)} style={{
                                             padding: "4px 10px", borderRadius: 6, border: "none",
                                             fontSize: 11, fontWeight: 500, cursor: "pointer",
@@ -554,11 +627,60 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                         </div>
                         {!showTraction ? (
                             <>
-                                <InteractivePriceChart data={priceHistory} color={chartColor} height={130} />
-                                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: C.textMuted }}>
-                                    <span>30 days ago</span>
-                                    <span>Today</span>
-                                </div>
+                                {filteredMetrics.length > 0 ? (
+                                    <>
+                                        {/* Metric selector */}
+                                        <div style={{ display: "flex", gap: 4, marginBottom: 12, flexWrap: "wrap" }}>
+                                            {[
+                                                { key: "spotifyMonthlyListeners", label: "Listeners" },
+                                                { key: "spotifyFollowers", label: "Followers" },
+                                                { key: "tiktokFollowers", label: "TikTok" },
+                                                { key: "instagramFollowers", label: "Instagram" },
+                                            ].map(m => (
+                                                <button key={m.key} onClick={() => setActiveMetric(m.key)} style={{
+                                                    padding: "3px 10px", borderRadius: 6, border: "none",
+                                                    fontSize: 10, fontWeight: 600, cursor: "pointer",
+                                                    fontFamily: "'Inter', sans-serif",
+                                                    background: activeMetric === m.key ? C.primarySoft : "rgba(0,0,0,0.03)",
+                                                    color: activeMetric === m.key ? C.primary : C.textMuted,
+                                                    transition: "all 0.15s",
+                                                }}>{m.label}</button>
+                                            ))}
+                                        </div>
+                                        <ResponsiveContainer width="100%" height={130}>
+                                            <AreaChart data={filteredMetrics} margin={{ top: 5, right: 5, bottom: 0, left: 5 }}>
+                                                <defs>
+                                                    <linearGradient id="metricGrad" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor={C.primary} stopOpacity={0.3} />
+                                                        <stop offset="95%" stopColor={C.primary} stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.04)" />
+                                                <XAxis dataKey="date" tick={{ fontSize: 10, fill: C.textMuted }} tickLine={false} axisLine={false} />
+                                                <YAxis tick={{ fontSize: 10, fill: C.textMuted }} tickLine={false} axisLine={false} tickFormatter={v => formatNumber(v)} width={50} />
+                                                <Tooltip
+                                                    contentStyle={{ background: "rgba(17,24,39,0.92)", border: "none", borderRadius: 10, fontSize: 12 }}
+                                                    labelStyle={{ color: "rgba(255,255,255,0.5)", fontSize: 10 }}
+                                                    formatter={(v) => [formatNumber(v), activeMetric.replace(/([A-Z])/g, ' $1').trim()]}
+                                                />
+                                                <Area type="monotone" dataKey={activeMetric} stroke={C.primary} fill="url(#metricGrad)" strokeWidth={2} dot={false} />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                        {volatilityEstimate && (
+                                            <div style={{ fontSize: 11, color: C.textMuted, marginTop: 6, textAlign: "right" }}>
+                                                Est. Daily Volatility: ±{volatilityEstimate}%
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        <InteractivePriceChart data={priceHistory} color={chartColor} height={130} />
+                                        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: C.textMuted }}>
+                                            <span>30 days ago</span>
+                                            <span>Today</span>
+                                        </div>
+                                    </>
+                                )}
                             </>
                         ) : (
                             <>
@@ -581,27 +703,36 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                         )}
                     </div>
 
-                    {/* ─── STATS GRID ─── */}
+                    {/* ─── STATS GRID — real metrics when available ─── */}
                     <div style={{
                         display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr",
                         gap: 10, marginBottom: 16,
                     }}>
-                        {[
-                            { label: "Market Cap", value: `$${marketCap}` },
-                            { label: "24h Volume", value: artist.volume },
-                            { label: "52w High", value: `$${weekHigh}` },
-                            { label: "52w Low", value: `$${weekLow}` },
-                        ].map(s => (
-                            <div key={s.label} style={{
-                                background: C.card, backdropFilter: "blur(20px)",
-                                borderRadius: 14, border: `1px solid ${C.border}`,
-                                boxShadow: C.shadow, padding: "14px 14px",
-                                textAlign: "center",
-                            }}>
-                                <div style={{ fontSize: 10, color: C.textMuted, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, fontFamily: "monospace" }}>{s.label}</div>
-                                <div style={{ fontSize: 14, fontWeight: 700 }}>{s.value}</div>
-                            </div>
-                        ))}
+                        {(() => {
+                            const latestMetric = metricsData.length > 0 ? metricsData[metricsData.length - 1] : null;
+                            const stats = latestMetric ? [
+                                { label: "Listeners", value: formatNumber(latestMetric.spotifyMonthlyListeners) },
+                                { label: "Playlist Reach", value: formatNumber(latestMetric.playlistReach) },
+                                { label: "Followers", value: formatNumber(latestMetric.spotifyFollowers) },
+                                { label: "TikTok", value: formatNumber(latestMetric.tiktokFollowers) },
+                            ] : [
+                                { label: "Market Cap", value: `$${marketCap}` },
+                                { label: "24h Volume", value: artist.volume },
+                                { label: "52w High", value: `$${weekHigh}` },
+                                { label: "52w Low", value: `$${weekLow}` },
+                            ];
+                            return stats.map(s => (
+                                <div key={s.label} style={{
+                                    background: C.card, backdropFilter: "blur(20px)",
+                                    borderRadius: 14, border: `1px solid ${C.border}`,
+                                    boxShadow: C.shadow, padding: "14px 14px",
+                                    textAlign: "center",
+                                }}>
+                                    <div style={{ fontSize: 10, color: C.textMuted, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, fontFamily: "monospace" }}>{s.label}</div>
+                                    <div style={{ fontSize: 14, fontWeight: 700 }}>{s.value}</div>
+                                </div>
+                            ));
+                        })()}
                     </div>
 
                     {/* ─── SUPPLY METER ─── */}
@@ -852,6 +983,45 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                     {/* ─── EARNINGS BAND ─── */}
                     <EarningsBand artistId={artist.id} />
 
+                    {/* ─── GROWTH SUMMARY — LAST 30 DAYS ─── */}
+                    {growthAnalytics && growthAnalytics.length > 0 && (
+                        <div style={{
+                            background: C.card, backdropFilter: "blur(20px)",
+                            borderRadius: 18, border: `1px solid ${C.border}`,
+                            boxShadow: C.shadow, padding: 20, marginBottom: 16,
+                        }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                                <TrendingUp size={16} style={{ color: C.primary }} />
+                                <span style={{ fontSize: 14, fontWeight: 700 }}>Growth Summary — Last 30 Days</span>
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                                {growthAnalytics.map(m => (
+                                    <div key={m.key} style={{
+                                        padding: 14, borderRadius: 14,
+                                        background: "rgba(0,0,0,0.02)", border: "1px solid rgba(0,0,0,0.04)",
+                                    }}>
+                                        <div style={{ fontSize: 10, color: C.textMuted, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, fontFamily: "monospace" }}>
+                                            {m.label}
+                                        </div>
+                                        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>
+                                            {formatNumber(m.current)}
+                                        </div>
+                                        {m.change && (
+                                            <div style={{
+                                                display: "flex", alignItems: "center", gap: 4,
+                                                fontSize: 12, fontWeight: 600,
+                                                color: m.change.isUp ? C.green : C.red,
+                                            }}>
+                                                {m.change.isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                                                {m.change.label}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {/* ─── TRADE ERROR ─── */}
                     {tradeError && (
                         <div style={{
@@ -875,8 +1045,8 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                         padding: 24,
                         position: "relative",
                         overflow: "hidden",
-                        opacity: isTripped ? 0.5 : 1,
-                        pointerEvents: isTripped ? "none" : "auto",
+                        opacity: 1,
+                        pointerEvents: "auto",
                     }}>
                         {/* Decorative blob */}
                         <div style={{

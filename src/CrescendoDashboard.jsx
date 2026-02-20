@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { Bell, ArrowLeft, MapPin, Calendar, Tag, TrendingUp, TrendingDown, DollarSign, Music, BarChart3, Wallet, AlertTriangle } from "lucide-react";
+import { Bell, ArrowLeft, MapPin, Calendar, Tag, TrendingUp, TrendingDown, DollarSign, Music, BarChart3, Wallet, AlertTriangle, Star } from "lucide-react";
 import ArtistDetailModal from "./ArtistDetailModal";
 import WalletPanel from "./WalletPanel";
 import OrderHistory from "./OrderHistory";
 import EarningsBand from "./EarningsBand";
 import { useAuth } from "./AuthContext";
 import * as api from "./api";
+import { GENRE_MAP } from "./colors";
 
 // ─── Crescendo Dashboard ─── glassmorphic light mode, neon blob accents ───
 
@@ -20,8 +21,8 @@ const C = {
   primarySoft: "rgba(30,64,175,0.08)",
   accent: "#38BDF8",
   accentDark: "#0EA5E9",
-  green: "#38BDF8",
-  greenSoft: "rgba(56,189,248,0.1)",
+  green: "#36D7B7",
+  greenSoft: "rgba(54,215,183,0.1)",
   red: "#EF4444",
   redSoft: "rgba(239,68,68,0.1)",
   text: "#0F172A",
@@ -344,22 +345,57 @@ function CandlestickChart({ candles, w = 720, h = 380 }) {
   );
 }
 
-function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card, TabPill }) {
+function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card, TabPill, auth, isLoggedIn, onTradeComplete, genreFilter, setGenreFilter, watchlist, toggleWatchlist }) {
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const [chartPeriod, setChartPeriod] = useState("8h");
+  const [chartPeriod, setChartPeriod] = useState("1M");
   const [tradeTab, setTradeTab] = useState("BUY");
-  const [amount, setAmount] = useState("5.00");
-  const [leverage, setLeverage] = useState(50);
-  const [stopLoss, setStopLoss] = useState("0%");
-  const [takeProfit, setTakeProfit] = useState("900%");
+  const [quantity, setQuantity] = useState("");
+  const [tradeLoading, setTradeLoading] = useState(false);
+  const [tradeMsg, setTradeMsg] = useState(null);
+  const [liveQuote, setLiveQuote] = useState(null);
 
   const selected = artists[selectedIdx];
-  const isTripped = selected.circuitBreakerStatus === "tripped";
-  const [candles] = useState(() => generateCandlesticks(selected.price, 45));
-  const lastPrice = candles[candles.length - 1]?.close || selected.price;
-  const execPrice = (lastPrice * parseFloat(amount || 1)).toFixed(2);
-  const riskLevel = leverage <= 25 ? "Low Risk" : leverage <= 60 ? "Med Risk" : "High Risk";
-  const riskColor = leverage <= 25 ? "#38BDF8" : leverage <= 60 ? "#F59E0B" : "#EF4444";
+  const isTripped = selected?.circuitBreakerStatus === "tripped";
+
+  // Fetch live quote when selected artist changes
+  useEffect(() => {
+    if (!selected?.id) return;
+    setLiveQuote(null);
+    api.getQuote(selected.id).then(q => setLiveQuote(q)).catch(() => {});
+  }, [selected?.id]);
+
+  const displayPrice = liveQuote?.mid || selected?.price || 0;
+  const displayBid = liveQuote?.bid || selected?.price || 0;
+  const displayAsk = liveQuote?.ask || selected?.price || 0;
+  const qty = parseInt(quantity) || 0;
+  const unitPrice = tradeTab === "BUY" ? displayAsk : displayBid;
+  const totalCost = qty * unitPrice;
+
+  const genres = ["All", ...new Set(artists.map(a => a.genre).filter(Boolean))];
+  const filteredArtists = genreFilter === "All" ? artists : artists.filter(a => a.genre === genreFilter);
+
+  const handleTrade = async () => {
+    if (!isLoggedIn) { setTradeMsg({ type: "error", text: "Please log in to trade." }); return; }
+    if (qty <= 0) { setTradeMsg({ type: "error", text: "Enter a valid quantity." }); return; }
+    setTradeLoading(true);
+    setTradeMsg(null);
+    try {
+      if (tradeTab === "BUY") {
+        await api.buyShares(selected.id, qty);
+      } else {
+        await api.sellShares(selected.id, qty);
+      }
+      setTradeMsg({ type: "success", text: `${tradeTab === "BUY" ? "Bought" : "Sold"} ${qty} shares of ${selected.name} at $${unitPrice.toFixed(2)}` });
+      setQuantity("");
+      if (onTradeComplete) onTradeComplete();
+    } catch (err) {
+      setTradeMsg({ type: "error", text: err.message || "Trade failed." });
+    } finally {
+      setTradeLoading(false);
+    }
+  };
+
+  if (!selected) return null;
 
   return (
     <div style={fadeIn(0.1)}>
@@ -367,7 +403,20 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
         <h1 style={{ fontSize: "clamp(36px, 5vw, 48px)", fontWeight: 900, letterSpacing: "-0.04em", marginBottom: 6, textTransform: "uppercase", lineHeight: 1.05 }}>Markets</h1>
         <p style={{ fontSize: 11, color: C.textMuted, fontFamily: "monospace", letterSpacing: "0.12em", textTransform: "uppercase" }}>Trade artist tokens in real time</p>
       </div>
-      {/* Circuit breaker warning */}
+      {/* Genre filter pills */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+        {genres.map(g => (
+          <button key={g} onClick={() => setGenreFilter(g)} style={{
+            padding: "5px 14px", borderRadius: 8, border: "none",
+            fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "monospace",
+            background: genreFilter === g ? "#fff" : "rgba(0,0,0,0.04)",
+            color: genreFilter === g ? C.text : C.textMuted,
+            boxShadow: genreFilter === g ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
+            transition: "all 0.2s"
+          }}>{g}</button>
+        ))}
+      </div>
+      {/* Circuit breaker warning - info only, doesn't block */}
       {isTripped && (
         <div style={{
           display: "flex", alignItems: "center", gap: 10, padding: "12px 18px",
@@ -375,7 +424,7 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
           background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
           color: C.red, fontSize: 13, fontWeight: 600
         }}>
-          <AlertTriangle size={18} /> Trading halted — circuit breaker tripped for {selected.name}
+          <AlertTriangle size={18} /> Trading paused for {selected.name} — circuit breaker active
         </div>
       )}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 16, marginBottom: 16 }}>
@@ -389,6 +438,13 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
                   onClick={() => setSelectedArtist(selected)}
                   style={{ width: 22, height: 22, borderRadius: 6, cursor: "pointer" }}
                 />
+                {selected.symbol && (
+                  <span style={{
+                    padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 700,
+                    background: C.primarySoft, color: C.primary, fontFamily: "monospace",
+                    letterSpacing: "0.08em"
+                  }}>{selected.symbol}</span>
+                )}
                 <span
                   onClick={() => setSelectedArtist(selected)}
                   style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em", textTransform: "uppercase", cursor: "pointer", transition: "color 0.2s" }}
@@ -397,145 +453,173 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
                 >{selected.name} / USD</span>
               </div>
               <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-                <span style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1 }}>{lastPrice.toFixed(2)}</span>
-                <span style={{ fontSize: 15, fontWeight: 600, color: selected.change >= 0 ? "#38BDF8" : "#EF4444" }}>
-                  {selected.change >= 0 ? "▲" : "▼"} {Math.abs(selected.change)}%
+                <span style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1 }}>${displayPrice.toFixed(2)}</span>
+                <span style={{ fontSize: 15, fontWeight: 600, color: selected.change >= 0 ? C.green : C.red }}>
+                  {selected.change >= 0 ? "▲" : "▼"} {Math.abs(selected.change).toFixed(1)}%
                 </span>
               </div>
+              {liveQuote && (
+                <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4 }}>
+                  Bid: ${displayBid.toFixed(2)} · Ask: ${displayAsk.toFixed(2)} · Spread: {liveQuote.spreadBps}bps
+                </div>
+              )}
             </div>
-            <TabPill options={["5m", "1h", "8h", "1D", "1W"]} active={chartPeriod} onChange={setChartPeriod} />
+            <TabPill options={["1M", "2W", "1W", "5D", "1D"]} active={chartPeriod} onChange={setChartPeriod} />
           </div>
           <div style={{ width: "100%", height: 360 }}>
-            <CandlestickChart candles={candles} />
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 55px 0", fontSize: 10, color: "#94A3B8", fontFamily: "monospace" }}>
-            {["17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"].map((t) => <span key={t}>{t}</span>)}
+            <CandlestickChart candles={generateCandlesticks(displayPrice, 45)} />
           </div>
         </Card>
 
-        {/* Right: Trade panel */}
+        {/* Right: Trade panel — simplified, real API */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <Card style={{ padding: 4 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
               {["BUY", "SELL"].map((t) =>
-                <button key={t} onClick={() => !isTripped && setTradeTab(t)} disabled={isTripped} style={{
+                <button key={t} onClick={() => { setTradeTab(t); setTradeMsg(null); }} style={{
                   padding: "10px 0", borderRadius: 14, border: "none", fontSize: 13, fontWeight: 700,
-                  cursor: isTripped ? "not-allowed" : "pointer", fontFamily: "'Inter', sans-serif", letterSpacing: "0.04em",
-                  background: tradeTab === t ? t === "BUY" ? C.accent : "#1E40AF" : "transparent",
+                  cursor: "pointer", fontFamily: "'Inter', sans-serif", letterSpacing: "0.04em",
+                  background: tradeTab === t ? t === "BUY" ? C.accent : C.primary : "transparent",
                   color: tradeTab === t ? (t === "BUY" ? "#0F172A" : "#fff") : "#94A3B8", transition: "all 0.2s",
-                  opacity: isTripped ? 0.5 : 1
                 }}>{t}</button>
               )}
             </div>
           </Card>
 
+          {/* Wallet balance */}
+          {isLoggedIn && (
+            <Card style={{ padding: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 12, color: C.textSec, fontWeight: 600 }}>Wallet Balance</span>
+                <span style={{ fontSize: 18, fontWeight: 700, fontFamily: "monospace" }}>
+                  ${auth.balance != null ? parseFloat(auth.balance).toFixed(2) : '—'}
+                </span>
+              </div>
+            </Card>
+          )}
+
+          {/* Quantity input */}
           <Card style={{ padding: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-              <span style={{ fontSize: 12, color: "#475569", fontWeight: 600 }}>Amount</span>
-              <span style={{ fontSize: 11, color: "#94A3B8" }}>USD ▾</span>
+              <span style={{ fontSize: 12, color: C.textSec, fontWeight: 600 }}>Shares</span>
+              <span style={{ fontSize: 11, color: C.textMuted }}>@ ${unitPrice.toFixed(2)} each</span>
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 8 }}>{amount}</div>
+            <div style={{
+              display: "flex", alignItems: "center", borderRadius: 12,
+              border: "1px solid rgba(0,0,0,0.08)", background: "#fff", overflow: "hidden", marginBottom: 8,
+            }}>
+              <button onClick={() => setQuantity(String(Math.max(0, (parseInt(quantity) || 0) - 1)))} style={{
+                width: 40, height: 40, border: "none", background: "transparent",
+                fontSize: 18, cursor: "pointer", color: C.textSec, display: "flex", alignItems: "center", justifyContent: "center",
+              }}>−</button>
+              <input
+                type="number" min="0" value={quantity}
+                onChange={e => setQuantity(e.target.value)}
+                placeholder="0"
+                style={{
+                  flex: 1, padding: "10px 8px", border: "none", outline: "none",
+                  fontSize: 22, fontWeight: 700, textAlign: "center",
+                  background: "transparent", color: C.text, fontFamily: "'Inter', sans-serif",
+                }}
+              />
+              <button onClick={() => setQuantity(String((parseInt(quantity) || 0) + 1))} style={{
+                width: 40, height: 40, border: "none", background: "transparent",
+                fontSize: 18, cursor: "pointer", color: C.textSec, display: "flex", alignItems: "center", justifyContent: "center",
+              }}>+</button>
+            </div>
             <div style={{ display: "flex", gap: 5 }}>
-              {["1.00", "2.00", "5.00", "10.00", "15.00"].map((v) =>
-                <button key={v} onClick={() => setAmount(v)} style={{
-                  padding: "4px 8px", borderRadius: 8, border: `1px solid ${amount === v ? "#1E40AF" : "rgba(0,0,0,0.06)"}`,
-                  fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "monospace",
-                  background: amount === v ? "rgba(30,64,175,0.08)" : "transparent", color: amount === v ? "#1E40AF" : "#475569"
+              {[1, 5, 10, 25, 50].map((v) =>
+                <button key={v} onClick={() => setQuantity(String(v))} style={{
+                  flex: 1, padding: "5px 0", borderRadius: 8, border: `1px solid ${parseInt(quantity) === v ? C.primary : "rgba(0,0,0,0.06)"}`,
+                  fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "monospace",
+                  background: parseInt(quantity) === v ? C.primarySoft : "transparent",
+                  color: parseInt(quantity) === v ? C.primary : C.textSec,
                 }}>{v}</button>
               )}
             </div>
           </Card>
 
-          <Card style={{ padding: 14 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-              <span style={{ fontSize: 12, color: "#475569", fontWeight: 600 }}>Leverage</span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: riskColor }}>{riskLevel}</span>
-            </div>
-            <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 6 }}>{leverage}x</div>
-            <input type="range" min="1" max="100" value={leverage} onChange={(e) => setLeverage(Number(e.target.value))} style={{ width: "100%", accentColor: "#1E40AF" }} />
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#94A3B8", marginTop: 2, fontFamily: "monospace" }}>
-              {["0", "25", "50", "75", "100"].map((v) => <span key={v}>{v}</span>)}
-            </div>
-          </Card>
-
-          <Card style={{ padding: 14 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-              <span style={{ fontSize: 12, color: "#475569", fontWeight: 600 }}>Stop Loss</span>
-              <span style={{ fontSize: 11, color: "#94A3B8" }}>USD ▾</span>
-            </div>
-            <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>0</div>
-            <div style={{ display: "flex", gap: 5 }}>
-              {["0%", "-10%", "-25%", "-50%", "-75%"].map((v) =>
-                <button key={v} onClick={() => setStopLoss(v)} style={{
-                  padding: "4px 9px", borderRadius: 20, border: `1px solid ${stopLoss === v ? "#1E40AF" : "rgba(0,0,0,0.06)"}`,
-                  fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "monospace",
-                  background: stopLoss === v ? "rgba(30,64,175,0.08)" : "transparent", color: stopLoss === v ? "#1E40AF" : "#475569"
-                }}>{v}</button>
+          {/* Order summary */}
+          {qty > 0 && (
+            <Card style={{ padding: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "monospace" }}>
+                Order Summary
+              </div>
+              {[
+                [tradeTab === "BUY" ? "Buy" : "Sell", `${qty} × $${unitPrice.toFixed(2)}`],
+                ["Total", `$${totalCost.toFixed(2)}`],
+              ].map(([l, v]) =>
+                <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: 12 }}>
+                  <span style={{ color: C.textSec }}>{l}</span>
+                  <span style={{ fontWeight: 700, fontFamily: "monospace" }}>{v}</span>
+                </div>
               )}
-            </div>
-          </Card>
+            </Card>
+          )}
 
-          <Card style={{ padding: 14 }}>
-            <div style={{ fontSize: 12, color: "#475569", fontWeight: 600, marginBottom: 4 }}>Take Profit</div>
-            <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 8 }}>{takeProfit}</div>
-            <div style={{ display: "flex", gap: 5 }}>
-              {["25%", "50%", "100%", "300%", "900%"].map((v) =>
-                <button key={v} onClick={() => setTakeProfit(v)} style={{
-                  padding: "4px 9px", borderRadius: 20, border: `1px solid ${takeProfit === v ? "#1E40AF" : "rgba(0,0,0,0.06)"}`,
-                  fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "monospace",
-                  background: takeProfit === v ? "rgba(30,64,175,0.08)" : "transparent", color: takeProfit === v ? "#1E40AF" : "#475569"
-                }}>{v}</button>
-              )}
+          {/* Trade messages */}
+          {tradeMsg && (
+            <div style={{
+              padding: "10px 14px", borderRadius: 12, fontSize: 12, fontWeight: 600,
+              background: tradeMsg.type === "error" ? "rgba(239,68,68,0.08)" : "rgba(54,215,183,0.08)",
+              color: tradeMsg.type === "error" ? C.red : C.green,
+              border: `1px solid ${tradeMsg.type === "error" ? "rgba(239,68,68,0.2)" : "rgba(54,215,183,0.2)"}`,
+            }}>
+              {tradeMsg.text}
             </div>
-          </Card>
+          )}
 
+          {/* Execute button */}
           <button
-            onClick={() => !isTripped && setSelectedArtist(selected)}
-            disabled={isTripped}
+            onClick={() => guardedClick(handleTrade)}
+            disabled={tradeLoading || (isTripped && tradeTab === "BUY")}
             style={{
               width: "100%", padding: "13px 0", borderRadius: 14, border: "none", fontSize: 15, fontWeight: 700,
-              cursor: isTripped ? "not-allowed" : "pointer", fontFamily: "'Inter', sans-serif",
-              background: isTripped ? "rgba(0,0,0,0.1)" : (tradeTab === "BUY" ? C.accent : C.primary),
-              color: isTripped ? C.textMuted : (tradeTab === "BUY" ? "#0F172A" : "#fff"),
-              boxShadow: isTripped ? "none" : `0 4px 16px ${tradeTab === "BUY" ? C.accent : C.primary}40`,
-              opacity: isTripped ? 0.6 : 1
+              cursor: tradeLoading ? "wait" : "pointer", fontFamily: "'Inter', sans-serif",
+              background: tradeTab === "BUY" ? C.accent : C.primary,
+              color: tradeTab === "BUY" ? "#0F172A" : "#fff",
+              boxShadow: `0 4px 16px ${tradeTab === "BUY" ? C.accent : C.primary}40`,
+              opacity: tradeLoading ? 0.7 : 1,
             }}>
-            {isTripped ? "Trading Halted" : `Place ${tradeTab === "BUY" ? "Buy" : "Sell"}`}
+            {tradeLoading ? "Processing..." : `${tradeTab === "BUY" ? "Buy" : "Sell"} ${selected.name}`}
           </button>
-
-          <Card style={{ padding: 14 }}>
-            {[["Execution price", execPrice], ["Spread", "0%"], ["Slippage", "--"], ["Notional value", `${amount} USD`], ["Platform fee", "0 USD (0.023%)"], ["Daily limit", "10,000 USD"]].map(([l, v]) =>
-              <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 12 }}>
-                <span style={{ color: "#475569" }}>{l}</span>
-                <span style={{ fontWeight: 600, fontFamily: "monospace", fontSize: 11 }}>{v}</span>
-              </div>
-            )}
-          </Card>
         </div>
       </div>
 
       {/* Bottom ticker cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-        {artists.slice(0, 4).map((a, i) =>
-          <Card key={a.id} style={{ padding: 18, cursor: "pointer" }} hover>
-            <div onClick={() => setSelectedIdx(i)}>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(filteredArtists.length, 4)}, 1fr)`, gap: 12 }}>
+        {filteredArtists.slice(0, 8).map((a, i) =>
+          <Card key={a.id} style={{ padding: 18, cursor: "pointer", border: selectedIdx === artists.indexOf(a) ? `2px solid ${C.primary}` : undefined }} hover>
+            <div onClick={() => setSelectedIdx(artists.indexOf(a))}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <img
                   src={avatarUrl(a.name, 52)} alt={a.name}
                   onClick={(e) => { e.stopPropagation(); setSelectedArtist(a); }}
                   style={{ width: 26, height: 26, borderRadius: 8, border: "1px solid rgba(0,0,0,0.05)", cursor: "pointer" }}
                 />
+                {a.symbol && (
+                  <span style={{
+                    padding: "1px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700,
+                    background: C.primarySoft, color: C.primary, fontFamily: "monospace",
+                  }}>{a.symbol}</span>
+                )}
                 <span
                   onClick={(e) => { e.stopPropagation(); setSelectedArtist(a); }}
                   style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "color 0.2s" }}
                   onMouseEnter={e => e.target.style.color = C.primary}
                   onMouseLeave={e => e.target.style.color = C.text}
-                >{a.name}/USD</span>
-                <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 600, color: a.change >= 0 ? "#38BDF8" : "#EF4444" }}>
-                  {a.change >= 0 ? "▲" : "▼"} {Math.abs(a.change)}%
+                >{a.name}</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); toggleWatchlist(a.id); }}
+                  style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", fontSize: 14, padding: 0 }}
+                >{watchlist.includes(a.id) ? "★" : "☆"}</button>
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
+                <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.03em" }}>${a.price.toFixed(2)}</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: a.change >= 0 ? C.green : C.red }}>
+                  {a.change >= 0 ? "▲" : "▼"} {Math.abs(a.change).toFixed(1)}%
                 </span>
               </div>
-              <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 6 }}>${a.price.toFixed(2)}</div>
               <SparkLine positive={a.change >= 0} w={100} h={22} />
             </div>
           </Card>
@@ -922,7 +1006,7 @@ function TabPill({ options, active, onChange }) {
   );
 }
 
-export default function CrescendoDashboard({ navigate, initialTab = "Portfolio", showProfile = false, isLoggedIn = true, user, openAuth, onLogout }) {
+export default function CrescendoDashboard({ navigate, initialTab = "Dashboard", showProfile = false, isLoggedIn = true, user, openAuth, onLogout }) {
   const [tab, setTab] = useState(initialTab);
   const [period, setPeriod] = useState("1W");
   const [marketPeriod, setMarketPeriod] = useState("Daily");
@@ -932,6 +1016,19 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
   const [showDeposit, setShowDeposit] = useState(false);
   const [showWallet, setShowWallet] = useState(false);
   const [showOrderHistory, setShowOrderHistory] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [genreFilter, setGenreFilter] = useState("All");
+  const [watchlist, setWatchlist] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("crescendo_watchlist") || "[]"); } catch { return []; }
+  });
+
+  const toggleWatchlist = (artistId) => {
+    setWatchlist(prev => {
+      const next = prev.includes(artistId) ? prev.filter(id => id !== artistId) : [...prev, artistId];
+      localStorage.setItem("crescendo_watchlist", JSON.stringify(next));
+      return next;
+    });
+  };
 
   // Live data from API
   const [liveArtists, setLiveArtists] = useState(null);
@@ -957,23 +1054,27 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
     return () => { cancelled = true; };
   }, [isLoggedIn]);
 
-  // Map live artists to display format (merge with mock for fields backend doesn't have)
-  const artists = liveArtists ? liveArtists.map((a, i) => ({
-    id: a.id,
-    name: a.stageName || a.name || `Artist ${i + 1}`,
-    genre: a.genre || mockArtists[i % mockArtists.length]?.genre || "Music",
-    price: a.currentPrice || 0,
-    change: a.change24h || mockArtists[i % mockArtists.length]?.change || 0,
-    volume: a.volume24h || mockArtists[i % mockArtists.length]?.volume || "0",
-    shares: 0,
-    avgCost: 0,
-    streams: a.streams || mockArtists[i % mockArtists.length]?.streams || "0",
-    bio: a.bio || mockArtists[i % mockArtists.length]?.bio || "",
-    sharesOutstanding: a.sharesOutstanding || mockArtists[i % mockArtists.length]?.sharesOutstanding || 0,
-    maxShares: a.maxShares || mockArtists[i % mockArtists.length]?.maxShares || 10000,
-    revenueSharePct: a.revenueSharePct || mockArtists[i % mockArtists.length]?.revenueSharePct || 0,
-    circuitBreakerStatus: a.circuitBreakerStatus || "normal",
-  })) : mockArtists;
+  // Map live artists to display format — use real API data, genre map for known symbols
+  const artists = liveArtists ? liveArtists.map((a) => {
+    const symbol = a.symbol || a.stageName?.replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase() || '';
+    return {
+      id: a.id,
+      name: a.stageName || a.name || 'Unknown',
+      symbol,
+      genre: GENRE_MAP[symbol] || a.genre || "Music",
+      price: a.currentPrice || 0,
+      change: a.change24h || 0,
+      volume: a.volume24h || "0",
+      shares: 0,
+      avgCost: 0,
+      streams: a.streams || "0",
+      bio: a.bio || "",
+      sharesOutstanding: a.sharesOutstanding || 0,
+      maxShares: a.maxShares || 10000,
+      revenueSharePct: a.revenueSharePct || 0,
+      circuitBreakerStatus: a.circuitBreakerStatus || "normal",
+    };
+  }) : mockArtists;
 
   // Artist map for order history
   const artistMap = {};
@@ -1072,14 +1173,13 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
           <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: C.text, fontFamily: "'Inter', sans-serif" }}>CRESCENDO</span>
         </div>
 
-        <div style={{ display: "flex", gap: 2, background: "rgba(255,255,255,0.6)", borderRadius: 0, padding: 3, border: "1px solid rgba(255,255,255,0.8)" }}>
-          {["Portfolio", "Markets", "News"].map((t) =>
+        <div style={{ display: "flex", gap: 2, background: "rgba(255,255,255,0.6)", borderRadius: 12, padding: 3, border: "1px solid rgba(255,255,255,0.8)" }}>
+          {["Dashboard", "Markets", "Portfolio", "News"].map((t) =>
             <button key={t} onClick={() => { setTab(t); navigate(t.toLowerCase()); }} style={{
-              padding: "8px 20px", borderRadius: 0, border: "none",
-              fontSize: 11, fontWeight: 600, cursor: "pointer",
+              padding: "8px 20px", borderRadius: 10, border: "none",
+              fontSize: 12, fontWeight: 600, cursor: "pointer",
               fontFamily: "monospace",
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
+              letterSpacing: "0.06em",
               background: tab === t && !showProfile ? "#fff" : "transparent",
               color: tab === t && !showProfile ? C.text : C.textSec,
               boxShadow: tab === t && !showProfile ? "0 1px 6px rgba(0,0,0,0.06)" : "none",
@@ -1129,31 +1229,78 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
               borderRadius: "50%", background: C.primary, border: "2px solid #fff"
             }} />
           </div>
-          <div style={{
-            width: 38, height: 38, borderRadius: 12,
-            background: C.accent,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 14, fontWeight: 700, color: C.text,
-            border: showProfile ? `2px solid ${C.primary}` : "1px solid rgba(255,255,255,0.8)",
-            cursor: "pointer",
-            transition: "all 0.2s"
-          }}
-          onClick={() => isLoggedIn ? navigate('profile') : openAuth('signup')}>
-            {isLoggedIn ? user?.initials || 'LN' : '→'}</div>
-          {!isLoggedIn &&
-            <button
-              onClick={() => openAuth('signup')}
-              style={{
-                height: 38, padding: "0 16px", borderRadius: 10, border: "none",
-                fontSize: 12, fontWeight: 700, cursor: "pointer",
-                fontFamily: "'Inter', sans-serif",
-                background: C.primary,
-                color: "#fff",
-                boxShadow: `0 2px 10px ${C.primary}40`,
-                transition: "all 0.2s"
-              }}>
-              Sign Up</button>
-          }
+          {isLoggedIn ? (
+            <div style={{ position: "relative" }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: 12,
+                background: `linear-gradient(135deg, ${C.accent}90, ${C.primary}50)`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 14, fontWeight: 700, color: C.text,
+                border: showProfile || showUserMenu ? `2px solid ${C.primary}` : "1px solid rgba(255,255,255,0.8)",
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+                onClick={() => setShowUserMenu(!showUserMenu)}
+              >{user?.initials || '?'}</div>
+              {showUserMenu && (
+                <>
+                  <div onClick={() => setShowUserMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 199 }} />
+                  <div style={{
+                    position: "absolute", top: 46, right: 0, zIndex: 200,
+                    width: 220, borderRadius: 14,
+                    background: "rgba(255,255,255,0.95)",
+                    backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+                    border: "1px solid rgba(0,0,0,0.08)",
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+                    overflow: "hidden",
+                  }}>
+                    <div style={{ padding: "14px 16px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{user?.name || 'User'}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{user?.email || ''}</div>
+                    </div>
+                    <div
+                      onClick={() => { setShowUserMenu(false); navigate('profile'); }}
+                      style={{ padding: "12px 16px", fontSize: 13, fontWeight: 500, color: C.text, cursor: "pointer", transition: "background 0.15s" }}
+                      onMouseEnter={e => e.currentTarget.style.background = "rgba(0,0,0,0.04)"}
+                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                    >My Account</div>
+                    <div
+                      onClick={() => { setShowUserMenu(false); onLogout(); }}
+                      style={{ padding: "12px 16px", fontSize: 13, fontWeight: 500, color: "#EF4444", cursor: "pointer", borderTop: "1px solid rgba(0,0,0,0.06)", transition: "background 0.15s" }}
+                      onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.05)"}
+                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                    >Sign Out</div>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <>
+              <div style={{
+                width: 38, height: 38, borderRadius: 12,
+                background: `linear-gradient(135deg, ${C.accent}90, ${C.primary}50)`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 18, color: C.text,
+                border: "1px solid rgba(255,255,255,0.8)",
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+                onClick={() => openAuth('signup')}
+              >→</div>
+              <button
+                onClick={() => openAuth('signup')}
+                style={{
+                  height: 38, padding: "0 16px", borderRadius: 10, border: "none",
+                  fontSize: 12, fontWeight: 700, cursor: "pointer",
+                  fontFamily: "'Inter', sans-serif",
+                  background: `linear-gradient(135deg, ${C.primary}, #5B6AE8)`,
+                  color: "#fff",
+                  boxShadow: `0 2px 10px ${C.primary}40`,
+                  transition: "all 0.2s",
+                }}>
+                Sign Up Free</button>
+            </>
+          )}
         </div>
       </header>
 
@@ -1176,11 +1323,11 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     fontSize: 28, fontWeight: 800, color: C.text,
                     border: "2px solid rgba(255,255,255,0.8)"
-                  }}>LN</div>
+                  }}>{user?.initials || auth.user?.displayName?.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase() || '??'}</div>
                   <div>
-                    <div style={{ fontSize: 22, fontWeight: 700 }}>Luna N.</div>
-                    <div style={{ fontSize: 13, color: C.textSec }}>@luna_crescendo</div>
-                    <div style={{ fontSize: 12, color: C.textMuted, marginTop: 4 }}>Member since Jan 2026</div>
+                    <div style={{ fontSize: 22, fontWeight: 700 }}>{auth.user?.displayName || user?.displayName || 'User'}</div>
+                    <div style={{ fontSize: 13, color: C.textSec }}>{auth.user?.email || user?.email || ''}</div>
+                    <div style={{ fontSize: 12, color: C.textMuted, marginTop: 4 }}>Investor · Crescendo</div>
                   </div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
@@ -1221,7 +1368,14 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
             guardedClick={guardedClick}
             setSelectedArtist={setSelectedArtist}
             Card={Card}
-            TabPill={TabPill} />
+            TabPill={TabPill}
+            auth={auth}
+            isLoggedIn={isLoggedIn}
+            onTradeComplete={handleTradeComplete}
+            genreFilter={genreFilter}
+            setGenreFilter={setGenreFilter}
+            watchlist={watchlist}
+            toggleWatchlist={toggleWatchlist} />
         }
 
         {/* ─── NEWS PAGE ─── */}
@@ -1229,8 +1383,8 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
           <NewsPage C={C} fadeIn={fadeIn} Card={Card} />
         }
 
-        {/* ─── DASHBOARD PAGE (original content) ─── */}
-        {!showProfile && tab === "Portfolio" && <>
+        {/* ─── DASHBOARD PAGE ─── */}
+        {!showProfile && tab === "Dashboard" && <>
 
           {/* Portfolio Value Header */}
           <div style={{ marginBottom: 24, ...fadeIn(0.1) }}>
@@ -1434,7 +1588,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
               <div style={fadeIn(0.3)}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                   <h2 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em" }}>Performance</h2>
-                  <TabPill options={["1D", "1W", "1M"]} active={period} onChange={setPeriod} />
+                  <TabPill options={["1D", "5D", "1W", "2W", "1M"]} active={period} onChange={setPeriod} />
                 </div>
                 <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 2 }}>
                   ${totalValue.toFixed(0)}
@@ -1508,6 +1662,12 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
                       }} />
                       <div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          {a.symbol && (
+                            <span style={{
+                              padding: "1px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700,
+                              background: C.primarySoft, color: C.primary, fontFamily: "monospace",
+                            }}>{a.symbol}</span>
+                          )}
                           <span style={{ fontSize: 14, fontWeight: 600 }}>{a.name}</span>
                           {a.circuitBreakerStatus === "tripped" && (
                             <AlertTriangle size={12} color={C.red} />
@@ -1627,7 +1787,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                      <h2 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em" }}>Trending Sounds</h2>
+                      <h2 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em" }}>You Might Like</h2>
                       <span style={{
                         display: "inline-flex", alignItems: "center", gap: 4,
                         padding: "3px 10px", borderRadius: 99, fontSize: 11, fontWeight: 600,
@@ -1805,7 +1965,216 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
               )}
             </div>
           </Card>
+
+          {/* Dividends Section */}
+          <div style={{ marginBottom: 20, ...fadeIn(0.42) }}>
+            <Card style={{ padding: 24 }} hover>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em" }}>Dividends</h2>
+                <span style={{
+                  padding: "3px 10px", borderRadius: 8, fontSize: 11, fontWeight: 600,
+                  background: C.primarySoft, color: C.primary,
+                }}>Revenue Share</span>
+              </div>
+              <div style={{
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                padding: "40px 20px", textAlign: "center",
+                background: "rgba(0,0,0,0.02)", borderRadius: 16, border: "1px solid rgba(0,0,0,0.04)",
+              }}>
+                <div style={{
+                  width: 48, height: 48, borderRadius: 14,
+                  background: `linear-gradient(135deg, ${C.primarySoft}, rgba(54,215,183,0.1))`,
+                  display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12,
+                }}><DollarSign size={22} color={C.primary} /></div>
+                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4, color: C.text }}>No dividends yet</div>
+                <div style={{ fontSize: 13, color: C.textSec, maxWidth: 360, lineHeight: 1.5 }}>
+                  Dividends are distributed when artists you've invested in earn royalties from streaming, sync licenses, and live performances. Your share is proportional to your holdings.
+                </div>
+              </div>
+            </Card>
+          </div>
         </>}
+
+        {/* ─── PORTFOLIO PAGE ─── */}
+        {!showProfile && tab === "Portfolio" && <>
+          <div style={fadeIn(0.1)}>
+            {/* Title + Ticker Strip */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+              <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: "-0.04em", margin: 0, color: C.text }}>My Portfolio</h1>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {portfolioHoldings.slice(0, 3).map(a => (
+                  <div key={a.id} style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "6px 12px", borderRadius: 10,
+                    background: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.6)",
+                    backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+                    fontSize: 12, fontWeight: 600,
+                  }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.05em", color: C.primary, background: C.primarySoft, padding: "2px 6px", borderRadius: 4, fontFamily: "monospace" }}>
+                      {artists.find(ar => ar.id === a.id)?.symbol || ''}
+                    </span>
+                    <span style={{ color: C.text, fontWeight: 700 }}>{a.name}</span>
+                    <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: 11 }}>${a.price?.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Portfolio Summary Cards */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 20 }}>
+              {/* Music Portfolio Card */}
+              <div style={{
+                background: "rgba(255,255,255,0.55)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+                borderRadius: 20, padding: "22px 24px",
+                border: "1px solid rgba(255,255,255,0.6)", boxShadow: "0 4px 20px rgba(0,0,0,0.03)",
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 12 }}>Music Portfolio</div>
+                <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.03em", color: C.text, marginBottom: 12 }}>${totalValue.toFixed(2)}</div>
+                <svg viewBox="0 0 120 40" style={{ width: "100%", height: 40, display: "block" }}>
+                  <defs>
+                    <linearGradient id="wavyFill1" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={C.accent} stopOpacity={0.4} />
+                      <stop offset="100%" stopColor={C.primary} stopOpacity={0.1} />
+                    </linearGradient>
+                  </defs>
+                  <path d="M0,35 C10,28 20,15 35,20 C50,25 55,10 70,12 C85,14 95,8 110,15 L120,18 L120,40 L0,40 Z" fill="url(#wavyFill1)" />
+                  <path d="M0,35 C10,28 20,15 35,20 C50,25 55,10 70,12 C85,14 95,8 110,15 L120,18" fill="none" stroke={C.accent} strokeWidth="2" />
+                </svg>
+              </div>
+
+              {/* Returns Card */}
+              <div style={{
+                background: "rgba(255,255,255,0.55)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+                borderRadius: 20, padding: "22px 24px",
+                border: "1px solid rgba(255,255,255,0.6)", boxShadow: "0 4px 20px rgba(0,0,0,0.03)",
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 12 }}>Total Returns</div>
+                <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.03em", color: totalReturn >= 0 ? C.green : C.red, marginBottom: 12 }}>
+                  {totalReturn >= 0 ? '+' : ''}${totalReturn.toFixed(2)}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{
+                    padding: "3px 8px", borderRadius: 6,
+                    background: totalReturn >= 0 ? C.greenSoft : C.redSoft,
+                    color: totalReturn >= 0 ? C.green : C.red,
+                    fontSize: 12, fontWeight: 700,
+                  }}>{totalReturn >= 0 ? '+' : ''}{totalPct}%</div>
+                  <span style={{ fontSize: 11, color: C.textMuted }}>all time</span>
+                </div>
+              </div>
+
+              {/* Arc Gauge */}
+              <div style={{
+                background: "rgba(255,255,255,0.55)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+                borderRadius: 20, padding: "24px",
+                border: "1px solid rgba(255,255,255,0.6)", boxShadow: "0 4px 20px rgba(0,0,0,0.03)",
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+              }}>
+                <svg width="180" height="100" viewBox="0 0 180 100">
+                  <defs>
+                    <linearGradient id="arcGrad" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor={C.primary} />
+                      <stop offset="50%" stopColor={C.accent} />
+                      <stop offset="100%" stopColor={C.green} />
+                    </linearGradient>
+                  </defs>
+                  <path d="M 15 90 A 75 75 0 0 1 165 90" fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth="3" strokeLinecap="round" />
+                  <path d="M 15 90 A 75 75 0 0 1 165 90" fill="none" stroke="url(#arcGrad)" strokeWidth="3" strokeLinecap="round"
+                    strokeDasharray={`${Math.min((totalValue / 2500) * 236, 236)} 236`} />
+                  <circle cx="15" cy="90" r="4" fill={C.primary} />
+                  <circle cx="165" cy="90" r="4" fill="rgba(0,0,0,0.1)" />
+                </svg>
+                <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "monospace", marginTop: -4, marginBottom: 4 }}>Total portfolio value</div>
+                <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.03em", color: C.text }}>${totalValue.toFixed(2)}</div>
+              </div>
+            </div>
+
+            {/* Holdings Table */}
+            <Card style={{ padding: 24, marginBottom: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em" }}>Holdings</h2>
+                <div style={{ fontSize: 12, color: C.textMuted }}>{portfolioHoldings.length} position{portfolioHoldings.length !== 1 ? 's' : ''}</div>
+              </div>
+
+              {portfolioHoldings.length === 0 ? (
+                <EmptyState
+                  icon={<Wallet size={28} color={C.primary} />}
+                  title="No positions yet"
+                  description="Start investing — explore Markets to buy your first shares"
+                  cta="Explore Markets"
+                  onCta={() => { setTab("Markets"); navigate("markets"); }}
+                />
+              ) : (
+                <>
+                  <div style={{
+                    display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr",
+                    padding: "0 0 10px 0", borderBottom: "1px solid rgba(0,0,0,0.05)",
+                    fontSize: 11, fontWeight: 600, color: C.textMuted, textTransform: "uppercase",
+                    letterSpacing: "0.08em", fontFamily: "monospace",
+                  }}>
+                    <span>Artist</span><span>Shares</span><span>Avg Cost</span><span>Value</span><span>P&L</span>
+                  </div>
+                  {portfolioHoldings.map((a, i) => {
+                    const val = a.marketValue || a.shares * a.price;
+                    const pnl = a.unrealizedPnL || (a.price - a.avgCost) * a.shares;
+                    const pnlPct = a.avgCost > 0 ? ((a.price - a.avgCost) / a.avgCost * 100).toFixed(1) : '0.0';
+                    return (
+                      <div key={a.id} onClick={() => {
+                        const fullArtist = artists.find(ar => ar.id === a.id);
+                        if (fullArtist) setSelectedArtist(fullArtist);
+                      }} style={{
+                        display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr",
+                        alignItems: "center", padding: "14px 0",
+                        borderBottom: i < portfolioHoldings.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none",
+                        cursor: "pointer", transition: "background 0.15s", borderRadius: 8,
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <img src={avatarUrl(a.name, 72)} alt={a.name} style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid rgba(0,0,0,0.04)" }} />
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 600 }}>{a.name}</div>
+                            <div style={{ fontSize: 11, color: C.textMuted }}>{a.genre}</div>
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 14, fontWeight: 600 }}>{a.shares}</div>
+                        <div style={{ fontSize: 14, fontWeight: 600 }}>${(a.avgCost || 0).toFixed(2)}</div>
+                        <div style={{ fontSize: 14, fontWeight: 700 }}>${val.toFixed(2)}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: pnl >= 0 ? C.green : C.red }}>
+                            {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
+                          </span>
+                          <span style={{
+                            fontSize: 11, fontWeight: 600,
+                            color: pnl >= 0 ? C.green : C.red,
+                            padding: "2px 6px", borderRadius: 4,
+                            background: pnl >= 0 ? C.greenSoft : C.redSoft,
+                          }}>{pnl >= 0 ? '+' : ''}{pnlPct}%</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </Card>
+
+            {/* Dividends */}
+            <Card style={{ padding: 24, marginBottom: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em" }}>Dividends</h2>
+              </div>
+              <div style={{ textAlign: "center", padding: "24px 0" }}>
+                <DollarSign size={28} color={C.textMuted} style={{ marginBottom: 8 }} />
+                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4, color: C.text }}>No dividends yet</div>
+                <div style={{ fontSize: 13, color: C.textSec, maxWidth: 360, margin: "0 auto", lineHeight: 1.5 }}>
+                  Dividends are distributed when artists you've invested in earn royalties from streaming and live performances.
+                </div>
+              </div>
+            </Card>
+
+            {/* Trade History */}
+            <OrderHistory artistMap={artistMap} />
+          </div>
+        </>}
+
       </main>
 
       {/* Floating sign-up banner */}
@@ -1893,7 +2262,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
         <div style={{ position: "fixed", inset: 0, zIndex: 250 }}>
           <div onClick={() => setShowWallet(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.2)", backdropFilter: "blur(4px)" }} />
           <div style={{ position: "absolute", top: 70, right: 32, zIndex: 251 }}>
-            <WalletPanel onClose={() => setShowWallet(false)} />
+            <WalletPanel balance={auth.balance != null ? parseFloat(auth.balance) : null} onBalanceUpdate={(newBal) => auth.refreshBalance()} onClose={() => setShowWallet(false)} />
           </div>
         </div>
       )}

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "./AuthContext";
-import * as api from "./api";
+
 
 const C = {
   primary: "#1E40AF",
@@ -84,19 +84,22 @@ export default function AuthModal({ isOpen, onClose, onAuth, initialMode = "sign
     if (Object.keys(errs).length > 0) return;
     setLoading(true);
     try {
-      let userData;
+      let data;
       if (mode === "signup") {
-        userData = await api.register(formData.email, formData.password, formData.name);
+        data = await auth.register(formData.email, formData.password, formData.name);
       } else {
-        userData = await api.login(formData.email, formData.password);
+        data = await auth.login(formData.email, formData.password);
       }
+      const u = data.user || data;
       setLoading(false);
       setSuccess(true);
       setTimeout(() => {
         onAuth({
-          name: userData.displayName || formData.name || formData.email.split("@")[0],
-          email: userData.email || formData.email,
-          initials: (userData.displayName || formData.name || formData.email).slice(0, 2).toUpperCase(),
+          id: u.id,
+          name: u.displayName || formData.name || formData.email.split("@")[0],
+          email: u.email || formData.email,
+          role: u.role,
+          initials: (u.displayName || formData.name || formData.email).slice(0, 2).toUpperCase(),
         });
       }, 1200);
     } catch (err) {

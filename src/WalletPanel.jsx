@@ -1,17 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import * as api from "./api";
+import { useAuth } from "./AuthContext";
 
 const C = {
-  primary: "#4338CA",
-  accent: "#50E3C2",
+  primary: "#1E40AF",
+  primarySoft: "rgba(30,64,175,0.08)",
+  accent: "#38BDF8",
   green: "#36D7B7",
   red: "#EF4444",
   text: "#0F172A",
-  textSec: "#64748B",
+  textSec: "#475569",
   textMuted: "#94A3B8",
 };
 
-export default function WalletPanel({ balance, onBalanceUpdate, onClose }) {
+export default function WalletPanel({ balance: balanceProp, onBalanceUpdate, onClose }) {
+  // Use auth context as fallback when props aren't provided
+  const auth = useAuth();
+  const balance = balanceProp != null ? balanceProp : (auth.balance != null ? parseFloat(auth.balance) : null);
   const [tab, setTab] = useState("deposit"); // deposit | withdraw
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
@@ -37,6 +42,7 @@ export default function WalletPanel({ balance, onBalanceUpdate, onClose }) {
       setSuccess(`${tab === "deposit" ? "Deposited" : "Withdrew"} $${num.toFixed(2)}. New balance: $${result.balance.toFixed(2)}`);
       setAmount("");
       if (onBalanceUpdate) onBalanceUpdate(result.balance);
+      if (auth.refreshBalance) auth.refreshBalance();
     } catch (err) {
       setError(err.message || "Transaction failed");
     } finally {

@@ -259,6 +259,33 @@ export async function getArtistById(artistId) {
   };
 }
 
+// ── Market Metrics (public) ──
+export async function getMetrics(symbol, from, to) {
+  let url = `/api/market/${encodeURIComponent(symbol)}/metrics`;
+  const params = [];
+  if (from) params.push(`from=${encodeURIComponent(from)}`);
+  if (to) params.push(`to=${encodeURIComponent(to)}`);
+  if (params.length) url += `?${params.join("&")}`;
+  const data = await apiFetch(url);
+  return (data.metrics || data.snapshots || data || []).map(s => ({
+    ...s,
+    spotifyMonthlyListeners: s.spotifyMonthlyListeners != null ? Number(s.spotifyMonthlyListeners) : null,
+    spotifyFollowers: s.spotifyFollowers != null ? Number(s.spotifyFollowers) : null,
+    spotifyPopularity: s.spotifyPopularity != null ? Number(s.spotifyPopularity) : null,
+    playlistReach: s.playlistReach != null ? Number(s.playlistReach) : null,
+    tiktokFollowers: s.tiktokFollowers != null ? Number(s.tiktokFollowers) : null,
+    tiktokTopViews: s.tiktokTopViews != null ? Number(s.tiktokTopViews) : null,
+    instagramFollowers: s.instagramFollowers != null ? Number(s.instagramFollowers) : null,
+    youtubeSubscribers: s.youtubeSubscribers != null ? Number(s.youtubeSubscribers) : null,
+    youtubeChannelViews: s.youtubeChannelViews != null ? Number(s.youtubeChannelViews) : null,
+  }));
+}
+
+// ── Auth: Get Current User ──
+export async function getMe() {
+  return await apiFetch("/api/auth/me");
+}
+
 // ── Health check ──
 export async function healthCheck() {
   return await apiFetch("/health");

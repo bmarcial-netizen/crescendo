@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from './AuthContext'
 
 // page values: 'home' | 'dashboard' | 'markets' | 'portfolio' | 'news' | 'about' | 'contact' | 'profile'
 // Dashboard-group pages share the CrescendoDashboard component with different initial tabs.
-const DASHBOARD_TABS = { dashboard: 'Portfolio', markets: 'Markets', news: 'News', portfolio: 'Portfolio' }
+const DASHBOARD_TABS = { dashboard: 'Dashboard', markets: 'Markets', news: 'News', portfolio: 'Portfolio' }
 
 function AppInner() {
   const [page, setPage] = useState('home')
@@ -20,8 +20,17 @@ function AppInner() {
     initials: (auth.user.displayName || auth.user.email || '??').slice(0, 2).toUpperCase(),
   } : null
 
+  // Track which page the user was trying to reach before auth
+  const [pendingPage, setPendingPage] = useState(null)
+
   const navigate = (target) => {
     const key = target.toLowerCase()
+    // Gate dashboard/profile pages behind auth — require sign-in first
+    if ((DASHBOARD_TABS[key] || key === 'profile') && !isLoggedIn) {
+      setPendingPage(key)
+      setAuthModal({ open: true, mode: 'signup' })
+      return
+    }
     setPage(key)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -35,10 +44,11 @@ function AppInner() {
     // Just sync the user data with auth context
     auth.setUser(userData)
     setAuthModal({ open: false, mode: 'signup' })
-    // If on home page, navigate to dashboard after auth
-    if (!DASHBOARD_TABS[page] && page !== 'profile') {
-      navigate('dashboard')
-    }
+    // Navigate to wherever the user was trying to go, or default to dashboard
+    const dest = pendingPage || 'dashboard'
+    setPendingPage(null)
+    setPage(dest)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleLogout = () => {
@@ -46,8 +56,8 @@ function AppInner() {
     navigate('home')
   }
 
-  // Dashboard-group pages
-  if (DASHBOARD_TABS[page]) {
+  // Dashboard-group pages — only accessible when logged in
+  if (DASHBOARD_TABS[page] && isLoggedIn) {
     return (
       <>
         <CrescendoDashboard
@@ -68,12 +78,12 @@ function AppInner() {
     )
   }
 
-  // Profile reuses dashboard shell with a profile flag
-  if (page === 'profile') {
+  // Profile reuses dashboard shell with a profile flag — only when logged in
+  if (page === 'profile' && isLoggedIn) {
     return (
       <>
         <CrescendoDashboard
-          initialTab="Portfolio"
+          initialTab="Dashboard"
           navigate={navigate}
           showProfile
           isLoggedIn={isLoggedIn}
@@ -100,6 +110,7 @@ function AppInner() {
         isLoggedIn={isLoggedIn}
         openAuth={openAuth}
         user={user}
+        onLogout={handleLogout}
       />
       <AuthModal
         isOpen={authModal.open}

@@ -25,9 +25,9 @@ const FEATURES = [
 { title: "Social Signal Intelligence", num: "05" }];
 
 
-const NAV_LINKS = ["Portfolio", "Markets", "News"];
+const NAV_LINKS = ["Home", "Markets", "Dashboard", "About", "Contact"];
 
-export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, user }) {
+export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, user, onLogout }) {
   const [loaded, setLoaded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [hoveredFeature, setHoveredFeature] = useState(null);
@@ -238,62 +238,92 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: 30 }}>
-                    {isLoggedIn ?
-          <button
-            onClick={() => navigate('portfolio')}
-            style={{
-              padding: "8px 20px",
-              background: "transparent",
-              color: COLORS.text,
-              border: `1px solid rgba(255,255,255,0.15)`,
-              borderRadius: 0, cursor: "pointer",
-              fontFamily: "monospace", fontSize: 13, fontWeight: 600,
-              letterSpacing: "0.1em",
-              transition: "all 0.4s"
-            }}
-            onMouseEnter={(e) => {e.target.style.background = COLORS.accent;e.target.style.color = COLORS.bg;e.target.style.borderColor = COLORS.accent;}}
-            onMouseLeave={(e) => {e.target.style.background = "transparent";e.target.style.color = COLORS.text;e.target.style.borderColor = "rgba(255,255,255,0.15)";}}>
-
-                            PORTFOLIO
-                        </button> :
-
-          <div style={{ display: "flex", gap: 8 }}>
+                    {isLoggedIn ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                             <button
-              onClick={() => openAuth('login')}
-              style={{
-                padding: "8px 18px",
-                background: "transparent",
-                color: COLORS.text,
-                border: `1px solid rgba(255,255,255,0.15)`,
-                borderRadius: 0, cursor: "pointer",
-                fontFamily: "monospace", fontSize: 12, fontWeight: 600,
-                letterSpacing: "0.1em",
-                transition: "all 0.4s"
-              }}
-              onMouseEnter={(e) => {e.target.style.background = "rgba(255,255,255,0.08)";e.target.style.borderColor = "rgba(255,255,255,0.3)";}}
-              onMouseLeave={(e) => {e.target.style.background = "transparent";e.target.style.borderColor = "rgba(255,255,255,0.15)";}}>
-
+                                onClick={() => navigate('dashboard')}
+                                style={{
+                                    padding: "8px 20px",
+                                    background: "transparent",
+                                    color: COLORS.text,
+                                    border: `1px solid rgba(255,255,255,0.15)`,
+                                    borderRadius: 0, cursor: "pointer",
+                                    fontFamily: "monospace", fontSize: 13, fontWeight: 600,
+                                    letterSpacing: "0.1em",
+                                    transition: "all 0.4s",
+                                }}
+                                onMouseEnter={(e) => { e.target.style.background = COLORS.accent; e.target.style.color = COLORS.bg; e.target.style.borderColor = COLORS.accent; }}
+                                onMouseLeave={(e) => { e.target.style.background = "transparent"; e.target.style.color = COLORS.text; e.target.style.borderColor = "rgba(255,255,255,0.15)"; }}
+                            >
+                                DASHBOARD
+                            </button>
+                            <div
+                                onClick={() => navigate('profile')}
+                                style={{
+                                    width: 32, height: 32, borderRadius: 8,
+                                    background: `linear-gradient(135deg, ${COLORS.accent}90, ${COLORS.primary}50)`,
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    fontSize: 12, fontWeight: 700, color: "#fff",
+                                    cursor: "pointer", transition: "all 0.3s",
+                                    border: "1px solid rgba(255,255,255,0.2)",
+                                }}
+                            >{user?.initials || '?'}</div>
+                            <button
+                                onClick={onLogout}
+                                style={{
+                                    padding: "8px 14px",
+                                    background: "transparent",
+                                    color: COLORS.textMuted,
+                                    border: `1px solid rgba(255,255,255,0.1)`,
+                                    borderRadius: 0, cursor: "pointer",
+                                    fontFamily: "monospace", fontSize: 11, fontWeight: 600,
+                                    letterSpacing: "0.1em",
+                                    transition: "all 0.4s",
+                                }}
+                                onMouseEnter={(e) => { e.target.style.color = "#EF4444"; e.target.style.borderColor = "rgba(239,68,68,0.3)"; }}
+                                onMouseLeave={(e) => { e.target.style.color = COLORS.textMuted; e.target.style.borderColor = "rgba(255,255,255,0.1)"; }}
+                            >
+                                SIGN OUT
+                            </button>
+                        </div>
+                    ) : (
+                        <div style={{ display: "flex", gap: 8 }}>
+                            <button
+                                onClick={() => openAuth('login')}
+                                style={{
+                                    padding: "8px 18px",
+                                    background: "transparent",
+                                    color: COLORS.text,
+                                    border: `1px solid rgba(255,255,255,0.15)`,
+                                    borderRadius: 0, cursor: "pointer",
+                                    fontFamily: "monospace", fontSize: 12, fontWeight: 600,
+                                    letterSpacing: "0.1em",
+                                    transition: "all 0.4s",
+                                }}
+                                onMouseEnter={(e) => { e.target.style.background = "rgba(255,255,255,0.08)"; e.target.style.borderColor = "rgba(255,255,255,0.3)"; }}
+                                onMouseLeave={(e) => { e.target.style.background = "transparent"; e.target.style.borderColor = "rgba(255,255,255,0.15)"; }}
+                            >
                                 LOG IN
                             </button>
                             <button
-              onClick={() => openAuth('signup')}
-              style={{
-                padding: "8px 20px",
-                background: COLORS.accent,
-                color: COLORS.bg,
-                border: `1px solid ${COLORS.accent}`,
-                borderRadius: 0, cursor: "pointer",
-                fontFamily: "monospace", fontSize: 12, fontWeight: 700,
-                letterSpacing: "0.1em",
-                transition: "all 0.4s"
-              }}
-              onMouseEnter={(e) => {e.target.style.background = "#60A5FA";e.target.style.borderColor = "#60A5FA";}}
-              onMouseLeave={(e) => {e.target.style.background = COLORS.accent;e.target.style.borderColor = COLORS.accent;}}>
-
+                                onClick={() => openAuth('signup')}
+                                style={{
+                                    padding: "8px 20px",
+                                    background: COLORS.accent,
+                                    color: COLORS.bg,
+                                    border: `1px solid ${COLORS.accent}`,
+                                    borderRadius: 0, cursor: "pointer",
+                                    fontFamily: "monospace", fontSize: 12, fontWeight: 700,
+                                    letterSpacing: "0.1em",
+                                    transition: "all 0.4s",
+                                }}
+                                onMouseEnter={(e) => { e.target.style.background = "#60A5FA"; e.target.style.borderColor = "#60A5FA"; }}
+                                onMouseLeave={(e) => { e.target.style.background = COLORS.accent; e.target.style.borderColor = COLORS.accent; }}
+                            >
                                 SIGN UP
                             </button>
                         </div>
-          }
+                    )}
                     <span ref={coordRef} style={{
             fontFamily: "monospace", fontSize: 12,
             color: COLORS.textMuted,
@@ -333,33 +363,41 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
         justifyContent: "center", alignItems: "flex-end",
         padding: "80px 60px"
       }}>
-                {NAV_LINKS.map((link, i) =>
-        <button
-          key={link}
-          onClick={() => {
-            setMenuOpen(false);
-            navigate(link.toLowerCase());
-          }}
-          style={{
-            background: "none", border: "none", cursor: "pointer",
-            fontFamily: "'Inter', sans-serif",
-            fontSize: "clamp(48px, 8vw, 100px)",
-            fontWeight: 900,
-            color: COLORS.text,
-            textTransform: "uppercase",
-            letterSpacing: "-0.03em",
-            lineHeight: 1.1,
-            textAlign: "right",
-            opacity: menuOpen ? 1 : 0,
-            transform: menuOpen ? "translateX(0)" : "translateX(80px)",
-            transition: `all 0.6s ${0.1 + i * 0.08}s cubic-bezier(0.22,1,0.36,1)`
-          }}
-          onMouseEnter={(e) => e.target.style.color = COLORS.accent}
-          onMouseLeave={(e) => e.target.style.color = COLORS.text}>
-
-                        {link}
-                    </button>
-        )}
+                {NAV_LINKS.map((link, i) => {
+                    const label = (link === "Dashboard" && !isLoggedIn) ? "Sign In" : link;
+                    const handleClick = () => {
+                        setMenuOpen(false);
+                        if (link === "Dashboard" && !isLoggedIn) {
+                            openAuth('login');
+                        } else {
+                            navigate(link.toLowerCase());
+                        }
+                    };
+                    return (
+                        <button
+                            key={link}
+                            onClick={handleClick}
+                            style={{
+                                background: "none", border: "none", cursor: "pointer",
+                                fontFamily: "'Inter', sans-serif",
+                                fontSize: "clamp(48px, 8vw, 100px)",
+                                fontWeight: 900,
+                                color: COLORS.text,
+                                textTransform: "uppercase",
+                                letterSpacing: "-0.03em",
+                                lineHeight: 1.1,
+                                textAlign: "right",
+                                opacity: menuOpen ? 1 : 0,
+                                transform: menuOpen ? "translateX(0)" : "translateX(80px)",
+                                transition: `all 0.6s ${0.1 + i * 0.08}s cubic-bezier(0.22,1,0.36,1)`,
+                            }}
+                            onMouseEnter={(e) => e.target.style.color = COLORS.accent}
+                            onMouseLeave={(e) => e.target.style.color = COLORS.text}
+                        >
+                            {label}
+                        </button>
+                    );
+                })}
             </div>
 
             {/* ════════════════════════════════════════
@@ -565,12 +603,12 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
 
                             {/* Big CTA Button */}
                             <button
-                onClick={() => isLoggedIn ? navigate('portfolio') : openAuth('signup')}
+                onClick={() => isLoggedIn ? navigate('dashboard') : openAuth('signup')}
                 style={{
                   marginTop: 50,
                   padding: "18px 48px",
-                  background: COLORS.accent,
-                  color: "#000",
+                  background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.blue})`,
+                  color: "#fff",
                   border: "none",
                   borderRadius: 0,
                   cursor: "pointer",
@@ -587,7 +625,7 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
                 }}
                 onMouseEnter={(e) => {e.target.style.transform = "translateY(-2px)";e.target.style.boxShadow = `0 8px 32px ${COLORS.accent}60`;}}
                 onMouseLeave={(e) => {e.target.style.transform = "translateY(0)";e.target.style.boxShadow = `0 4px 24px ${COLORS.accent}40`;}}>
-                                {isLoggedIn ? 'Launch Portfolio' : 'Create Free Account'}
+                                {isLoggedIn ? 'Launch Dashboard' : 'Create Free Account'}
                             </button>
                         </div>
                     </section>
@@ -681,7 +719,7 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
 
                                 <div style={{ marginTop: 40 }}>
                                     <button
-                    onClick={() => isLoggedIn ? navigate('portfolio') : openAuth('signup')}
+                    onClick={() => isLoggedIn ? navigate('dashboard') : openAuth('signup')}
                     style={{
                       background: "none", border: "none", cursor: "pointer",
                       fontFamily: "monospace", fontSize: 14, fontWeight: 700,
@@ -693,7 +731,7 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
                     onMouseEnter={(e) => e.target.style.color = COLORS.primary}
                     onMouseLeave={(e) => e.target.style.color = COLORS.textDark}>
 
-                                        {isLoggedIn ? 'ENTER PORTFOLIO' : 'GET STARTED FREE'}
+                                        {isLoggedIn ? 'ENTER DASHBOARD' : 'GET STARTED FREE'}
                                         <span style={{ fontSize: 20, lineHeight: 1 }}>→</span>
                                     </button>
                                 </div>
@@ -714,7 +752,7 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
               fontWeight: 900, letterSpacing: "-0.04em",
               lineHeight: 1, textTransform: "uppercase", marginBottom: 8
             }}>
-                            HELLO@<br />CRESCENDO.IO
+                            TONICA@<br />CRESCENDO.IO
                         </h2>
                         <p style={{
               fontFamily: "monospace", fontSize: 13,
@@ -731,8 +769,9 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
               {
                 label: "PLATFORM", items: [
                 { name: "Markets", page: "markets" },
+                { name: "Dashboard", page: "dashboard" },
                 { name: "Portfolio", page: "portfolio" },
-                { name: "Trending", page: "portfolio" }]
+                { name: "Trending", page: "dashboard" }]
 
               },
               {
