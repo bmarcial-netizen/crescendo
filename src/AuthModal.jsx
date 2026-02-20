@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import * as api from "./api";
 
 // ─── Auth Modal ─── Sign Up / Login ───
 
@@ -62,25 +63,35 @@ export default function AuthModal({ isOpen, onClose, onAuth, initialMode = "sign
         return errs;
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         const errs = validate();
         setErrors(errs);
         if (Object.keys(errs).length > 0) return;
 
         setLoading(true);
-        // Simulate API call
-        setTimeout(() => {
+        try {
+            let data;
+            if (mode === "signup") {
+                data = await api.register(formData.email, formData.password, formData.name);
+            } else {
+                data = await api.login(formData.email, formData.password);
+            }
             setLoading(false);
             setSuccess(true);
             setTimeout(() => {
+                const user = data.user || {};
                 onAuth({
-                    name: formData.name || formData.email.split("@")[0],
-                    email: formData.email,
-                    initials: (formData.name || formData.email).slice(0, 2).toUpperCase(),
+                    ...user,
+                    name: user.displayName || formData.name || formData.email.split("@")[0],
+                    email: user.email || formData.email,
+                    initials: (user.displayName || formData.name || formData.email).slice(0, 2).toUpperCase(),
                 });
             }, 1200);
-        }, 1000);
+        } catch (err) {
+            setLoading(false);
+            setErrors({ form: err.message || "Authentication failed" });
+        }
     };
 
     const inputStyle = (field) => ({
@@ -167,14 +178,6 @@ export default function AuthModal({ isOpen, onClose, onAuth, initialMode = "sign
 
                     {/* Logo + Title */}
                     <div style={{ textAlign: "center", marginBottom: 28 }}>
-                        <div style={{
-                            width: 44, height: 44, borderRadius: 14,
-                            background: `linear-gradient(135deg, ${C.primary}, ${C.blue})`,
-                            display: "inline-flex", alignItems: "center", justifyContent: "center",
-                            fontSize: 20, fontWeight: 900, color: "#fff",
-                            marginBottom: 16,
-                            boxShadow: `0 4px 20px ${C.primary}40`,
-                        }}>C</div>
                         <h2 style={{
                             fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em",
                             marginBottom: 6,
@@ -283,6 +286,15 @@ export default function AuthModal({ isOpen, onClose, onAuth, initialMode = "sign
                                     />
                                     {errors.confirmPassword && <div style={{ fontSize: 11, color: "#EF4444", marginTop: 4 }}>{errors.confirmPassword}</div>}
                                 </div>
+                            )}
+
+                            {/* API Error */}
+                            {errors.form && (
+                                <div style={{
+                                    padding: "10px 14px", borderRadius: 10, marginBottom: 14,
+                                    background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)",
+                                    fontSize: 13, color: "#EF4444", textAlign: "center",
+                                }}>{errors.form}</div>
                             )}
 
                             {/* Submit Button */}

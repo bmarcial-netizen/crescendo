@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import InteractiveChart from "./InteractiveChart";
+import { useState, useEffect } from "react";
+import * as api from "./api";
+import EarningsBand from "./EarningsBand";
 
 // ─── Artist Detail / Invest Modal ─── glassmorphic slide-in panel ───
 
@@ -20,7 +21,7 @@ const C = {
     textMuted: "#94A3B8",
 };
 
-// Simulated 30-day price history generator with volume data
+// Simulated 30-day price history generator (deterministic per artist id)
 function generatePriceHistory(basePrice, change, id) {
     const seed = id * 17;
     const pts = [];
@@ -29,10 +30,9 @@ function generatePriceHistory(basePrice, change, id) {
         const noise = Math.sin(seed + i * 0.7) * 0.08 + Math.cos(seed + i * 1.3) * 0.05;
         const progress = i / 29;
         const price = startPrice + (basePrice - startPrice) * progress + basePrice * noise;
-        const vol = Math.floor(1000 + Math.sin(seed + i * 0.5) * 500 + Math.random() * 800);
-        pts.push({ d: i, v: Math.max(0.01, price), vol: `${(vol / 1000).toFixed(1)}K` });
+        pts.push({ d: i, v: Math.max(0.01, price) });
     }
-    pts[pts.length - 1].v = basePrice;
+    pts[pts.length - 1].v = basePrice; // Ensure last point is current price
     return pts;
 }
 
@@ -49,25 +49,49 @@ function generateOrderBook(price) {
     return { bids, asks };
 }
 
-export default function ArtistDetailModal({ artist, onClose, allNews, trendingSounds, allArtists = [] }) {
+function PriceChart({ data, color, width = "100%", height = 140 }) {
+    const max = Math.max(...data.map(d => d.v));
+    const min = Math.min(...data.map(d => d.v));
+    const range = max - min || 0.01;
+    const w = 400;
+    const h = height;
+    const pts = data.map((d, i) => {
+        const x = (i / (data.length - 1)) * w;
+        const y = 8 + (1 - (d.v - min) / range) * (h - 16);
+        return { x, y };
+    });
+    const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+    const area = line + ` L${pts[pts.length - 1].x.toFixed(1)},${h} L${pts[0].x.toFixed(1)},${h} Z`;
+
+    return (
+        <svg viewBox={`0 0 ${w} ${h}`} style={{ width, height, display: "block" }}>
+            <defs>
+                <linearGradient id={`chart-fill-${color.replace("#", "")}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+                    <stop offset="100%" stopColor={color} stopOpacity="0" />
+                </linearGradient>
+            </defs>
+            <path d={area} fill={`url(#chart-fill-${color.replace("#", "")})`} />
+            <path d={line} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="4" fill={color} />
+            <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="8" fill={color} fillOpacity="0.2" />
+        </svg>
+    );
+}
+
+export default function ArtistDetailModal({ artist, onClose, allNews, trendingSounds, isLoggedIn, balance, onTradeComplete }) {
     const [orderType, setOrderType] = useState("buy");
-    const [orderMode, setOrderMode] = useState("market");
+    const [orderMode, setOrderMode] = useState("market"); // market | limit
     const [qty, setQty] = useState("");
     const [limitPrice, setLimitPrice] = useState(artist?.price?.toFixed(2) || "");
     const [showConfirm, setShowConfirm] = useState(false);
     const [orderPlaced, setOrderPlaced] = useState(false);
     const [visible, setVisible] = useState(false);
     const [chartPeriod, setChartPeriod] = useState("1M");
-    const [compareArtistId, setCompareArtistId] = useState(null);
-    const [showPriceAlert, setShowPriceAlert] = useState(false);
-    const [alertPrice, setAlertPrice] = useState("");
-    const [alertSet, setAlertSet] = useState(false);
-    const [showFab, setShowFab] = useState(false);
-
-    const panelRef = useRef(null);
-    const tradeFormRef = useRef(null);
-    const headerRef = useRef(null);
-    const longPressTimer = useRef(null);
+    const [liveQuote, setLiveQuote] = useState(null);
+    const [liveCandles, setLiveCandles] = useState(null);
+    const [tradeLoading, setTradeLoading] = useState(false);
+    const [tradeError, setTradeError] = useState(null);
 
     useEffect(() => {
         if (artist) {
@@ -75,100 +99,82 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
             setQty("");
             setShowConfirm(false);
             setOrderPlaced(false);
-            setLimitPrice(artist.price.toFixed(2));
-            setCompareArtistId(null);
-            setShowPriceAlert(false);
-            setAlertSet(false);
-            setShowFab(false);
+            setTradeError(null);
+            setLimitPrice(artist.price?.toFixed(2) || "0.00");
+            setLiveQuote(null);
+            setLiveCandles(null);
+            // Fetch live quote and candles
+            api.getQuote(artist.id).then(q => setLiveQuote(q)).catch(() => {});
+            api.getCandles(artist.id).then(c => { if (c.length > 0) setLiveCandles(c); }).catch(() => {});
         } else {
             setVisible(false);
         }
     }, [artist]);
 
-    // FAB visibility based on scroll
-    useEffect(() => {
-        const panel = panelRef.current;
-        if (!panel || !artist) return;
-        const onScroll = () => {
-            setShowFab(panel.scrollTop > 200);
-        };
-        panel.addEventListener("scroll", onScroll, { passive: true });
-        return () => panel.removeEventListener("scroll", onScroll);
-    }, [artist]);
-
-    // Long press on price
-    const handlePriceTouchStart = useCallback(() => {
-        longPressTimer.current = setTimeout(() => {
-            setShowPriceAlert(true);
-            setAlertPrice(artist?.price?.toFixed(2) || "");
-        }, 600);
-    }, [artist]);
-
-    const handlePriceTouchEnd = useCallback(() => {
-        if (longPressTimer.current) {
-            clearTimeout(longPressTimer.current);
-            longPressTimer.current = null;
-        }
-    }, []);
-
-    const handlePriceTouchMove = useCallback(() => {
-        if (longPressTimer.current) {
-            clearTimeout(longPressTimer.current);
-            longPressTimer.current = null;
-        }
-    }, []);
-
-    const handleSetAlert = () => {
-        setAlertSet(true);
-        setTimeout(() => {
-            setShowPriceAlert(false);
-            setAlertSet(false);
-        }, 2000);
-    };
-
     if (!artist) return null;
 
-    const priceHistory = generatePriceHistory(artist.price, artist.change, artist.id);
-    const orderBook = generateOrderBook(artist.price);
-    const isUp = artist.change >= 0;
+    const artistPrice = artist.price || 0;
+    const artistChange = artist.change || 0;
+    const artistName = artist.name || artist.stageName || "Artist";
+
+    // Use live candles if available, else fall back to generated
+    const priceHistory = liveCandles
+      ? liveCandles.map((c, i) => ({ d: i, v: c.close }))
+      : generatePriceHistory(artistPrice, artistChange, typeof artist.id === 'number' ? artist.id : 1);
+
+    // Use live quote for order book if available
+    const orderBook = liveQuote
+      ? generateOrderBook(liveQuote.mid || artistPrice)
+      : generateOrderBook(artistPrice);
+    const isUp = artistChange >= 0;
     const changeColor = isUp ? C.green : C.red;
     const chartColor = isUp ? C.green : C.red;
 
-    // Comparison data
-    const compareArtist = compareArtistId ? allArtists.find(a => a.id === compareArtistId) : null;
-    const comparisonData = compareArtist
-        ? generatePriceHistory(compareArtist.price, compareArtist.change, compareArtist.id)
-        : null;
-
     const quantity = parseInt(qty) || 0;
-    const unitPrice = orderMode === "limit" ? parseFloat(limitPrice) || artist.price : artist.price;
+    const unitPrice = orderMode === "limit" ? parseFloat(limitPrice) || artistPrice : artistPrice;
     const totalCost = quantity * unitPrice;
-    const artistNews = (allNews || []).filter(n => n.artist === artist.name);
-    const artistSounds = (trendingSounds || []).filter(s => s.artist === artist.name);
+    const artistNews = (allNews || []).filter(n => n.artist === artistName);
+    const artistSounds = (trendingSounds || []).filter(s => s.artist === artistName);
 
     const handleClose = () => {
         setVisible(false);
         setTimeout(onClose, 350);
     };
 
-    const handlePlaceOrder = () => {
-        setOrderPlaced(true);
-        setTimeout(() => {
-            setOrderPlaced(false);
-            setShowConfirm(false);
-            setQty("");
-        }, 2500);
+    const handlePlaceOrder = async () => {
+        if (!isLoggedIn) return;
+        const quantity = parseInt(qty) || 0;
+        if (quantity <= 0) { setTradeError("Enter a valid quantity"); return; }
+        setTradeLoading(true);
+        setTradeError(null);
+        try {
+            if (orderType === "buy") {
+                await api.buyShares(artist.id, quantity);
+            } else {
+                await api.sellShares(artist.id, quantity);
+            }
+            setOrderPlaced(true);
+            if (onTradeComplete) onTradeComplete();
+            setTimeout(() => {
+                setOrderPlaced(false);
+                setShowConfirm(false);
+                setQty("");
+            }, 2500);
+        } catch (err) {
+            setTradeError(err.message || "Trade failed");
+        } finally {
+            setTradeLoading(false);
+        }
     };
 
-    const scrollToTrade = () => {
-        tradeFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    };
-
-    const marketCap = (artist.price * (120000 + artist.id * 35000)).toLocaleString();
-    const weekHigh = (artist.price * (1 + Math.abs(artist.change) / 200 + 0.05)).toFixed(2);
-    const weekLow = (artist.price * (1 - Math.abs(artist.change) / 300 - 0.03)).toFixed(2);
-
-    const otherArtists = allArtists.filter(a => a.id !== artist.id);
+    // Market data (use live quote when available)
+    const displayPrice = liveQuote ? liveQuote.mid : artistPrice;
+    const numericId = typeof artist.id === 'number' ? artist.id : 1;
+    const marketCap = (displayPrice * (120000 + numericId * 35000)).toLocaleString();
+    const weekHigh = (displayPrice * (1 + Math.abs(artistChange) / 200 + 0.05)).toFixed(2);
+    const weekLow = (displayPrice * (1 - Math.abs(artistChange) / 300 - 0.03)).toFixed(2);
+    const volStr = typeof artist.volume === 'string' ? artist.volume : (artist.volume || "10") + "";
+    const avgVol = (parseFloat(volStr) * (0.8 + Math.random() * 0.4)).toFixed(1) + "K";
 
     return (
         <>
@@ -185,7 +191,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
             />
 
             {/* Slide-in Panel */}
-            <div ref={panelRef} style={{
+            <div style={{
                 position: "fixed", top: 0, right: 0, bottom: 0,
                 width: "min(680px, 90vw)",
                 zIndex: 201,
@@ -201,6 +207,8 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                 letterSpacing: "-0.02em",
                 lineHeight: 1.35,
             }}>
+                {/* font loaded from index.html */}
+
                 {/* Close button */}
                 <button
                     onClick={handleClose}
@@ -220,7 +228,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                 <div style={{ padding: "28px 32px 40px" }}>
 
                     {/* ─── HEADER ─── */}
-                    <div ref={headerRef} style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
                         <div style={{
                             width: 60, height: 60, borderRadius: 18,
                             background: "rgba(255,255,255,0.8)",
@@ -232,109 +240,27 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                         <div style={{ flex: 1 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 2 }}>
                                 <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.03em", margin: 0 }}>
-                                    {artist.name}
+                                    {artistName}
                                 </h1>
                                 <span style={{
                                     padding: "3px 10px", borderRadius: 8, fontSize: 11, fontWeight: 600,
                                     background: isUp ? C.greenSoft : C.redSoft,
                                     color: changeColor,
                                 }}>
-                                    {isUp ? "▲" : "▼"} {isUp ? "+" : ""}{artist.change}%
+                                    {isUp ? "▲" : "▼"} {isUp ? "+" : ""}{artistChange}%
                                 </span>
                             </div>
-                            <div style={{ fontSize: 13, color: C.textSec }}>{artist.genre} · {artist.streams} streams</div>
+                            <div style={{ fontSize: 13, color: C.textSec }}>{artist.genre || ""} · {artist.streams || "0"} streams</div>
                         </div>
-                        <div
-                            style={{ textAlign: "right", cursor: "pointer", position: "relative" }}
-                            onPointerDown={handlePriceTouchStart}
-                            onPointerUp={handlePriceTouchEnd}
-                            onPointerMove={handlePriceTouchMove}
-                            onPointerLeave={handlePriceTouchEnd}
-                            title="Long press to set price alert"
-                        >
+                        <div style={{ textAlign: "right" }}>
                             <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: "-0.03em" }}>
-                                ${artist.price.toFixed(2)}
+                                ${artistPrice.toFixed(2)}
                             </div>
-                            <div style={{ fontSize: 12, color: C.textMuted }}>per share · hold for alert</div>
+                            <div style={{ fontSize: 12, color: C.textMuted }}>per share</div>
                         </div>
                     </div>
 
-                    {/* ─── PRICE ALERT POPOVER ─── */}
-                    {showPriceAlert && (
-                        <div style={{
-                            background: "rgba(255,255,255,0.95)",
-                            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-                            borderRadius: 16, padding: 20, marginBottom: 16,
-                            border: `1px solid ${C.primary}30`,
-                            boxShadow: `0 4px 24px ${C.primary}15`,
-                            animation: "slideDown 0.3s cubic-bezier(0.22,1,0.36,1)",
-                        }}>
-                            <style>{`@keyframes slideDown { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }`}</style>
-                            {alertSet ? (
-                                <div style={{ textAlign: "center", padding: "8px 0" }}>
-                                    <div style={{ fontSize: 20, marginBottom: 4 }}>✓</div>
-                                    <div style={{ fontSize: 14, fontWeight: 700, color: C.green }}>Alert Set!</div>
-                                    <div style={{ fontSize: 12, color: C.textSec }}>
-                                        We'll notify you when {artist.name} hits ${alertPrice}
-                                    </div>
-                                </div>
-                            ) : (
-                                <>
-                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                                        <div style={{ fontSize: 14, fontWeight: 700 }}>
-                                            Set Price Alert
-                                        </div>
-                                        <button
-                                            onClick={() => setShowPriceAlert(false)}
-                                            style={{
-                                                width: 24, height: 24, borderRadius: 6, border: "none",
-                                                background: "rgba(0,0,0,0.04)", cursor: "pointer",
-                                                fontSize: 12, color: C.textMuted,
-                                                display: "flex", alignItems: "center", justifyContent: "center",
-                                            }}
-                                        >✕</button>
-                                    </div>
-                                    <div style={{ fontSize: 12, color: C.textSec, marginBottom: 12 }}>
-                                        Notify me when {artist.name} hits:
-                                    </div>
-                                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                                        <div style={{
-                                            display: "flex", alignItems: "center", flex: 1,
-                                            borderRadius: 10, border: "1px solid rgba(0,0,0,0.08)",
-                                            background: "#fff", overflow: "hidden",
-                                        }}>
-                                            <span style={{ padding: "0 10px", fontSize: 14, fontWeight: 600, color: C.textSec }}>$</span>
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                value={alertPrice}
-                                                onChange={e => setAlertPrice(e.target.value)}
-                                                style={{
-                                                    flex: 1, padding: "10px 10px 10px 0",
-                                                    border: "none", outline: "none",
-                                                    fontSize: 14, fontWeight: 600,
-                                                    fontFamily: "'Inter', sans-serif",
-                                                    background: "transparent", color: C.text,
-                                                }}
-                                            />
-                                        </div>
-                                        <button
-                                            onClick={handleSetAlert}
-                                            style={{
-                                                padding: "10px 18px", borderRadius: 10, border: "none",
-                                                background: `linear-gradient(135deg, ${C.primary}, #5B6AE8)`,
-                                                color: "#fff", fontSize: 12, fontWeight: 700,
-                                                cursor: "pointer",
-                                                boxShadow: `0 2px 10px ${C.primary}30`,
-                                            }}
-                                        >Set Alert</button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    )}
-
-                    {/* ─── INTERACTIVE PRICE CHART ─── */}
+                    {/* ─── PRICE CHART ─── */}
                     <div style={{
                         background: C.card,
                         backdropFilter: "blur(20px)",
@@ -346,58 +272,24 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                     }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                             <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>Price History</span>
-                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                                {/* Comparison dropdown */}
-                                {otherArtists.length > 0 && (
-                                    <select
-                                        value={compareArtistId || ""}
-                                        onChange={e => setCompareArtistId(e.target.value ? Number(e.target.value) : null)}
-                                        style={{
-                                            padding: "4px 8px", borderRadius: 6,
-                                            border: "1px solid rgba(0,0,0,0.08)",
-                                            background: compareArtistId ? `${C.primary}10` : "rgba(0,0,0,0.02)",
-                                            color: compareArtistId ? C.primary : C.textMuted,
-                                            fontSize: 11, fontWeight: 500, cursor: "pointer",
-                                            fontFamily: "'Inter', sans-serif",
-                                            outline: "none",
-                                        }}
-                                    >
-                                        <option value="">Compare...</option>
-                                        {otherArtists.map(a => (
-                                            <option key={a.id} value={a.id}>{a.emoji} {a.name}</option>
-                                        ))}
-                                    </select>
-                                )}
-                                {/* Period pills */}
-                                <div style={{
-                                    display: "inline-flex", gap: 1, background: "rgba(0,0,0,0.04)",
-                                    borderRadius: 8, padding: 2,
-                                }}>
-                                    {["1D", "1W", "1M", "3M"].map(p => (
-                                        <button key={p} onClick={() => setChartPeriod(p)} style={{
-                                            padding: "4px 10px", borderRadius: 6, border: "none",
-                                            fontSize: 11, fontWeight: 500, cursor: "pointer",
-                                            fontFamily: "'Inter', sans-serif",
-                                            background: chartPeriod === p ? "#fff" : "transparent",
-                                            color: chartPeriod === p ? C.text : C.textMuted,
-                                            boxShadow: chartPeriod === p ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
-                                            transition: "all 0.15s",
-                                        }}>{p}</button>
-                                    ))}
-                                </div>
+                            <div style={{
+                                display: "inline-flex", gap: 1, background: "rgba(0,0,0,0.04)",
+                                borderRadius: 8, padding: 2,
+                            }}>
+                                {["1D", "1W", "1M", "3M"].map(p => (
+                                    <button key={p} onClick={() => setChartPeriod(p)} style={{
+                                        padding: "4px 10px", borderRadius: 6, border: "none",
+                                        fontSize: 11, fontWeight: 500, cursor: "pointer",
+                                        fontFamily: "'Inter', sans-serif",
+                                        background: chartPeriod === p ? "#fff" : "transparent",
+                                        color: chartPeriod === p ? C.text : C.textMuted,
+                                        boxShadow: chartPeriod === p ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
+                                        transition: "all 0.15s",
+                                    }}>{p}</button>
+                                ))}
                             </div>
                         </div>
-                        <InteractiveChart
-                            data={priceHistory}
-                            color={chartColor}
-                            height={150}
-                            buyInPrice={artist.avgCost > 0 ? artist.avgCost : null}
-                            comparisonData={comparisonData}
-                            comparisonColor="#5B6AE8"
-                            comparisonLabel={compareArtist?.name || ""}
-                            label={artist.name}
-                            artistId={artist.id}
-                        />
+                        <PriceChart data={priceHistory} color={chartColor} height={130} />
                         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: C.textMuted }}>
                             <span>30 days ago</span>
                             <span>Today</span>
@@ -411,7 +303,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                     }}>
                         {[
                             { label: "Market Cap", value: `$${marketCap}` },
-                            { label: "24h Volume", value: artist.volume },
+                            { label: "24h Volume", value: artist.volume || "—" },
                             { label: "52w High", value: `$${weekHigh}` },
                             { label: "52w Low", value: `$${weekLow}` },
                         ].map(s => (
@@ -436,16 +328,18 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                         }}>
                             <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>Your Position</div>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
-                                {[
-                                    { label: "Shares", value: artist.shares },
-                                    { label: "Avg Cost", value: `$${artist.avgCost.toFixed(2)}` },
-                                    { label: "Value", value: `$${(artist.shares * artist.price).toFixed(2)}` },
-                                    {
-                                        label: "P&L",
-                                        value: `${((artist.price - artist.avgCost) * artist.shares) >= 0 ? "+" : ""}$${((artist.price - artist.avgCost) * artist.shares).toFixed(2)}`,
-                                        color: (artist.price - artist.avgCost) >= 0 ? C.green : C.red,
-                                    },
-                                ].map(s => (
+                                {(() => {
+                                    const sh = artist.shares || 0;
+                                    const avg = artist.avgCost || 0;
+                                    const val = artist.marketValue || sh * artistPrice;
+                                    const pnl = artist.unrealizedPnL !== undefined ? artist.unrealizedPnL : (artistPrice - avg) * sh;
+                                    return [
+                                        { label: "Shares", value: sh },
+                                        { label: "Avg Cost", value: `$${avg.toFixed(2)}` },
+                                        { label: "Value", value: `$${val.toFixed(2)}` },
+                                        { label: "P&L", value: `${pnl >= 0 ? "+" : ""}$${pnl.toFixed(2)}`, color: pnl >= 0 ? C.green : C.red },
+                                    ];
+                                })().map(s => (
                                     <div key={s.label}>
                                         <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 3 }}>{s.label}</div>
                                         <div style={{ fontSize: 16, fontWeight: 700, color: s.color || C.text }}>{s.value}</div>
@@ -547,6 +441,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                                     <div key={s.id} style={{
                                         display: "flex", gap: 14, alignItems: "center", padding: "10px 0",
                                     }}>
+                                        {/* Mini wave */}
                                         <div style={{ display: "flex", alignItems: "flex-end", gap: 1.5, height: 24, width: 50, flexShrink: 0 }}>
                                             {s.wave.map((v, wi) => (
                                                 <div key={wi} style={{
@@ -571,8 +466,10 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                         </div>
                     )}
 
-                    {/* ═══ INVEST / TRADE FORM ═══ */}
-                    <div ref={tradeFormRef} style={{
+                    {/* ═══════════════════════════════════════════
+              INVEST / TRADE FORM
+             ═══════════════════════════════════════════ */}
+                    <div style={{
                         background: "rgba(255,255,255,0.85)",
                         backdropFilter: "blur(24px)",
                         borderRadius: 20,
@@ -593,7 +490,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                         }} />
 
                         <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 18, letterSpacing: "-0.02em" }}>
-                            Trade {artist.name}
+                            Trade {artistName}
                         </div>
 
                         {/* Buy / Sell Toggle */}
@@ -635,7 +532,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                             ))}
                         </div>
 
-                        {/* Limit Price */}
+                        {/* Limit Price (if limit order) */}
                         {orderMode === "limit" && (
                             <div style={{ marginBottom: 16 }}>
                                 <label style={{ fontSize: 12, fontWeight: 600, color: C.textSec, display: "block", marginBottom: 6 }}>
@@ -792,7 +689,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                                             Order Placed!
                                         </div>
                                         <div style={{ fontSize: 13, color: C.textSec, marginTop: 4 }}>
-                                            {orderType === "buy" ? "Bought" : "Sold"} {quantity} share{quantity !== 1 ? "s" : ""} of {artist.name}
+                                            {orderType === "buy" ? "Bought" : "Sold"} {quantity} share{quantity !== 1 ? "s" : ""} of {artistName}
                                         </div>
                                     </div>
                                 ) : (
@@ -803,7 +700,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                                             border: `1px solid ${orderType === "buy" ? C.green : C.red}20`,
                                             fontSize: 13, color: C.textSec, textAlign: "center", lineHeight: 1.3,
                                         }}>
-                                            Confirm: {orderType === "buy" ? "Buy" : "Sell"} <strong>{quantity}</strong> share{quantity !== 1 ? "s" : ""} of <strong>{artist.name}</strong> for <strong>${totalCost.toFixed(2)}</strong>
+                                            Confirm: {orderType === "buy" ? "Buy" : "Sell"} <strong>{quantity}</strong> share{quantity !== 1 ? "s" : ""} of <strong>{artistName}</strong> for <strong>${totalCost.toFixed(2)}</strong>
                                         </div>
                                         <div style={{ display: "flex", gap: 10 }}>
                                             <button
@@ -831,46 +728,56 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                                                     textTransform: "uppercase",
                                                     letterSpacing: "0.06em",
                                                 }}
-                                            >Confirm {orderType === "buy" ? "Purchase" : "Sale"}</button>
+                                            >{tradeLoading ? "Executing..." : `Confirm ${orderType === "buy" ? "Purchase" : "Sale"}`}</button>
                                         </div>
                                     </>
                                 )}
                             </div>
                         )}
+
+                        {/* Trade error */}
+                        {tradeError && (
+                            <div style={{
+                                marginTop: 12, padding: "10px 14px", borderRadius: 10,
+                                background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)",
+                                fontSize: 13, color: C.red, textAlign: "center",
+                            }}>{tradeError}</div>
+                        )}
+
+                        {/* Live quote info */}
+                        {liveQuote && (
+                            <div style={{
+                                marginTop: 16, padding: 14, borderRadius: 14,
+                                background: "rgba(0,0,0,0.02)", border: "1px solid rgba(0,0,0,0.05)",
+                            }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, textTransform: "uppercase", marginBottom: 8, fontFamily: "monospace" }}>Live Quote</div>
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                                    <div>
+                                        <div style={{ fontSize: 10, color: C.textMuted }}>Bid</div>
+                                        <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "monospace" }}>${liveQuote.bid.toFixed(4)}</div>
+                                    </div>
+                                    <div style={{ textAlign: "center" }}>
+                                        <div style={{ fontSize: 10, color: C.textMuted }}>Mid</div>
+                                        <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "monospace" }}>${liveQuote.mid.toFixed(4)}</div>
+                                    </div>
+                                    <div style={{ textAlign: "right" }}>
+                                        <div style={{ fontSize: 10, color: C.textMuted }}>Ask</div>
+                                        <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "monospace" }}>${liveQuote.ask.toFixed(4)}</div>
+                                    </div>
+                                </div>
+                                <div style={{ fontSize: 11, color: C.textMuted, marginTop: 6, textAlign: "center" }}>
+                                    Spread: {(liveQuote.spreadBps / 100).toFixed(2)}%
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Earnings Band */}
+                        <div style={{ marginTop: 16 }}>
+                            <EarningsBand artistId={artist.id} />
+                        </div>
                     </div>
 
                 </div>
-
-                {/* ─── FLOATING BUY FAB ─── */}
-                <button
-                    onClick={scrollToTrade}
-                    style={{
-                        position: "sticky",
-                        bottom: 24,
-                        float: "right",
-                        marginRight: 24,
-                        width: 56,
-                        height: 56,
-                        borderRadius: "50%",
-                        border: "none",
-                        background: `linear-gradient(135deg, ${C.green}, ${C.accentDark})`,
-                        color: "#fff",
-                        fontSize: 22,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        boxShadow: `0 4px 20px ${C.green}50, 0 8px 32px rgba(0,0,0,0.15)`,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        zIndex: 10,
-                        transition: "all 0.3s cubic-bezier(0.22,1,0.36,1)",
-                        opacity: showFab ? 1 : 0,
-                        transform: showFab ? "scale(1)" : "scale(0.5)",
-                        pointerEvents: showFab ? "auto" : "none",
-                    }}
-                >
-                    $
-                </button>
             </div>
         </>
     );

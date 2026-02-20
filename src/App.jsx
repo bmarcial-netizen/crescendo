@@ -2,17 +2,23 @@ import { useState } from 'react'
 import HomePage from './HomePage'
 import CrescendoDashboard from './CrescendoDashboard'
 import AuthModal from './AuthModal'
+import { AuthProvider, useAuth } from './AuthContext'
 
 // page values: 'home' | 'dashboard' | 'markets' | 'portfolio' | 'news' | 'about' | 'contact' | 'profile'
 // Dashboard-group pages share the CrescendoDashboard component with different initial tabs.
-const DASHBOARD_TABS = { dashboard: 'Dashboard', markets: 'Markets', portfolio: 'Portfolio', news: 'News' }
+const DASHBOARD_TABS = { dashboard: 'Portfolio', markets: 'Markets', news: 'News', portfolio: 'Portfolio' }
 
-function App() {
+function AppInner() {
   const [page, setPage] = useState('home')
-  const [user, setUser] = useState(null) // null = logged out
   const [authModal, setAuthModal] = useState({ open: false, mode: 'signup' })
+  const auth = useAuth()
 
-  const isLoggedIn = !!user
+  const isLoggedIn = auth.isLoggedIn
+  const user = auth.user ? {
+    ...auth.user,
+    name: auth.user.displayName || auth.user.email?.split('@')[0] || '',
+    initials: (auth.user.displayName || auth.user.email || '??').slice(0, 2).toUpperCase(),
+  } : null
 
   const navigate = (target) => {
     const key = target.toLowerCase()
@@ -25,7 +31,9 @@ function App() {
   }
 
   const handleAuth = (userData) => {
-    setUser(userData)
+    // AuthModal already called api.login/register which stores token
+    // Just sync the user data with auth context
+    auth.setUser(userData)
     setAuthModal({ open: false, mode: 'signup' })
     // If on home page, navigate to dashboard after auth
     if (!DASHBOARD_TABS[page] && page !== 'profile') {
@@ -34,7 +42,7 @@ function App() {
   }
 
   const handleLogout = () => {
-    setUser(null)
+    auth.logout()
     navigate('home')
   }
 
@@ -65,7 +73,7 @@ function App() {
     return (
       <>
         <CrescendoDashboard
-          initialTab="Dashboard"
+          initialTab="Portfolio"
           navigate={navigate}
           showProfile
           isLoggedIn={isLoggedIn}
@@ -100,6 +108,14 @@ function App() {
         initialMode={authModal.mode}
       />
     </>
+  )
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
   )
 }
 
