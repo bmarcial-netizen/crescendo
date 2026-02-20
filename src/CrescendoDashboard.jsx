@@ -79,15 +79,7 @@ const mockArtists = [
   { id: 6, name: "Doechii", symbol: "DCHI", ticker: "DCHI", genre: "Hip-Hop / Rap", price: 4.50, change: +12.0, volume: "118K", shares: 0, avgCost: 0, streams: "28.9M", bio: "Grammy-nominated rapper/singer. Massive streaming presence.", sharesOutstanding: 1000000, maxShares: 2000000, revenueSharePct: 10, circuitBreakerStatus: "normal" },
 ];
 
-// Mock trade history
-const tradeHistory = [
-  { id: 1, artist: "malcolm todd", type: "Buy", qty: 50, price: 2.10, total: 105.00, status: "filled", date: "2026-02-18" },
-  { id: 2, artist: "Snow Strippers", type: "Buy", qty: 20, price: 4.50, total: 90.00, status: "filled", date: "2026-02-17" },
-  { id: 3, artist: "2hollis", type: "Buy", qty: 30, price: 1.95, total: 58.50, status: "filled", date: "2026-02-15" },
-  { id: 4, artist: "Men I Trust", type: "Buy", qty: 100, price: 3.60, total: 360.00, status: "pending", date: "2026-02-19" },
-  { id: 5, artist: "malcolm todd", type: "Sell", qty: 10, price: 3.80, total: 38.00, status: "cancelled", date: "2026-02-19" },
-  { id: 6, artist: "2hollis", type: "Buy", qty: 25, price: 2.30, total: 57.50, status: "filled", date: "2026-02-14" },
-];
+// (Trade history is now fetched live from the API — see liveTradeHistory state)
 
 // Mock royalty payments
 const royaltyPayments = [
@@ -1455,6 +1447,17 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
     return () => { cancelled = true; };
   }, [isLoggedIn]);
 
+  // Fetch live trade history when logged in
+  const [liveTradeHistory, setLiveTradeHistory] = useState(null);
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    let cancelled = false;
+    api.getTradeHistory().then(data => {
+      if (!cancelled) setLiveTradeHistory(data);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [isLoggedIn]);
+
   // Map live artists to display format — use real API data, genre map for known symbols
   // Merge portfolio positions so ArtistDetailModal can show "Your Position"
   const artists = liveArtists ? liveArtists.map((a) => {
@@ -1510,6 +1513,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
   const handleTradeComplete = () => {
     if (isLoggedIn) {
       api.getPortfolio().then(data => setLivePortfolio(data)).catch(() => {});
+      api.getTradeHistory().then(data => setLiveTradeHistory(data)).catch(() => {});
       auth.refreshBalance();
     }
   };
@@ -2143,13 +2147,13 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
             </Card>
           </div>
 
-          {/* Recent Trades */}
+          {/* Recent Trades — live from API */}
           <div style={{ marginBottom: 20, ...fadeIn(0.36) }}>
             <Card style={{ padding: 24 }} hover>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <h2 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em" }}>Recent Trades</h2>
               </div>
-              {tradeHistory.length === 0 ? (
+              {(!liveTradeHistory || liveTradeHistory.length === 0) ? (
                 <EmptyState
                   icon={<BarChart3 size={28} color={C.primary} />}
                   title="No trades yet"
@@ -2160,31 +2164,47 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
               ) : (
                 <>
                   <div style={{
-                    display: "grid", gridTemplateColumns: "2fr 0.7fr 0.7fr 1fr 1fr 1fr 1fr",
+                    display: "grid", gridTemplateColumns: "2fr 0.7fr 0.7fr 1fr 1fr 1fr",
                     padding: "0 0 10px 0", borderBottom: "1px solid rgba(0,0,0,0.05)",
                     fontSize: 11, fontWeight: 600, color: C.textMuted, textTransform: "uppercase",
                     letterSpacing: "0.08em", fontFamily: "monospace"
                   }}>
-                    <span>Artist</span><span>Type</span><span>Qty</span><span>Price</span><span>Total</span><span>Status</span><span>Date</span>
+                    <span>Artist</span><span>Side</span><span>Qty</span><span>Price</span><span>Total</span><span>Date</span>
                   </div>
-                  {tradeHistory.map((t, i) => (
-                    <div key={t.id} style={{
-                      display: "grid", gridTemplateColumns: "2fr 0.7fr 0.7fr 1fr 1fr 1fr 1fr",
-                      alignItems: "center", padding: "10px 0",
-                      borderBottom: i < tradeHistory.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none",
-                    }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <img src={avatarUrl(t.artist, 48)} alt={t.artist} style={{ width: 28, height: 28, borderRadius: 8 }} />
-                        <span style={{ fontSize: 13, fontWeight: 600 }}><span style={{ fontSize: 10, fontWeight: 700, color: t.type === "Buy" ? "#38BDF8" : "#EF4444", fontFamily: "monospace", marginRight: 5 }}>{getTicker(t.artist)}</span>{t.artist}</span>
+                  {liveTradeHistory.slice(0, 10).map((t, i) => {
+                    const isBuy = t.side === "buy";
+                    const tArtistName = artistMap[t.artistId] || t.artistId?.slice(0, 8);
+                    const tArtist = artists.find(a => a.id === t.artistId);
+                    const tSymbol = tArtist?.symbol || "";
+                    const tUp = tArtist ? tArtist.change >= 0 : isBuy;
+                    const tDate = new Date(t.createdAt);
+                    const dateStr = tDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                    return (
+                      <div key={t.id} style={{
+                        display: "grid", gridTemplateColumns: "2fr 0.7fr 0.7fr 1fr 1fr 1fr",
+                        alignItems: "center", padding: "10px 0",
+                        borderBottom: i < Math.min(liveTradeHistory.length, 10) - 1 ? "1px solid rgba(0,0,0,0.04)" : "none",
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <img src={avatarUrl(tArtistName, 48)} alt={tArtistName} style={{ width: 28, height: 28, borderRadius: 8 }} />
+                          <span style={{ fontSize: 13, fontWeight: 600 }}>
+                            {tSymbol && <span style={{
+                              padding: "1px 5px", borderRadius: 4, fontSize: 10, fontWeight: 700,
+                              background: tUp ? C.greenSoft : C.redSoft,
+                              color: tUp ? C.green : C.red,
+                              fontFamily: "monospace", marginRight: 5,
+                            }}>{tSymbol}</span>}
+                            {tArtistName}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: isBuy ? C.green : C.red }}>{isBuy ? "Buy" : "Sell"}</span>
+                        <span style={{ fontSize: 12, fontFamily: "monospace" }}>{t.quantity}</span>
+                        <span style={{ fontSize: 12, fontFamily: "monospace" }}>${t.pricePerShare.toFixed(4)}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600 }}>${t.totalAmount.toFixed(2)}</span>
+                        <span style={{ fontSize: 11, color: C.textMuted, fontFamily: "monospace" }}>{dateStr}</span>
                       </div>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: t.type === "Buy" ? C.green : C.red }}>{t.type}</span>
-                      <span style={{ fontSize: 12, fontFamily: "monospace" }}>{t.qty}</span>
-                      <span style={{ fontSize: 12, fontFamily: "monospace" }}>${t.price.toFixed(2)}</span>
-                      <span style={{ fontSize: 12, fontWeight: 600 }}>${t.total.toFixed(2)}</span>
-                      <StatusPill status={t.status} />
-                      <span style={{ fontSize: 11, color: C.textMuted, fontFamily: "monospace" }}>{t.date}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </>
               )}
             </Card>

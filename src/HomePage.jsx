@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { GoogleLogin } from "@react-oauth/google";
+import { useAuth } from "./AuthContext";
 
 // ─── Crescendo Homepage ─── Studio Dialect-inspired dark landing ───
 // Performance: all scroll/mouse animations use refs + rAF (zero React re-renders)
@@ -28,11 +30,31 @@ const FEATURES = [
 const NAV_LINKS = ["Home", "Markets", "Dashboard", "About", "Contact"];
 
 export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, user, onLogout }) {
+  const auth = useAuth();
   const [loaded, setLoaded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [hoveredFeature, setHoveredFeature] = useState(null);
   const [darkHeader, setDarkHeader] = useState(false);
   const darkHeaderRef = useRef(false);
+  const [googleError, setGoogleError] = useState(null);
+
+  // Google sign-in handler — signs in and goes straight to dashboard
+  const handleGoogleSuccess = async (credentialResponse) => {
+    try {
+      setGoogleError(null);
+      const data = await auth.googleAuth(credentialResponse.credential);
+      // auth.googleAuth already set user + token in context.
+      // Use a micro-delay so React re-renders with isLoggedIn=true
+      // before navigate checks the auth gate.
+      setTimeout(() => navigate('dashboard'), 50);
+    } catch (err) {
+      setGoogleError(err.message || "Google sign-in failed");
+    }
+  };
+
+  const handleGoogleError = () => {
+    setGoogleError("Google sign-in was cancelled or failed");
+  };
 
   // Refs for scroll-to-section (About / Contact)
   const aboutRef = useRef(null);
@@ -476,6 +498,48 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
             color: COLORS.textMuted, letterSpacing: "0.1em"
           }}>[ EST. 2026 ]</span>
                 </div>
+
+                {/* Google Sign-In — direct on homepage */}
+                {!isLoggedIn && (
+                  <div style={{
+                    position: "relative", zIndex: 3,
+                    marginTop: 28,
+                    display: "flex", flexDirection: "column",
+                    alignItems: "center", gap: 12,
+                    opacity: loaded ? 1 : 0,
+                    transition: loaded ? "none" : "all 1s 1.1s cubic-bezier(0.22,1,0.36,1)"
+                  }}>
+                    <GoogleLogin
+                      onSuccess={handleGoogleSuccess}
+                      onError={handleGoogleError}
+                      theme="filled_black"
+                      shape="rectangular"
+                      size="large"
+                      width="300"
+                      text="signin_with"
+                    />
+                    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                      <div style={{ width: 40, height: 1, background: "rgba(255,255,255,0.15)" }} />
+                      <span style={{ fontSize: 10, color: COLORS.textMuted, fontFamily: "monospace", letterSpacing: "0.1em", textTransform: "uppercase" }}>or</span>
+                      <div style={{ width: 40, height: 1, background: "rgba(255,255,255,0.15)" }} />
+                    </div>
+                    <button
+                      onClick={() => openAuth('signup')}
+                      style={{
+                        padding: "12px 36px", background: COLORS.accent,
+                        color: "#0F172A", border: "none", borderRadius: 0,
+                        cursor: "pointer", fontFamily: "monospace",
+                        fontSize: 12, fontWeight: 700, letterSpacing: "0.12em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      CREATE ACCOUNT WITH EMAIL
+                    </button>
+                    {googleError && (
+                      <div style={{ fontSize: 11, color: "#EF4444", fontFamily: "monospace", marginTop: 4 }}>{googleError}</div>
+                    )}
+                  </div>
+                )}
 
                 {/* 3D Rotating cylinder — SCALES on scroll */}
                 <div ref={cylinderRef} style={{

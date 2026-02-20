@@ -39,12 +39,18 @@ export default function WalletPanel({ balance: balanceProp, onBalanceUpdate, onC
       } else {
         result = await api.withdraw(num);
       }
-      setSuccess(`${tab === "deposit" ? "Deposited" : "Withdrew"} $${num.toFixed(2)}. New balance: $${result.balance.toFixed(2)}`);
+      const newBal = parseFloat(result.balance);
+      setSuccess(`${tab === "deposit" ? "Deposited" : "Withdrew"} $${num.toFixed(2)}. New balance: $${newBal.toFixed(2)}`);
       setAmount("");
-      if (onBalanceUpdate) onBalanceUpdate(result.balance);
-      if (auth.refreshBalance) auth.refreshBalance();
+      // Update balance everywhere — call both the prop callback and auth context
+      if (onBalanceUpdate) onBalanceUpdate(newBal);
+      // Refresh balance from server to ensure UI is in sync
+      if (auth.refreshBalance) {
+        await auth.refreshBalance();
+      }
     } catch (err) {
-      setError(err.message || "Transaction failed");
+      console.error("[WalletPanel] Transaction failed:", err);
+      setError(err.message || "Transaction failed. Please try again.");
     } finally {
       setLoading(false);
     }
