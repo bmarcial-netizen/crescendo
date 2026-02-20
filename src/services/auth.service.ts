@@ -71,6 +71,10 @@ export async function login(email: string, password: string) {
 }
 
 export async function googleAuth(credential: string) {
+  if (!config.google.clientId) {
+    throw new BadRequestError('Google Sign-In is not configured. Set GOOGLE_CLIENT_ID in .env');
+  }
+
   const ticket = await googleClient.verifyIdToken({
     idToken: credential,
     audience: config.google.clientId,
@@ -86,11 +90,15 @@ export async function googleAuth(credential: string) {
     throw new BadRequestError('Google email not verified');
   }
 
+  if (!googleId) {
+    throw new BadRequestError('Invalid Google token: missing user ID');
+  }
+
   // Check if user with this googleId already exists
   const [existingByGoogleId] = await db
     .select()
     .from(users)
-    .where(eq(users.googleId, googleId))
+    .where(eq(users.googleId, googleId!))
     .limit(1);
 
   if (existingByGoogleId) {

@@ -46,8 +46,14 @@ router.post('/google', async (req: Request, res: Response) => {
     return;
   }
 
-  const result = await googleAuth(credential);
-  res.json(result);
+  try {
+    const result = await googleAuth(credential);
+    res.json(result);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Google authentication failed';
+    console.error('Google auth error:', message);
+    res.status(401).json({ error: { message: 'Google authentication failed. Please try again.' } });
+  }
 });
 
 router.get('/me', requireAuth(), async (req: AuthRequest, res: Response) => {
