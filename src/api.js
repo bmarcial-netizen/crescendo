@@ -1,6 +1,6 @@
 // ─── Crescendo API Client ─── connects frontend to backend ───
 
-const API_BASE = import.meta.env.VITE_API_URL || "https://crescendo-production-1231.up.railway.app";
+const API_BASE = import.meta.env.VITE_API_URL || "";
 
 // ── Token management ──
 let authToken = localStorage.getItem("crescendo_token") || null;
@@ -86,6 +86,16 @@ export async function login(email, password) {
   const data = await apiFetch("/api/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
+  });
+  if (data.token) setToken(data.token);
+  if (data.user) localStorage.setItem("crescendo_user", JSON.stringify(data.user));
+  return data;
+}
+
+export async function googleAuth(credential) {
+  const data = await apiFetch("/api/auth/google", {
+    method: "POST",
+    body: JSON.stringify({ credential }),
   });
   if (data.token) setToken(data.token);
   if (data.user) localStorage.setItem("crescendo_user", JSON.stringify(data.user));

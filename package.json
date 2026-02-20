@@ -29,6 +29,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@react-oauth/google": "^0.13.4",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "csv-parse": "^6.1.0",

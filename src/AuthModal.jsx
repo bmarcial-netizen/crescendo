@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { GoogleLogin } from "@react-oauth/google";
+import { useAuth } from "./AuthContext";
 import * as api from "./api";
 
 const C = {
@@ -15,6 +17,7 @@ const C = {
 };
 
 export default function AuthModal({ isOpen, onClose, onAuth, initialMode = "signup" }) {
+  const auth = useAuth();
   const [mode, setMode] = useState(initialMode);
   const [visible, setVisible] = useState(false);
   const [showPw, setShowPw] = useState(false);
@@ -50,13 +53,25 @@ export default function AuthModal({ isOpen, onClose, onAuth, initialMode = "sign
 
   const handleClose = () => { setVisible(false); setTimeout(onClose, 350); };
 
+  const passwordChecks = mode === "signup" ? [
+    { label: "8+ characters", pass: formData.password.length >= 8 },
+    { label: "Uppercase letter", pass: /[A-Z]/.test(formData.password) },
+    { label: "Lowercase letter", pass: /[a-z]/.test(formData.password) },
+    { label: "Number", pass: /[0-9]/.test(formData.password) },
+  ] : [];
+
   const validate = () => {
     const errs = {};
     if (mode === "signup" && !formData.name.trim()) errs.name = "Name is required";
     if (!formData.email.trim()) errs.email = "Email is required";
     else if (!/\S+@\S+\.\S+/.test(formData.email)) errs.email = "Enter a valid email";
     if (!formData.password) errs.password = "Password is required";
-    else if (formData.password.length < 6) errs.password = "Min 6 characters";
+    else if (mode === "signup") {
+      if (formData.password.length < 8) errs.password = "Min 8 characters";
+      else if (!/[A-Z]/.test(formData.password)) errs.password = "Needs an uppercase letter";
+      else if (!/[a-z]/.test(formData.password)) errs.password = "Needs a lowercase letter";
+      else if (!/[0-9]/.test(formData.password)) errs.password = "Needs a number";
+    }
     if (mode === "signup" && formData.password !== formData.confirmPassword)
       errs.confirmPassword = "Passwords don't match";
     return errs;
@@ -88,6 +103,32 @@ export default function AuthModal({ isOpen, onClose, onAuth, initialMode = "sign
       setLoading(false);
       setErrors({ form: err.message || "Authentication failed. Please try again." });
     }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setLoading(true);
+    setErrors({});
+    try {
+      const data = await auth.googleAuth(credentialResponse.credential);
+      setLoading(false);
+      setSuccess(true);
+      setTimeout(() => {
+        onAuth({
+          id: data.user.id,
+          name: data.user.displayName || data.user.email.split("@")[0],
+          email: data.user.email,
+          role: data.user.role,
+          initials: (data.user.displayName || data.user.email).slice(0, 2).toUpperCase(),
+        });
+      }, 1200);
+    } catch (err) {
+      setLoading(false);
+      setErrors({ form: err.message || "Google sign-in failed. Please try again." });
+    }
+  };
+
+  const handleGoogleError = () => {
+    setErrors({ form: "Google sign-in was cancelled or failed." });
   };
 
   const textAnimStyle = (step) => ({
@@ -350,6 +391,20 @@ export default function AuthModal({ isOpen, onClose, onAuth, initialMode = "sign
                     {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
+                {mode === "signup" && formData.password.length > 0 && (
+                  <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+                    {passwordChecks.map(c => (
+                      <span key={c.label} style={{
+                        fontSize: 10, fontFamily: "monospace", letterSpacing: "0.04em",
+                        padding: "2px 6px", borderRadius: 4,
+                        background: c.pass ? "rgba(56,189,248,0.12)" : "rgba(0,0,0,0.04)",
+                        color: c.pass ? "#0EA5E9" : C.textMuted,
+                        border: `1px solid ${c.pass ? "rgba(56,189,248,0.3)" : "rgba(0,0,0,0.06)"}`,
+                        transition: "all 0.2s",
+                      }}>{c.pass ? "+" : "-"} {c.label}</span>
+                    ))}
+                  </div>
+                )}
               </FieldGroup>
 
               {mode === "signup" && (
@@ -397,29 +452,17 @@ export default function AuthModal({ isOpen, onClose, onAuth, initialMode = "sign
                 <div style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.08)" }} />
               </div>
 
-              {/* Social */}
-              <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
-                {[
-                  { label: "Google", icon: "G" },
-                  { label: "Apple", icon: "" },
-                ].map(s => (
-                  <button key={s.label} type="button" style={{
-                    flex: 1, padding: "12px 0",
-                    borderRadius: 0, border: "1px solid rgba(0,0,0,0.1)",
-                    background: "rgba(0,0,0,0.02)",
-                    color: C.text, fontSize: 11, fontWeight: 600, cursor: "pointer",
-                    fontFamily: "monospace",
-                    letterSpacing: "0.08em",
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                    transition: "all 0.2s",
-                  }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,0,0,0.05)"; e.currentTarget.style.borderColor = "rgba(0,0,0,0.15)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(0,0,0,0.02)"; e.currentTarget.style.borderColor = "rgba(0,0,0,0.1)"; }}
-                  >
-                    <span style={{ fontSize: 16 }}>{s.icon}</span>
-                    {s.label}
-                  </button>
-                ))}
+              {/* Google Sign-In */}
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={handleGoogleError}
+                  theme="outline"
+                  shape="rectangular"
+                  size="large"
+                  width="320"
+                  text={mode === "signup" ? "signup_with" : "signin_with"}
+                />
               </div>
 
               {/* Switch mode */}

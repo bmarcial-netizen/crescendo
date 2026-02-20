@@ -58,6 +58,13 @@ export function AuthProvider({ children }) {
     return data;
   };
 
+  const handleGoogleAuth = async (credential) => {
+    const data = await api.googleAuth(credential);
+    setUser(data.user);
+    setTokenState(data.token);
+    return data;
+  };
+
   const handleLogout = () => {
     api.logout();
     setUser(null);
@@ -73,6 +80,7 @@ export function AuthProvider({ children }) {
     balanceLoading,
     login: handleLogin,
     register: handleRegister,
+    googleAuth: handleGoogleAuth,
     logout: handleLogout,
     refreshBalance,
     setUser,
