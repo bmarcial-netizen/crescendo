@@ -32,45 +32,19 @@ function avatarUrl(name, size = 64) {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=${size}&background=${colors[idx]}&color=fff&bold=true&format=svg`;
 }
 
-// Simulated 30-day price history generator (deterministic per artist id)
-function generatePriceHistory(basePrice, change, id) {
-    const seed = id * 17;
-    const pts = [];
-    const startPrice = basePrice / (1 + change / 100);
-    for (let i = 0; i < 30; i++) {
-        const noise = Math.sin(seed + i * 0.7) * 0.08 + Math.cos(seed + i * 1.3) * 0.05;
-        const progress = i / 29;
-        const price = startPrice + (basePrice - startPrice) * progress + basePrice * noise;
-        pts.push({ d: i, v: Math.max(0.01, price) });
-    }
-    pts[pts.length - 1].v = basePrice;
-    return pts;
-}
+// No more random generators — all data comes from backend API
 
-// Simulated traction history (30 data points of score + price)
-function generateTractionHistory(basePrice, id) {
-    const seed = id * 23;
-    const pts = [];
-    for (let i = 0; i < 30; i++) {
-        const scoreBase = 40 + (id * 7) % 30;
-        const scoreNoise = Math.sin(seed + i * 0.5) * 12 + Math.cos(seed + i * 1.1) * 8;
-        const score = Math.max(10, Math.min(100, scoreBase + (i / 29) * 20 + scoreNoise));
-        const priceNoise = Math.sin(seed + i * 0.7) * 0.08;
-        const price = basePrice * (0.85 + (i / 29) * 0.15 + priceNoise);
-        pts.push({ d: i, score: Math.round(score), price: Math.max(0.01, price) });
-    }
-    return pts;
-}
-
-// Simulated order book
-function generateOrderBook(price) {
+// Deterministic order book from bid/ask (no Math.random)
+function generateOrderBook(bid, ask) {
     const bids = [];
     const asks = [];
-    for (let i = 1; i <= 5; i++) {
-        const bidPrice = price - i * 0.03 - Math.random() * 0.02;
-        const askPrice = price + i * 0.03 + Math.random() * 0.02;
-        bids.push({ price: Math.max(0.01, bidPrice).toFixed(2), qty: Math.floor(80 + Math.random() * 400) });
-        asks.push({ price: askPrice.toFixed(2), qty: Math.floor(60 + Math.random() * 350) });
+    const spread = Math.max(0.01, ask - bid);
+    for (let i = 0; i < 5; i++) {
+        const bidPrice = bid - i * (spread * 0.3);
+        const askPrice = ask + i * (spread * 0.3);
+        // Deterministic quantities based on level
+        bids.push({ price: Math.max(0.01, bidPrice).toFixed(2), qty: 200 - i * 30 });
+        asks.push({ price: askPrice.toFixed(2), qty: 150 - i * 20 });
     }
     return { bids, asks };
 }
@@ -187,7 +161,9 @@ function InteractivePriceChart({ data, color, width = "100%", height = 140 }) {
     };
 
     const hp = hover !== null ? pts[hover] : null;
-    const dayLabel = hp ? `Day ${hp.d + 1}` : "";
+    const dayLabel = hp ? (typeof hp.d === "string" && hp.d.match(/^\d{4}-\d{2}-\d{2}$/)
+        ? new Date(hp.d + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        : `Day ${(hp.d || 0) + 1}`) : "";
 
     return (
         <svg
@@ -307,6 +283,8 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
     const [metricsData, setMetricsData] = useState([]);
     const [metricsLoading, setMetricsLoading] = useState(false);
     const [activeMetric, setActiveMetric] = useState("spotifyMonthlyListeners");
+    const [apiCandles, setApiCandles] = useState([]);
+    const [analysisData, setAnalysisData] = useState(null);
 
     useEffect(() => {
         if (artist) {
@@ -319,6 +297,8 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
             setShowTraction(false);
             setLiveQuote(null);
             setMetricsData([]);
+            setApiCandles([]);
+            setAnalysisData(null);
             api.getQuote(artist.id).then(q => setLiveQuote(q)).catch(() => {});
             // Fetch real metrics if artist has a symbol — get all available data
             if (artist.symbol) {
@@ -328,6 +308,14 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                     .catch(() => {})
                     .finally(() => setMetricsLoading(false));
             }
+            // Fetch daily candles from API (deterministic, no randomness)
+            api.getDailyCandles(artist.id).then(candles => {
+                setApiCandles(candles || []);
+            }).catch(() => setApiCandles([]));
+            // Fetch financial analysis
+            api.getFinancialAnalysis(artist.id).then(data => {
+                setAnalysisData(data);
+            }).catch(() => setAnalysisData(null));
         } else {
             setVisible(false);
         }
@@ -391,9 +379,14 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
     const displayBid = liveQuote?.bid || artist.price || 0;
     const displayAsk = liveQuote?.ask || artist.price || 0;
 
-    const priceHistory = generatePriceHistory(displayPrice, artist.change || 0, artist.id);
-    const tractionHistory = generateTractionHistory(displayPrice, artist.id);
-    const orderBook = generateOrderBook(displayPrice);
+    // Convert API candles to chart data format (deterministic, no randomness)
+    const priceHistory = apiCandles.length > 0
+        ? apiCandles.map(c => ({ d: c.t, v: c.c }))
+        : [{ d: "now", v: displayPrice }];
+    const tractionHistory = apiCandles.length > 0
+        ? apiCandles.map((c, i) => ({ d: c.t, score: 50, price: c.c }))
+        : [{ d: 0, score: 50, price: displayPrice }];
+    const orderBook = generateOrderBook(displayBid, displayAsk);
     const artistChange = artist.change || 0;
     const artistPrice = displayPrice;
     const isUp = artistChange >= 0;
@@ -444,7 +437,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
     const marketCap = (artistPrice * (120000 + artist.id * 35000)).toLocaleString();
     const weekHigh = (artistPrice * (1 + Math.abs(artistChange) / 200 + 0.05)).toFixed(2);
     const weekLow = (artistPrice * (1 - Math.abs(artistChange) / 300 - 0.03)).toFixed(2);
-    const avgVol = (parseFloat(artist.volume || "0") * (0.8 + Math.random() * 0.4)).toFixed(1) + "K";
+    const avgVol = parseFloat(artist.volume || "0").toFixed(1) + "K";
 
     // Supply data
     const supplyPct = artist.sharesOutstanding && artist.maxShares

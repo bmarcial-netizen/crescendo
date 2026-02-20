@@ -77,7 +77,7 @@ function computeDerivedRatios(m: z.infer<typeof metricsFieldsSchema>): DerivedRa
 
 // ── Insert Snapshot (JSON body) ────────────────────────────────────────────
 
-export async function insertMetricSnapshot(input: ChartmetricSnapshotInput) {
+export async function insertMetricSnapshot(input: ChartmetricSnapshotInput, upsert = false) {
   const [artist] = await db
     .select()
     .from(artists)
@@ -88,41 +88,57 @@ export async function insertMetricSnapshot(input: ChartmetricSnapshotInput) {
   const m = input.metrics;
   const derived = computeDerivedRatios(m);
 
-  const [snapshot] = await db
-    .insert(artistMetricSnapshots)
-    .values({
-      artistId: input.artistId,
-      source: 'chartmetric_manual',
-      capturedAt: new Date(input.capturedAt),
-      metricsJson: input.metrics as Record<string, unknown>,
+  const row = {
+    artistId: input.artistId,
+    source: 'chartmetric_manual' as const,
+    capturedAt: new Date(input.capturedAt),
+    metricsJson: input.metrics as Record<string, unknown>,
 
-      spotifyMonthlyListeners: numOrNull(m.spotifyMonthlyListeners),
-      spotifyFollowers: numOrNull(m.spotifyFollowers),
-      spotifyPopularity: numOrNull(m.spotifyPopularity),
-      spotifyListenerToFollowerRatio: numOrNull(derived.spotifyListenerToFollowerRatio),
+    spotifyMonthlyListeners: numOrNull(m.spotifyMonthlyListeners),
+    spotifyFollowers: numOrNull(m.spotifyFollowers),
+    spotifyPopularity: numOrNull(m.spotifyPopularity),
+    spotifyListenerToFollowerRatio: numOrNull(derived.spotifyListenerToFollowerRatio),
 
-      playlistReach: numOrNull(m.playlistReach),
-      playlistCount: numOrNull(m.playlistCount),
+    playlistReach: numOrNull(m.playlistReach),
+    playlistCount: numOrNull(m.playlistCount),
 
-      fanConversionRate: numOrNull(derived.fanConversionRate),
-      reachFollowersRatio: numOrNull(derived.reachFollowersRatio),
+    fanConversionRate: numOrNull(derived.fanConversionRate),
+    reachFollowersRatio: numOrNull(derived.reachFollowersRatio),
 
-      tiktokFollowers: numOrNull(m.tiktokFollowers),
-      tiktokLikes: numOrNull(m.tiktokLikes),
-      tiktokTopViews: numOrNull(m.tiktokTopViews),
+    tiktokFollowers: numOrNull(m.tiktokFollowers),
+    tiktokLikes: numOrNull(m.tiktokLikes),
+    tiktokTopViews: numOrNull(m.tiktokTopViews),
 
-      instagramFollowers: numOrNull(m.instagramFollowers),
+    instagramFollowers: numOrNull(m.instagramFollowers),
 
-      youtubeSubscribers: numOrNull(m.youtubeSubscribers),
-      youtubeChannelViews: numOrNull(m.youtubeChannelViews),
+    youtubeSubscribers: numOrNull(m.youtubeSubscribers),
+    youtubeChannelViews: numOrNull(m.youtubeChannelViews),
 
-      shazamTotal: numOrNull(m.shazamTotal),
-      airplaySpins: numOrNull(m.airplaySpins),
+    shazamTotal: numOrNull(m.shazamTotal),
+    airplaySpins: numOrNull(m.airplaySpins),
 
-      songstatsScore: numOrNull(m.songstatsScore),
-      chartmetricScore: numOrNull(m.chartmetricScore),
-    })
-    .returning();
+    songstatsScore: numOrNull(m.songstatsScore),
+    chartmetricScore: numOrNull(m.chartmetricScore),
+  };
+
+  let snapshot;
+  if (upsert) {
+    // Upsert on (artistId, source, capturedAt) unique index
+    const { artistId: _a, source: _s, capturedAt: _c, ...updateFields } = row;
+    [snapshot] = await db
+      .insert(artistMetricSnapshots)
+      .values(row)
+      .onConflictDoUpdate({
+        target: [artistMetricSnapshots.artistId, artistMetricSnapshots.source, artistMetricSnapshots.capturedAt],
+        set: updateFields,
+      })
+      .returning();
+  } else {
+    [snapshot] = await db
+      .insert(artistMetricSnapshots)
+      .values(row)
+      .returning();
+  }
 
   // Trigger cohort traction recompute (fire-and-forget for API latency)
   recomputeTractionAfterSnapshotInsert().catch((err) =>
@@ -157,10 +173,12 @@ export async function getLatestSnapshot(artistId: string) {
 // ── CSV Upload with Profile Detection ──────────────────────────────────────
 
 // Known column header aliases → canonical field name
-const COLUMN_MAP: Record<string, keyof z.infer<typeof metricsFieldsSchema> | 'artist_id' | 'captured_at'> = {
+const COLUMN_MAP: Record<string, keyof z.infer<typeof metricsFieldsSchema> | 'artist_id' | 'captured_at' | 'symbol'> = {
   // Identity
   'artist_id': 'artist_id',
   'artistid': 'artist_id',
+  'symbol': 'symbol',
+  'ticker': 'symbol',
   'captured_at': 'captured_at',
   'capturedat': 'captured_at',
   'date': 'captured_at',
@@ -236,11 +254,13 @@ export async function parseAndInsertMetricsCsv(buffer: Buffer): Promise<CsvParse
     }
   }
 
-  // Validate we have the two required columns
+  // Validate we have the two required columns (artist_id OR symbol, plus date)
   const mappedValues = Object.values(headerMapping);
-  if (!mappedValues.includes('artist_id')) {
+  const hasArtistId = mappedValues.includes('artist_id');
+  const hasSymbol = mappedValues.includes('symbol');
+  if (!hasArtistId && !hasSymbol) {
     throw new BadRequestError(
-      `CSV missing artist_id column. Found headers: [${csvHeaders.join(', ')}]. ` +
+      `CSV missing artist_id or symbol column. Found headers: [${csvHeaders.join(', ')}]. ` +
       `Recognized: [${Object.keys(headerMapping).join(', ')}]. ` +
       `Unrecognized: [${unmappedHeaders.join(', ')}]`
     );
@@ -252,6 +272,9 @@ export async function parseAndInsertMetricsCsv(buffer: Buffer): Promise<CsvParse
       `Unrecognized: [${unmappedHeaders.join(', ')}]`
     );
   }
+
+  // Build a symbol→artistId cache for symbol-based lookups
+  const symbolCache: Record<string, string> = {};
 
   const result: CsvParseResult = { inserted: 0, errors: [], snapshots: [] };
 
@@ -268,9 +291,23 @@ export async function parseAndInsertMetricsCsv(buffer: Buffer): Promise<CsvParse
         }
       }
 
-      const artistId = mapped['artist_id'];
+      // Resolve artistId — from artist_id column or symbol lookup
+      let artistId = mapped['artist_id'];
+      if (!artistId && mapped['symbol']) {
+        const sym = mapped['symbol'].toUpperCase();
+        if (!symbolCache[sym]) {
+          const [found] = await db
+            .select({ id: artists.id })
+            .from(artists)
+            .where(eq(artists.symbol, sym))
+            .limit(1);
+          if (!found) { result.errors.push(`Row ${rowNum}: artist symbol "${sym}" not found`); continue; }
+          symbolCache[sym] = found.id;
+        }
+        artistId = symbolCache[sym];
+      }
       const capturedAt = mapped['captured_at'];
-      if (!artistId) { result.errors.push(`Row ${rowNum}: missing artist_id`); continue; }
+      if (!artistId) { result.errors.push(`Row ${rowNum}: missing artist_id or symbol`); continue; }
       if (!capturedAt) { result.errors.push(`Row ${rowNum}: missing captured_at`); continue; }
 
       // Build metrics object from numeric fields
@@ -278,7 +315,7 @@ export async function parseAndInsertMetricsCsv(buffer: Buffer): Promise<CsvParse
       const fieldsFound: string[] = [];
 
       for (const [key, val] of Object.entries(mapped)) {
-        if (key === 'artist_id' || key === 'captured_at') continue;
+        if (key === 'artist_id' || key === 'captured_at' || key === 'symbol') continue;
         const num = parseFloat(val);
         if (!isNaN(num)) {
           metrics[key] = num;
@@ -293,7 +330,8 @@ export async function parseAndInsertMetricsCsv(buffer: Buffer): Promise<CsvParse
         metrics,
       });
 
-      const { snapshot } = await insertMetricSnapshot(parsed);
+      // Use upsert: update existing row on (artistId, source, capturedAt) conflict
+      const { snapshot } = await insertMetricSnapshot(parsed, true);
       result.inserted++;
       result.snapshots.push({ artistId, capturedAt, fieldsFound });
 

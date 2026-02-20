@@ -87,20 +87,47 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/admin/metrics', metricsRoutes);
 app.use('/api/stripe', stripeRoutes);
 
+// Temporary debug endpoint — remove after verifying production config
+app.get('/api/debug/auth-config', (_req, res) => {
+  res.json({
+    environment: config.nodeEnv,
+    vercelEnv: process.env.VERCEL_ENV || 'not-vercel',
+    baseUrl: config.appUrl || '(not set)',
+    vercelUrl: process.env.VERCEL_URL || '(not set)',
+    corsOrigins: config.corsOrigins,
+    googleClientIdSet: !!config.google.clientId,
+    googleClientIdPrefix: config.google.clientId
+      ? config.google.clientId.slice(0, 12) + '...'
+      : '(empty)',
+    jwtSecretSet: !!config.jwtSecret,
+    envVarsPresent: {
+      GOOGLE_CLIENT_ID: !!process.env.GOOGLE_CLIENT_ID,
+      GOOGLE_CLIENT_SECRET: !!process.env.GOOGLE_CLIENT_SECRET,
+      APP_URL: !!process.env.APP_URL,
+      APP_URL_PROD: !!process.env.APP_URL_PROD,
+      JWT_SECRET: !!process.env.JWT_SECRET,
+      DATABASE_URL: !!process.env.DATABASE_URL,
+    },
+  });
+});
+
 // Error handler (must be last — but before static files)
 app.use(errorHandler);
 
-// Serve frontend from client/dist (built React app)
-const clientDist = path.join(__dirname, '..', 'client', 'dist');
-app.use(express.static(clientDist));
+// On Vercel, static files and SPA fallback are handled by the CDN/edge network.
+// Only serve them when running standalone (local dev / self-hosted).
+if (!process.env.VERCEL) {
+  const clientDist = path.join(__dirname, '..', 'client', 'dist');
+  app.use(express.static(clientDist));
 
-// SPA fallback: any non-API route serves index.html
-app.get('/{*path}', (_req, res) => {
-  res.sendFile(path.join(clientDist, 'index.html'));
-});
+  // SPA fallback: any non-API route serves index.html
+  app.get('/{*path}', (_req, res) => {
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
 
-app.listen(config.port, () => {
-  console.log(`Server running on port ${config.port}`);
-});
+  app.listen(config.port, () => {
+    console.log(`Server running on port ${config.port}`);
+  });
+}
 
 export default app;

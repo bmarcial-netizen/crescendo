@@ -5,10 +5,11 @@ import { eq, desc, and, gte, lte, asc, sql } from 'drizzle-orm';
 import { getPriceQuote } from '../services/pricing.service';
 import { NotFoundError } from '../utils/errors';
 import { estimateEarningsBand, DEFAULT_PARAMS, EarningsModelParams } from '../model/earningsEstimator';
+import { getDailyCandles, getMarketSummary, computeFinancialAnalysis } from '../services/dailyPrice.service';
 
 const router = Router();
 
-// List all artists (public)
+// List all artists with real change data (public)
 router.get('/artists', async (_req: Request, res: Response) => {
   const allArtists = await db
     .select({
@@ -26,7 +27,20 @@ router.get('/artists', async (_req: Request, res: Response) => {
     })
     .from(artists);
 
-  res.json({ artists: allArtists });
+  // Compute real change % from daily candles for each artist
+  const enriched = await Promise.all(allArtists.map(async (a) => {
+    try {
+      const summary = await getMarketSummary(a.id);
+      return {
+        ...a,
+        change24h: summary?.pctChange ?? 0,
+      };
+    } catch {
+      return { ...a, change24h: 0 };
+    }
+  }));
+
+  res.json({ artists: enriched });
 });
 
 // Get price quote for an artist (public)
@@ -50,7 +64,55 @@ router.get('/artists/:id/traction-history', async (req: Request, res: Response) 
   res.json({ artist: { id: artist.id, stageName: artist.stageName }, snapshots });
 });
 
-// Get OHLCV candles for an artist (public)
+// Get deterministic daily candles derived from metric snapshots (public)
+// This is the PRIMARY candle endpoint — no randomness, no trade dependency
+router.get('/artists/:id/daily-candles', async (req: Request, res: Response) => {
+  const artistId = req.params.id as string;
+  const start = req.query.start as string | undefined;
+  const end = req.query.end as string | undefined;
+
+  const [artist] = await db.select().from(artists).where(eq(artists.id, artistId)).limit(1);
+  if (!artist) throw new NotFoundError('Artist not found');
+
+  const candles = await getDailyCandles(artistId, start, end);
+
+  res.json({
+    artistId,
+    symbol: artist.symbol,
+    interval: '1D',
+    candles,
+  });
+});
+
+// Get market summary for an artist (public)
+router.get('/artists/:id/summary', async (req: Request, res: Response) => {
+  const artistId = req.params.id as string;
+  const summary = await getMarketSummary(artistId);
+  if (!summary) throw new NotFoundError('Artist not found');
+  res.json(summary);
+});
+
+// Get financial analysis for an artist (public)
+router.get('/artists/:id/analysis', async (req: Request, res: Response) => {
+  const artistId = req.params.id as string;
+  const start = req.query.start as string | undefined;
+  const end = req.query.end as string | undefined;
+
+  const [artist] = await db.select().from(artists).where(eq(artists.id, artistId)).limit(1);
+  if (!artist) throw new NotFoundError('Artist not found');
+
+  const candles = await getDailyCandles(artistId, start, end);
+  const analysis = computeFinancialAnalysis(candles);
+
+  res.json({
+    artistId,
+    symbol: artist.symbol,
+    analysis,
+    candleCount: candles.length,
+  });
+});
+
+// Get OHLCV candles for an artist (legacy trade-based, public)
 router.get('/artists/:id/candles', async (req: Request, res: Response) => {
   const artistId = req.params.id as string;
   const interval = (req.query.interval as string) || '1h';
@@ -165,6 +227,64 @@ router.get('/artists/:id/earnings-band', async (req: Request, res: Response) => 
       ? { id: snapshot.id, capturedAt: snapshot.capturedAt, source: snapshot.source }
       : null,
     ...result,
+  });
+});
+
+// GET /api/market/metrics/daily?symbol=JRJR&start=YYYY-MM-DD&end=YYYY-MM-DD
+// Alias endpoint for fetching daily metric series (public, for graphing)
+// NOTE: Must be registered BEFORE /:symbol/metrics to avoid "metrics" being captured as :symbol
+router.get('/metrics/daily', async (req: Request, res: Response) => {
+  const symbol = ((req.query.symbol as string) || '').toUpperCase();
+  if (!symbol) {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'symbol query param required' } });
+    return;
+  }
+
+  const start = req.query.start as string | undefined;
+  const end = req.query.end as string | undefined;
+
+  // Look up artist by symbol
+  const [artist] = await db
+    .select({ id: artists.id, symbol: artists.symbol, stageName: artists.stageName })
+    .from(artists)
+    .where(eq(artists.symbol, symbol))
+    .limit(1);
+
+  if (!artist) throw new NotFoundError(`Artist with symbol "${symbol}" not found`);
+
+  // Build query conditions
+  const conditions = [eq(artistMetricSnapshots.artistId, artist.id)];
+  if (start) {
+    conditions.push(gte(artistMetricSnapshots.capturedAt, new Date(start + 'T00:00:00Z')));
+  }
+  if (end) {
+    conditions.push(lte(artistMetricSnapshots.capturedAt, new Date(end + 'T23:59:59Z')));
+  }
+
+  const rows = await db
+    .select({
+      id: artistMetricSnapshots.id,
+      capturedAt: artistMetricSnapshots.capturedAt,
+      source: artistMetricSnapshots.source,
+      spotifyMonthlyListeners: artistMetricSnapshots.spotifyMonthlyListeners,
+      spotifyFollowers: artistMetricSnapshots.spotifyFollowers,
+      spotifyPopularity: artistMetricSnapshots.spotifyPopularity,
+      playlistReach: artistMetricSnapshots.playlistReach,
+      tiktokFollowers: artistMetricSnapshots.tiktokFollowers,
+      instagramFollowers: artistMetricSnapshots.instagramFollowers,
+      youtubeSubscribers: artistMetricSnapshots.youtubeSubscribers,
+      youtubeChannelViews: artistMetricSnapshots.youtubeChannelViews,
+      fanConversionRate: artistMetricSnapshots.fanConversionRate,
+      spotifyListenerToFollowerRatio: artistMetricSnapshots.spotifyListenerToFollowerRatio,
+    })
+    .from(artistMetricSnapshots)
+    .where(and(...conditions))
+    .orderBy(asc(artistMetricSnapshots.capturedAt))
+    .limit(365);
+
+  res.json({
+    artist: { id: artist.id, symbol: artist.symbol, stageName: artist.stageName },
+    metrics: rows,
   });
 });
 

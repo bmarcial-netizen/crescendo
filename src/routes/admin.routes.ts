@@ -9,6 +9,7 @@ import { getArtistAlbums, computeAlbumVelocityScore, computeCatalogSizeScore } f
 import { NotFoundError, BadRequestError } from '../utils/errors';
 import { runTractionIndexForAll } from '../services/tractionIndex.service';
 import { resetDemo } from '../services/demo.service';
+import { recomputeArtistBasePrices } from '../services/dailyPrice.service';
 
 const router = Router();
 
@@ -202,6 +203,12 @@ router.put('/risk-controls', async (req: AuthRequest, res: Response) => {
     .returning();
 
   res.json(updated);
+});
+
+// Recompute daily prices from metrics (deterministic)
+router.post('/recompute-prices', async (_req: AuthRequest, res: Response) => {
+  await recomputeArtistBasePrices();
+  res.json({ success: true, message: 'Daily prices recomputed from metrics data' });
 });
 
 // Demo reset — wipes trades/positions/dividends, preserves artists, reruns traction index
