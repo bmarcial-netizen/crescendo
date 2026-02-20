@@ -40,39 +40,39 @@ function avatarUrl(name, size = 64) {
 }
 
 const mockArtists = [
-  { id: 1, name: "Mira Voss", genre: "Indie Pop", price: 2.47, change: +18.3, volume: "42.1K", shares: 120, avgCost: 1.82, streams: "2.1M", bio: "Rising indie pop artist blending dreamy synths with confessional lyrics.", sharesOutstanding: 8500, maxShares: 15000, revenueSharePct: 12, circuitBreakerStatus: "normal" },
-  { id: 2, name: "KODA", genre: "Electronic", price: 5.12, change: +7.2, volume: "118K", shares: 45, avgCost: 4.30, streams: "8.4M", bio: "Berlin-based electronic producer known for cinematic soundscapes and festival anthems.", sharesOutstanding: 14200, maxShares: 20000, revenueSharePct: 8, circuitBreakerStatus: "normal" },
-  { id: 3, name: "Solène", genre: "R&B / Soul", price: 3.88, change: +31.5, volume: "67.3K", shares: 200, avgCost: 2.10, streams: "5.2M", bio: "Neo-soul vocalist with a velvet tone, drawing comparisons to Erykah Badu.", sharesOutstanding: 11000, maxShares: 18000, revenueSharePct: 15, circuitBreakerStatus: "normal" },
-  { id: 4, name: "duskwave", genre: "Lo-fi", price: 0.74, change: +4.8, volume: "8.2K", shares: 500, avgCost: 0.55, streams: "1.4M", bio: "Anonymous lo-fi beatmaker curating late-night study vibes.", sharesOutstanding: 4000, maxShares: 25000, revenueSharePct: 5, circuitBreakerStatus: "normal" },
-  { id: 5, name: "The Pale Moths", genre: "Alt Rock", price: 1.03, change: -2.1, volume: "15.8K", shares: 0, avgCost: 0, streams: "890K", bio: "Garage alt-rock trio from Portland delivering raw, guitar-driven anthems.", sharesOutstanding: 6200, maxShares: 12000, revenueSharePct: 10, circuitBreakerStatus: "tripped" },
-  { id: 6, name: "Jax Rennick", genre: "Hip-Hop", price: 1.95, change: -5.4, volume: "31.0K", shares: 0, avgCost: 0, streams: "3.7M", bio: "Lyrical hip-hop artist from Atlanta with a storytelling-first approach.", sharesOutstanding: 9800, maxShares: 16000, revenueSharePct: 11, circuitBreakerStatus: "normal" }
+  { id: 1, name: "2hollis", genre: "Experimental Hip-Hop", price: 2.47, change: +18.3, volume: "42.1K", shares: 120, avgCost: 1.82, streams: "2.1M", bio: "Experimental hip-hop artist blending ambient production with raw lyricism.", sharesOutstanding: 8500, maxShares: 15000, revenueSharePct: 12, circuitBreakerStatus: "normal" },
+  { id: 2, name: "Snow Strippers", genre: "Electronic / Post-Punk", price: 5.12, change: +7.2, volume: "118K", shares: 45, avgCost: 4.30, streams: "8.4M", bio: "Brooklyn-based duo fusing industrial electronics with post-punk energy.", sharesOutstanding: 14200, maxShares: 20000, revenueSharePct: 8, circuitBreakerStatus: "normal" },
+  { id: 3, name: "Malcom Todd", genre: "R&B / Soul", price: 3.88, change: +31.5, volume: "67.3K", shares: 200, avgCost: 2.10, streams: "5.2M", bio: "Austin-based R&B vocalist crafting intimate, genre-bending soul music.", sharesOutstanding: 11000, maxShares: 18000, revenueSharePct: 15, circuitBreakerStatus: "normal" },
+  { id: 4, name: "Men I Trust", genre: "Dream Pop", price: 4.74, change: +4.8, volume: "88.2K", shares: 500, avgCost: 3.55, streams: "14.4M", bio: "Montreal trio known for lush, cinematic dream pop and understated cool.", sharesOutstanding: 4000, maxShares: 25000, revenueSharePct: 5, circuitBreakerStatus: "normal" },
+  { id: 5, name: "King Krule", genre: "Art Rock / Jazz", price: 3.03, change: -2.1, volume: "15.8K", shares: 0, avgCost: 0, streams: "8.9M", bio: "South London polymath blending jazz, punk, and spoken word into raw sonic landscapes.", sharesOutstanding: 6200, maxShares: 12000, revenueSharePct: 10, circuitBreakerStatus: "tripped" },
+  { id: 6, name: "Ian", genre: "Lo-fi R&B", price: 1.95, change: -5.4, volume: "31.0K", shares: 0, avgCost: 0, streams: "3.7M", bio: "Chicago-based lo-fi R&B artist resonating with Gen-Z through organic, bedroom-produced tracks.", sharesOutstanding: 9800, maxShares: 16000, revenueSharePct: 11, circuitBreakerStatus: "normal" }
 ];
 
 // Mock trade history
 const tradeHistory = [
-  { id: 1, artist: "Solène", type: "Buy", qty: 50, price: 2.10, total: 105.00, status: "filled", date: "2026-02-18" },
-  { id: 2, artist: "KODA", type: "Buy", qty: 20, price: 4.50, total: 90.00, status: "filled", date: "2026-02-17" },
-  { id: 3, artist: "Mira Voss", type: "Buy", qty: 30, price: 1.95, total: 58.50, status: "filled", date: "2026-02-15" },
-  { id: 4, artist: "duskwave", type: "Buy", qty: 100, price: 0.60, total: 60.00, status: "pending", date: "2026-02-19" },
-  { id: 5, artist: "Solène", type: "Sell", qty: 10, price: 3.80, total: 38.00, status: "cancelled", date: "2026-02-19" },
-  { id: 6, artist: "Mira Voss", type: "Buy", qty: 25, price: 2.30, total: 57.50, status: "filled", date: "2026-02-14" },
+  { id: 1, artist: "Malcom Todd", type: "Buy", qty: 50, price: 2.10, total: 105.00, status: "filled", date: "2026-02-18" },
+  { id: 2, artist: "Snow Strippers", type: "Buy", qty: 20, price: 4.50, total: 90.00, status: "filled", date: "2026-02-17" },
+  { id: 3, artist: "2hollis", type: "Buy", qty: 30, price: 1.95, total: 58.50, status: "filled", date: "2026-02-15" },
+  { id: 4, artist: "Men I Trust", type: "Buy", qty: 100, price: 3.60, total: 360.00, status: "pending", date: "2026-02-19" },
+  { id: 5, artist: "Malcom Todd", type: "Sell", qty: 10, price: 3.80, total: 38.00, status: "cancelled", date: "2026-02-19" },
+  { id: 6, artist: "2hollis", type: "Buy", qty: 25, price: 2.30, total: 57.50, status: "filled", date: "2026-02-14" },
 ];
 
 // Mock royalty payments
 const royaltyPayments = [
-  { id: 1, artist: "Solène", amount: 42.50, type: "Streaming", date: "2026-02-15" },
-  { id: 2, artist: "KODA", amount: 18.30, type: "Sync License", date: "2026-02-12" },
-  { id: 3, artist: "Mira Voss", amount: 12.75, type: "Streaming", date: "2026-02-10" },
-  { id: 4, artist: "duskwave", amount: 5.20, type: "Streaming", date: "2026-02-08" },
-  { id: 5, artist: "Solène", amount: 31.00, type: "Merchandise", date: "2026-02-05" },
-  { id: 6, artist: "KODA", amount: 22.10, type: "Live Performance", date: "2026-02-01" },
+  { id: 1, artist: "Malcom Todd", amount: 42.50, type: "Streaming", date: "2026-02-15" },
+  { id: 2, artist: "Snow Strippers", amount: 18.30, type: "Sync License", date: "2026-02-12" },
+  { id: 3, artist: "2hollis", amount: 12.75, type: "Streaming", date: "2026-02-10" },
+  { id: 4, artist: "Men I Trust", amount: 25.20, type: "Streaming", date: "2026-02-08" },
+  { id: 5, artist: "Malcom Todd", amount: 31.00, type: "Merchandise", date: "2026-02-05" },
+  { id: 6, artist: "Snow Strippers", amount: 22.10, type: "Live Performance", date: "2026-02-01" },
 ];
 
 const news = [
-  { artist: "Solène", text: "New single 'Amber Light' hits 1M streams in 48 hours", time: "2h", up: true },
-  { artist: "KODA", text: "Confirmed for Coachella 2026 lineup", time: "5h", up: true },
-  { artist: "Mira Voss", text: "Signed sync deal with A24 for upcoming film", time: "8h", up: true },
-  { artist: "Jax Rennick", text: "Postponed North American tour dates", time: "1d", up: false }
+  { artist: "Malcom Todd", text: "SXSW showcase draws record crowd, three new songs debuted", time: "2h", up: true },
+  { artist: "Snow Strippers", text: "Sold-out Brooklyn Steel residency announced for April", time: "5h", up: true },
+  { artist: "2hollis", text: "New EP 'Phantom Thread' hits 2M streams in first week", time: "8h", up: true },
+  { artist: "King Krule", text: "Surprise album 'Concrete Garden' polarizes critics", time: "1d", up: false }
 ];
 
 const newsArticles = [
@@ -91,11 +91,11 @@ const newsArticles = [
 ];
 
 const trendingSounds = [
-  { id: 1, title: "Amber Light", artist: "Solène", platform: "TikTok", uses: "1.2M", growth: "+340%", growthNum: 340, duration: "0:18", snippet: "♪ caught in the amber light, I don't wanna leave tonight...", priceImpact: +12.4, daysAgo: 2, tags: ["viral", "aesthetic"], wave: [3, 5, 4, 7, 9, 14, 18, 25, 38, 52, 71, 89] },
-  { id: 2, title: "dissolve (slowed)", artist: "duskwave", platform: "Reels", uses: "842K", growth: "+580%", growthNum: 580, duration: "0:22", snippet: "♪ let me dissolve into the noise...", priceImpact: +8.7, daysAgo: 1, tags: ["slowed", "study"], wave: [2, 3, 5, 4, 8, 11, 19, 28, 44, 62, 78, 95] },
-  { id: 3, title: "RUNAWAY", artist: "Jax Rennick", platform: "TikTok", uses: "2.4M", growth: "+120%", growthNum: 120, duration: "0:15", snippet: "♪ I been running, running, can't stop now...", priceImpact: +22.1, daysAgo: 5, tags: ["dance", "transition"], wave: [8, 15, 28, 45, 62, 78, 88, 92, 95, 90, 85, 82] },
-  { id: 4, title: "moth song", artist: "The Pale Moths", platform: "TikTok", uses: "390K", growth: "+1,200%", growthNum: 1200, duration: "0:20", snippet: "♪ flickering like a moth to your flame...", priceImpact: +5.2, daysAgo: 0, tags: ["new", "sleeper"], wave: [1, 1, 2, 2, 3, 5, 8, 14, 25, 48, 72, 100] },
-  { id: 5, title: "Pulse (remix)", artist: "KODA", platform: "Reels", uses: "678K", growth: "+95%", growthNum: 95, duration: "0:17", snippet: "♪ feel the pulse, feel it drop...", priceImpact: +3.8, daysAgo: 3, tags: ["remix", "gym"], wave: [12, 18, 25, 32, 38, 42, 48, 52, 58, 60, 62, 65] }
+  { id: 1, title: "Amber Light", artist: "Malcom Todd", platform: "TikTok", uses: "1.2M", growth: "+340%", growthNum: 340, duration: "0:18", snippet: "♪ caught in the amber light, I don't wanna leave tonight...", priceImpact: +12.4, daysAgo: 2, tags: ["viral", "aesthetic"], wave: [3, 5, 4, 7, 9, 14, 18, 25, 38, 52, 71, 89] },
+  { id: 2, title: "dissolve (slowed)", artist: "Men I Trust", platform: "Reels", uses: "842K", growth: "+580%", growthNum: 580, duration: "0:22", snippet: "♪ let me dissolve into the noise...", priceImpact: +8.7, daysAgo: 1, tags: ["slowed", "study"], wave: [2, 3, 5, 4, 8, 11, 19, 28, 44, 62, 78, 95] },
+  { id: 3, title: "RUNAWAY", artist: "Ian", platform: "TikTok", uses: "2.4M", growth: "+120%", growthNum: 120, duration: "0:15", snippet: "♪ I been running, running, can't stop now...", priceImpact: +22.1, daysAgo: 5, tags: ["dance", "transition"], wave: [8, 15, 28, 45, 62, 78, 88, 92, 95, 90, 85, 82] },
+  { id: 4, title: "Concrete Garden", artist: "King Krule", platform: "TikTok", uses: "390K", growth: "+1,200%", growthNum: 1200, duration: "0:20", snippet: "♪ flickering through the concrete garden...", priceImpact: +5.2, daysAgo: 0, tags: ["new", "sleeper"], wave: [1, 1, 2, 2, 3, 5, 8, 14, 25, 48, 72, 100] },
+  { id: 5, title: "Pulse (remix)", artist: "Snow Strippers", platform: "Reels", uses: "678K", growth: "+95%", growthNum: 95, duration: "0:17", snippet: "♪ feel the pulse, feel it drop...", priceImpact: +3.8, daysAgo: 3, tags: ["remix", "gym"], wave: [12, 18, 25, 32, 38, 42, 48, 52, 58, 60, 62, 65] }
 ];
 
 // NOTE: portfolioHoldings, totalValue, totalReturn, totalPct computed inside component from live data
@@ -1060,8 +1060,8 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
         </div>
 
         <div style={{ display: "flex", gap: 2, background: "rgba(255,255,255,0.6)", borderRadius: 12, padding: 3, border: "1px solid rgba(255,255,255,0.8)" }}>
-          {["Portfolio", "Markets", "News", "Royalties"].map((t) =>
-            <button key={t} onClick={() => { setTab(t); if (t !== "Royalties") navigate(t.toLowerCase()); }} style={{
+          {["Portfolio", "Markets", "News"].map((t) =>
+            <button key={t} onClick={() => { setTab(t); navigate(t.toLowerCase()); }} style={{
               padding: "8px 20px", borderRadius: 10, border: "none",
               fontSize: 12, fontWeight: 600, cursor: "pointer",
               fontFamily: "'Inter', sans-serif",
@@ -1213,11 +1213,6 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
         {/* ─── NEWS PAGE ─── */}
         {!showProfile && tab === "News" &&
           <NewsPage C={C} fadeIn={fadeIn} Card={Card} />
-        }
-
-        {/* ─── ROYALTIES PAGE ─── */}
-        {!showProfile && tab === "Royalties" &&
-          <RoyaltiesPage C={C} fadeIn={fadeIn} Card={Card} />
         }
 
         {/* ─── DASHBOARD PAGE (original content) ─── */}
@@ -1561,6 +1556,49 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
                       <span style={{ fontSize: 12, fontWeight: 600 }}>${t.total.toFixed(2)}</span>
                       <StatusPill status={t.status} />
                       <span style={{ fontSize: 11, color: C.textMuted, fontFamily: "monospace" }}>{t.date}</span>
+                    </div>
+                  ))}
+                </>
+              )}
+            </Card>
+          </div>
+
+          {/* Royalties Section */}
+          <div style={{ marginBottom: 20, ...fadeIn(0.37) }}>
+            <Card style={{ padding: 24 }} hover>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em" }}>Royalties</h2>
+                <span style={{ fontSize: 12, color: C.textMuted }}>Total: <span style={{ fontWeight: 700, color: C.green }}>${totalRoyalties.toFixed(2)}</span></span>
+              </div>
+              {royaltyPayments.length === 0 ? (
+                <EmptyState
+                  icon={<Music size={28} color={C.primary} />}
+                  title="No royalty payments received"
+                  description="When artists you've invested in generate revenue, your share will appear here."
+                />
+              ) : (
+                <>
+                  <div style={{
+                    display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr",
+                    padding: "0 0 10px 0", borderBottom: "1px solid rgba(0,0,0,0.05)",
+                    fontSize: 11, fontWeight: 600, color: C.textMuted, textTransform: "uppercase",
+                    letterSpacing: "0.08em", fontFamily: "monospace"
+                  }}>
+                    <span>Artist</span><span>Amount</span><span>Type</span><span>Date</span>
+                  </div>
+                  {royaltyPayments.map((r, i) => (
+                    <div key={r.id} style={{
+                      display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr",
+                      alignItems: "center", padding: "10px 0",
+                      borderBottom: i < royaltyPayments.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <img src={avatarUrl(r.artist, 48)} alt={r.artist} style={{ width: 28, height: 28, borderRadius: 8 }} />
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>{r.artist}</span>
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: C.green }}>${r.amount.toFixed(2)}</span>
+                      <span style={{ fontSize: 12, color: C.textSec }}>{r.type}</span>
+                      <span style={{ fontSize: 11, color: C.textMuted, fontFamily: "monospace" }}>{r.date}</span>
                     </div>
                   ))}
                 </>
