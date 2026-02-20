@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { AlertTriangle } from "lucide-react";
 import * as api from "./api";
 import EarningsBand from "./EarningsBand";
 
@@ -21,6 +22,13 @@ const C = {
     textMuted: "#94A3B8",
 };
 
+// Avatar helper
+function avatarUrl(name, size = 64) {
+    const colors = ["4338CA", "50E3C2", "36D7B7", "5B6AE8", "8B5CF6", "F59E0B"];
+    const idx = name.length % colors.length;
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=${size}&background=${colors[idx]}&color=fff&bold=true&format=svg`;
+}
+
 // Simulated 30-day price history generator (deterministic per artist id)
 function generatePriceHistory(basePrice, change, id) {
     const seed = id * 17;
@@ -32,7 +40,22 @@ function generatePriceHistory(basePrice, change, id) {
         const price = startPrice + (basePrice - startPrice) * progress + basePrice * noise;
         pts.push({ d: i, v: Math.max(0.01, price) });
     }
-    pts[pts.length - 1].v = basePrice; // Ensure last point is current price
+    pts[pts.length - 1].v = basePrice;
+    return pts;
+}
+
+// Simulated traction history (30 data points of score + price)
+function generateTractionHistory(basePrice, id) {
+    const seed = id * 23;
+    const pts = [];
+    for (let i = 0; i < 30; i++) {
+        const scoreBase = 40 + (id * 7) % 30;
+        const scoreNoise = Math.sin(seed + i * 0.5) * 12 + Math.cos(seed + i * 1.1) * 8;
+        const score = Math.max(10, Math.min(100, scoreBase + (i / 29) * 20 + scoreNoise));
+        const priceNoise = Math.sin(seed + i * 0.7) * 0.08;
+        const price = basePrice * (0.85 + (i / 29) * 0.15 + priceNoise);
+        pts.push({ d: i, score: Math.round(score), price: Math.max(0.01, price) });
+    }
     return pts;
 }
 
@@ -79,19 +102,52 @@ function PriceChart({ data, color, width = "100%", height = 140 }) {
     );
 }
 
-export default function ArtistDetailModal({ artist, onClose, allNews, trendingSounds, isLoggedIn, balance, onTradeComplete }) {
+// Dual-axis traction chart
+function TractionChart({ data, width = "100%", height = 120 }) {
+    const w = 400;
+    const h = height;
+    const scoreMax = Math.max(...data.map(d => d.score));
+    const scoreMin = Math.min(...data.map(d => d.score));
+    const priceMax = Math.max(...data.map(d => d.price));
+    const priceMin = Math.min(...data.map(d => d.price));
+    const scoreRange = scoreMax - scoreMin || 1;
+    const priceRange = priceMax - priceMin || 0.01;
+
+    const scorePts = data.map((d, i) => {
+        const x = (i / (data.length - 1)) * w;
+        const y = 8 + (1 - (d.score - scoreMin) / scoreRange) * (h - 16);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(" ");
+
+    const pricePts = data.map((d, i) => {
+        const x = (i / (data.length - 1)) * w;
+        const y = 8 + (1 - (d.price - priceMin) / priceRange) * (h - 16);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(" ");
+
+    return (
+        <svg viewBox={`0 0 ${w} ${h}`} style={{ width, height, display: "block" }}>
+            <polyline fill="none" stroke={C.primary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" points={scorePts} opacity="0.8" />
+            <polyline fill="none" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" points={pricePts} opacity="0.8" />
+        </svg>
+    );
+}
+
+export default function ArtistDetailModal({ artist, onClose, allNews, trendingSounds, isLoggedIn, auth, onTradeComplete }) {
     const [orderType, setOrderType] = useState("buy");
-    const [orderMode, setOrderMode] = useState("market"); // market | limit
+    const [orderMode, setOrderMode] = useState("market");
     const [qty, setQty] = useState("");
     const [limitPrice, setLimitPrice] = useState(artist?.price?.toFixed(2) || "");
     const [showConfirm, setShowConfirm] = useState(false);
     const [orderPlaced, setOrderPlaced] = useState(false);
     const [visible, setVisible] = useState(false);
     const [chartPeriod, setChartPeriod] = useState("1M");
-    const [liveQuote, setLiveQuote] = useState(null);
-    const [liveCandles, setLiveCandles] = useState(null);
+    const [showTraction, setShowTraction] = useState(false);
+    const [tradeError, setTradeError] = useState("");
     const [tradeLoading, setTradeLoading] = useState(false);
-    const [tradeError, setTradeError] = useState(null);
+
+    // Live quote data
+    const [liveQuote, setLiveQuote] = useState(null);
 
     useEffect(() => {
         if (artist) {
@@ -99,13 +155,12 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
             setQty("");
             setShowConfirm(false);
             setOrderPlaced(false);
-            setTradeError(null);
+            setTradeError("");
             setLimitPrice(artist.price?.toFixed(2) || "0.00");
+            setShowTraction(false);
             setLiveQuote(null);
-            setLiveCandles(null);
-            // Fetch live quote and candles
+            // Fetch live quote
             api.getQuote(artist.id).then(q => setLiveQuote(q)).catch(() => {});
-            api.getCandles(artist.id).then(c => { if (c.length > 0) setLiveCandles(c); }).catch(() => {});
         } else {
             setVisible(false);
         }
@@ -113,28 +168,25 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
 
     if (!artist) return null;
 
-    const artistPrice = artist.price || 0;
+    const displayPrice = liveQuote?.mid || artist.price || 0;
+    const displayBid = liveQuote?.bid || artist.price || 0;
+    const displayAsk = liveQuote?.ask || artist.price || 0;
+
+    const priceHistory = generatePriceHistory(displayPrice, artist.change || 0, artist.id);
+    const tractionHistory = generateTractionHistory(displayPrice, artist.id);
+    const orderBook = generateOrderBook(displayPrice);
     const artistChange = artist.change || 0;
-    const artistName = artist.name || artist.stageName || "Artist";
-
-    // Use live candles if available, else fall back to generated
-    const priceHistory = liveCandles
-      ? liveCandles.map((c, i) => ({ d: i, v: c.close }))
-      : generatePriceHistory(artistPrice, artistChange, typeof artist.id === 'number' ? artist.id : 1);
-
-    // Use live quote for order book if available
-    const orderBook = liveQuote
-      ? generateOrderBook(liveQuote.mid || artistPrice)
-      : generateOrderBook(artistPrice);
+    const artistPrice = displayPrice;
     const isUp = artistChange >= 0;
     const changeColor = isUp ? C.green : C.red;
     const chartColor = isUp ? C.green : C.red;
+    const isTripped = artist.circuitBreakerStatus === "tripped";
 
     const quantity = parseInt(qty) || 0;
-    const unitPrice = orderMode === "limit" ? parseFloat(limitPrice) || artistPrice : artistPrice;
+    const unitPrice = orderMode === "limit" ? parseFloat(limitPrice) || artistPrice : (orderType === "buy" ? displayAsk : displayBid);
     const totalCost = quantity * unitPrice;
-    const artistNews = (allNews || []).filter(n => n.artist === artistName);
-    const artistSounds = (trendingSounds || []).filter(s => s.artist === artistName);
+    const artistNews = (allNews || []).filter(n => n.artist === artist.name);
+    const artistSounds = (trendingSounds || []).filter(s => s.artist === artist.name);
 
     const handleClose = () => {
         setVisible(false);
@@ -142,11 +194,12 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
     };
 
     const handlePlaceOrder = async () => {
-        if (!isLoggedIn) return;
-        const quantity = parseInt(qty) || 0;
-        if (quantity <= 0) { setTradeError("Enter a valid quantity"); return; }
+        setTradeError("");
+        if (!isLoggedIn) {
+            setTradeError("Please log in to trade.");
+            return;
+        }
         setTradeLoading(true);
-        setTradeError(null);
         try {
             if (orderType === "buy") {
                 await api.buyShares(artist.id, quantity);
@@ -161,20 +214,23 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                 setQty("");
             }, 2500);
         } catch (err) {
-            setTradeError(err.message || "Trade failed");
+            setTradeError(err.message || "Trade failed. Please try again.");
+            setShowConfirm(false);
         } finally {
             setTradeLoading(false);
         }
     };
 
-    // Market data (use live quote when available)
-    const displayPrice = liveQuote ? liveQuote.mid : artistPrice;
-    const numericId = typeof artist.id === 'number' ? artist.id : 1;
-    const marketCap = (displayPrice * (120000 + numericId * 35000)).toLocaleString();
-    const weekHigh = (displayPrice * (1 + Math.abs(artistChange) / 200 + 0.05)).toFixed(2);
-    const weekLow = (displayPrice * (1 - Math.abs(artistChange) / 300 - 0.03)).toFixed(2);
-    const volStr = typeof artist.volume === 'string' ? artist.volume : (artist.volume || "10") + "";
-    const avgVol = (parseFloat(volStr) * (0.8 + Math.random() * 0.4)).toFixed(1) + "K";
+    // Simulated extra data
+    const marketCap = (artistPrice * (120000 + artist.id * 35000)).toLocaleString();
+    const weekHigh = (artistPrice * (1 + Math.abs(artistChange) / 200 + 0.05)).toFixed(2);
+    const weekLow = (artistPrice * (1 - Math.abs(artistChange) / 300 - 0.03)).toFixed(2);
+    const avgVol = (parseFloat(artist.volume || "0") * (0.8 + Math.random() * 0.4)).toFixed(1) + "K";
+
+    // Supply data
+    const supplyPct = artist.sharesOutstanding && artist.maxShares
+        ? Math.min(artist.sharesOutstanding / artist.maxShares * 100, 100)
+        : 0;
 
     return (
         <>
@@ -207,7 +263,6 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                 letterSpacing: "-0.02em",
                 lineHeight: 1.35,
             }}>
-                {/* font loaded from index.html */}
 
                 {/* Close button */}
                 <button
@@ -227,20 +282,33 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
 
                 <div style={{ padding: "28px 32px 40px" }}>
 
-                    {/* ─── HEADER ─── */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
+                    {/* ─── CIRCUIT BREAKER WARNING ─── */}
+                    {isTripped && (
                         <div style={{
-                            width: 60, height: 60, borderRadius: 18,
-                            background: "rgba(255,255,255,0.8)",
-                            border: "1px solid rgba(255,255,255,0.9)",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: 28,
-                            boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
-                        }}>{artist.emoji}</div>
+                            display: "flex", alignItems: "center", gap: 10, padding: "12px 16px",
+                            borderRadius: 14, marginBottom: 16,
+                            background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
+                            color: C.red, fontSize: 13, fontWeight: 600
+                        }}>
+                            <AlertTriangle size={18} /> Trading halted — circuit breaker tripped
+                        </div>
+                    )}
+
+                    {/* ─── HEADER ─── */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 8 }}>
+                        <img
+                            src={avatarUrl(artist.name, 120)}
+                            alt={artist.name}
+                            style={{
+                                width: 60, height: 60, borderRadius: 18,
+                                border: "1px solid rgba(255,255,255,0.9)",
+                                boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+                            }}
+                        />
                         <div style={{ flex: 1 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 2 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 2, flexWrap: "wrap" }}>
                                 <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.03em", margin: 0 }}>
-                                    {artistName}
+                                    {artist.name}
                                 </h1>
                                 <span style={{
                                     padding: "3px 10px", borderRadius: 8, fontSize: 11, fontWeight: 600,
@@ -249,16 +317,39 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                                 }}>
                                     {isUp ? "▲" : "▼"} {isUp ? "+" : ""}{artistChange}%
                                 </span>
+                                {/* Revenue Share Badge */}
+                                {artist.revenueSharePct && (
+                                    <span style={{
+                                        padding: "3px 10px", borderRadius: 8, fontSize: 11, fontWeight: 600,
+                                        background: "rgba(67,56,202,0.08)",
+                                        color: C.primary,
+                                        border: `1px solid ${C.primary}18`,
+                                    }}>
+                                        {artist.revenueSharePct}% Revenue Share
+                                    </span>
+                                )}
                             </div>
-                            <div style={{ fontSize: 13, color: C.textSec }}>{artist.genre || ""} · {artist.streams || "0"} streams</div>
+                            <div style={{ fontSize: 13, color: C.textSec }}>{artist.genre} · {artist.streams} streams</div>
                         </div>
                         <div style={{ textAlign: "right" }}>
                             <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: "-0.03em" }}>
                                 ${artistPrice.toFixed(2)}
                             </div>
+                            {liveQuote && (
+                                <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>
+                                    Bid: ${displayBid.toFixed(2)} · Ask: ${displayAsk.toFixed(2)}
+                                </div>
+                            )}
                             <div style={{ fontSize: 12, color: C.textMuted }}>per share</div>
                         </div>
                     </div>
+
+                    {/* ─── BIO ─── */}
+                    {artist.bio && (
+                        <div style={{ fontSize: 13, color: C.textMuted, lineHeight: 1.5, marginBottom: 20, fontStyle: "italic" }}>
+                            {artist.bio}
+                        </div>
+                    )}
 
                     {/* ─── PRICE CHART ─── */}
                     <div style={{
@@ -271,29 +362,70 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                         marginBottom: 16,
                     }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                            <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>Price History</span>
-                            <div style={{
-                                display: "inline-flex", gap: 1, background: "rgba(0,0,0,0.04)",
-                                borderRadius: 8, padding: 2,
-                            }}>
-                                {["1D", "1W", "1M", "3M"].map(p => (
-                                    <button key={p} onClick={() => setChartPeriod(p)} style={{
-                                        padding: "4px 10px", borderRadius: 6, border: "none",
-                                        fontSize: 11, fontWeight: 500, cursor: "pointer",
-                                        fontFamily: "'Inter', sans-serif",
-                                        background: chartPeriod === p ? "#fff" : "transparent",
-                                        color: chartPeriod === p ? C.text : C.textMuted,
-                                        boxShadow: chartPeriod === p ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
-                                        transition: "all 0.15s",
-                                    }}>{p}</button>
-                                ))}
+                            <div style={{ display: "flex", gap: 12 }}>
+                                <span
+                                    onClick={() => setShowTraction(false)}
+                                    style={{
+                                        fontSize: 14, fontWeight: 600, cursor: "pointer",
+                                        color: !showTraction ? C.text : C.textMuted,
+                                        borderBottom: !showTraction ? `2px solid ${C.primary}` : "2px solid transparent",
+                                        paddingBottom: 2,
+                                    }}>Price History</span>
+                                <span
+                                    onClick={() => setShowTraction(true)}
+                                    style={{
+                                        fontSize: 14, fontWeight: 600, cursor: "pointer",
+                                        color: showTraction ? C.text : C.textMuted,
+                                        borderBottom: showTraction ? `2px solid ${C.primary}` : "2px solid transparent",
+                                        paddingBottom: 2,
+                                    }}>Traction Score</span>
                             </div>
+                            {!showTraction && (
+                                <div style={{
+                                    display: "inline-flex", gap: 1, background: "rgba(0,0,0,0.04)",
+                                    borderRadius: 8, padding: 2,
+                                }}>
+                                    {["1D", "1W", "1M", "3M"].map(p => (
+                                        <button key={p} onClick={() => setChartPeriod(p)} style={{
+                                            padding: "4px 10px", borderRadius: 6, border: "none",
+                                            fontSize: 11, fontWeight: 500, cursor: "pointer",
+                                            fontFamily: "'Inter', sans-serif",
+                                            background: chartPeriod === p ? "#fff" : "transparent",
+                                            color: chartPeriod === p ? C.text : C.textMuted,
+                                            boxShadow: chartPeriod === p ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
+                                            transition: "all 0.15s",
+                                        }}>{p}</button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                        <PriceChart data={priceHistory} color={chartColor} height={130} />
-                        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: C.textMuted }}>
-                            <span>30 days ago</span>
-                            <span>Today</span>
-                        </div>
+                        {!showTraction ? (
+                            <>
+                                <PriceChart data={priceHistory} color={chartColor} height={130} />
+                                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: C.textMuted }}>
+                                    <span>30 days ago</span>
+                                    <span>Today</span>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <TractionChart data={tractionHistory} height={130} />
+                                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: C.textMuted }}>
+                                    <span>30 days ago</span>
+                                    <span>Today</span>
+                                </div>
+                                <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                        <div style={{ width: 12, height: 3, borderRadius: 2, background: C.primary }} />
+                                        <span style={{ fontSize: 10, color: C.textMuted }}>Traction Score</span>
+                                    </div>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                        <div style={{ width: 12, height: 3, borderRadius: 2, background: C.accent }} />
+                                        <span style={{ fontSize: 10, color: C.textMuted }}>Price</span>
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     {/* ─── STATS GRID ─── */}
@@ -303,7 +435,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                     }}>
                         {[
                             { label: "Market Cap", value: `$${marketCap}` },
-                            { label: "24h Volume", value: artist.volume || "—" },
+                            { label: "24h Volume", value: artist.volume },
                             { label: "52w High", value: `$${weekHigh}` },
                             { label: "52w Low", value: `$${weekLow}` },
                         ].map(s => (
@@ -319,6 +451,33 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                         ))}
                     </div>
 
+                    {/* ─── SUPPLY METER ─── */}
+                    {artist.sharesOutstanding && artist.maxShares && (
+                        <div style={{
+                            background: C.card, backdropFilter: "blur(20px)",
+                            borderRadius: 18, border: `1px solid ${C.border}`,
+                            boxShadow: C.shadow, padding: 20, marginBottom: 16,
+                        }}>
+                            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Shares Outstanding</div>
+                            <div style={{ height: 8, borderRadius: 99, background: "rgba(0,0,0,0.06)", overflow: "hidden", marginBottom: 8 }}>
+                                <div style={{
+                                    height: "100%", borderRadius: 99, width: `${supplyPct}%`,
+                                    background: supplyPct > 80
+                                        ? `linear-gradient(90deg, #F59E0B, #EF4444)`
+                                        : `linear-gradient(90deg, ${C.accent}, ${C.primary})`,
+                                    transition: "width 0.8s ease"
+                                }} />
+                            </div>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: C.textSec }}>
+                                <span>{artist.sharesOutstanding.toLocaleString()} issued</span>
+                                <span>{artist.maxShares.toLocaleString()} max supply</span>
+                            </div>
+                            <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4 }}>
+                                {(100 - supplyPct).toFixed(1)}% remaining
+                            </div>
+                        </div>
+                    )}
+
                     {/* ─── YOUR POSITION ─── */}
                     {artist.shares > 0 && (
                         <div style={{
@@ -328,18 +487,16 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                         }}>
                             <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>Your Position</div>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
-                                {(() => {
-                                    const sh = artist.shares || 0;
-                                    const avg = artist.avgCost || 0;
-                                    const val = artist.marketValue || sh * artistPrice;
-                                    const pnl = artist.unrealizedPnL !== undefined ? artist.unrealizedPnL : (artistPrice - avg) * sh;
-                                    return [
-                                        { label: "Shares", value: sh },
-                                        { label: "Avg Cost", value: `$${avg.toFixed(2)}` },
-                                        { label: "Value", value: `$${val.toFixed(2)}` },
-                                        { label: "P&L", value: `${pnl >= 0 ? "+" : ""}$${pnl.toFixed(2)}`, color: pnl >= 0 ? C.green : C.red },
-                                    ];
-                                })().map(s => (
+                                {[
+                                    { label: "Shares", value: artist.shares },
+                                    { label: "Avg Cost", value: `$${(artist.avgCost || 0).toFixed(2)}` },
+                                    { label: "Value", value: `$${((artist.shares || 0) * artistPrice).toFixed(2)}` },
+                                    {
+                                        label: "P&L",
+                                        value: `${((artistPrice - (artist.avgCost || 0)) * (artist.shares || 0)) >= 0 ? "+" : ""}$${((artistPrice - (artist.avgCost || 0)) * (artist.shares || 0)).toFixed(2)}`,
+                                        color: (artistPrice - (artist.avgCost || 0)) >= 0 ? C.green : C.red,
+                                    },
+                                ].map(s => (
                                     <div key={s.label}>
                                         <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 3 }}>{s.label}</div>
                                         <div style={{ fontSize: 16, fontWeight: 700, color: s.color || C.text }}>{s.value}</div>
@@ -357,7 +514,6 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                     }}>
                         <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>Order Book</div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-                            {/* Bids */}
                             <div>
                                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, fontWeight: 600, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "monospace", marginBottom: 8 }}>
                                     <span>Bid Price</span><span>Qty</span>
@@ -377,7 +533,6 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                                     </div>
                                 ))}
                             </div>
-                            {/* Asks */}
                             <div>
                                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, fontWeight: 600, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "monospace", marginBottom: 8 }}>
                                     <span>Ask Price</span><span>Qty</span>
@@ -441,7 +596,6 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                                     <div key={s.id} style={{
                                         display: "flex", gap: 14, alignItems: "center", padding: "10px 0",
                                     }}>
-                                        {/* Mini wave */}
                                         <div style={{ display: "flex", alignItems: "flex-end", gap: 1.5, height: 24, width: 50, flexShrink: 0 }}>
                                             {s.wave.map((v, wi) => (
                                                 <div key={wi} style={{
@@ -466,6 +620,20 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                         </div>
                     )}
 
+                    {/* ─── EARNINGS BAND ─── */}
+                    <EarningsBand artistId={artist.id} />
+
+                    {/* ─── TRADE ERROR ─── */}
+                    {tradeError && (
+                        <div style={{
+                            padding: "12px 16px", borderRadius: 14, marginBottom: 16,
+                            background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
+                            color: C.red, fontSize: 13, fontWeight: 600
+                        }}>
+                            {tradeError}
+                        </div>
+                    )}
+
                     {/* ═══════════════════════════════════════════
               INVEST / TRADE FORM
              ═══════════════════════════════════════════ */}
@@ -478,6 +646,8 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                         padding: 24,
                         position: "relative",
                         overflow: "hidden",
+                        opacity: isTripped ? 0.5 : 1,
+                        pointerEvents: isTripped ? "none" : "auto",
                     }}>
                         {/* Decorative blob */}
                         <div style={{
@@ -490,7 +660,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                         }} />
 
                         <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 18, letterSpacing: "-0.02em" }}>
-                            Trade {artistName}
+                            Trade {artist.name}
                         </div>
 
                         {/* Buy / Sell Toggle */}
@@ -532,7 +702,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                             ))}
                         </div>
 
-                        {/* Limit Price (if limit order) */}
+                        {/* Limit Price */}
                         {orderMode === "limit" && (
                             <div style={{ marginBottom: 16 }}>
                                 <label style={{ fontSize: 12, fontWeight: 600, color: C.textSec, display: "block", marginBottom: 6 }}>
@@ -606,7 +776,6 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                                 >+</button>
                             </div>
 
-                            {/* Quick amount buttons */}
                             <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                                 {[1, 5, 10, 25, 50, 100].map(n => (
                                     <button key={n} onClick={() => setQty(String(n))} style={{
@@ -689,7 +858,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                                             Order Placed!
                                         </div>
                                         <div style={{ fontSize: 13, color: C.textSec, marginTop: 4 }}>
-                                            {orderType === "buy" ? "Bought" : "Sold"} {quantity} share{quantity !== 1 ? "s" : ""} of {artistName}
+                                            {orderType === "buy" ? "Bought" : "Sold"} {quantity} share{quantity !== 1 ? "s" : ""} of {artist.name}
                                         </div>
                                     </div>
                                 ) : (
@@ -700,7 +869,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                                             border: `1px solid ${orderType === "buy" ? C.green : C.red}20`,
                                             fontSize: 13, color: C.textSec, textAlign: "center", lineHeight: 1.3,
                                         }}>
-                                            Confirm: {orderType === "buy" ? "Buy" : "Sell"} <strong>{quantity}</strong> share{quantity !== 1 ? "s" : ""} of <strong>{artistName}</strong> for <strong>${totalCost.toFixed(2)}</strong>
+                                            Confirm: {orderType === "buy" ? "Buy" : "Sell"} <strong>{quantity}</strong> share{quantity !== 1 ? "s" : ""} of <strong>{artist.name}</strong> for <strong>${totalCost.toFixed(2)}</strong>
                                         </div>
                                         <div style={{ display: "flex", gap: 10 }}>
                                             <button
@@ -728,53 +897,12 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                                                     textTransform: "uppercase",
                                                     letterSpacing: "0.06em",
                                                 }}
-                                            >{tradeLoading ? "Executing..." : `Confirm ${orderType === "buy" ? "Purchase" : "Sale"}`}</button>
+                                            >Confirm {orderType === "buy" ? "Purchase" : "Sale"}</button>
                                         </div>
                                     </>
                                 )}
                             </div>
                         )}
-
-                        {/* Trade error */}
-                        {tradeError && (
-                            <div style={{
-                                marginTop: 12, padding: "10px 14px", borderRadius: 10,
-                                background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)",
-                                fontSize: 13, color: C.red, textAlign: "center",
-                            }}>{tradeError}</div>
-                        )}
-
-                        {/* Live quote info */}
-                        {liveQuote && (
-                            <div style={{
-                                marginTop: 16, padding: 14, borderRadius: 14,
-                                background: "rgba(0,0,0,0.02)", border: "1px solid rgba(0,0,0,0.05)",
-                            }}>
-                                <div style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, textTransform: "uppercase", marginBottom: 8, fontFamily: "monospace" }}>Live Quote</div>
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-                                    <div>
-                                        <div style={{ fontSize: 10, color: C.textMuted }}>Bid</div>
-                                        <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "monospace" }}>${liveQuote.bid.toFixed(4)}</div>
-                                    </div>
-                                    <div style={{ textAlign: "center" }}>
-                                        <div style={{ fontSize: 10, color: C.textMuted }}>Mid</div>
-                                        <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "monospace" }}>${liveQuote.mid.toFixed(4)}</div>
-                                    </div>
-                                    <div style={{ textAlign: "right" }}>
-                                        <div style={{ fontSize: 10, color: C.textMuted }}>Ask</div>
-                                        <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "monospace" }}>${liveQuote.ask.toFixed(4)}</div>
-                                    </div>
-                                </div>
-                                <div style={{ fontSize: 11, color: C.textMuted, marginTop: 6, textAlign: "center" }}>
-                                    Spread: {(liveQuote.spreadBps / 100).toFixed(2)}%
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Earnings Band */}
-                        <div style={{ marginTop: 16 }}>
-                            <EarningsBand artistId={artist.id} />
-                        </div>
                     </div>
 
                 </div>
