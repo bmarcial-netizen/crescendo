@@ -1,7 +1,10 @@
 /**
  * Vercel Serverless Function entry point.
- * Wraps the Express app import in error handling so we can
- * diagnose cold-start crashes instead of getting opaque 500s.
+ *
+ * Imports the Express app from a pre-bundled file (created by
+ * scripts/bundle-api.mjs during `buildCommand`). The bundle
+ * has all relative TS imports resolved, avoiding the ESM
+ * extensionless-import problem in Node.js.
  */
 import type { IncomingMessage, ServerResponse } from 'http';
 
@@ -12,7 +15,8 @@ async function loadApp() {
   if (app) return app;
   if (initError) throw initError;
   try {
-    const mod = await import('../src/index.js');
+    // NOTE: ../_api-bundle.js is generated at build time by esbuild
+    const mod = await import('../_api-bundle.js');
     app = mod.default;
     return app;
   } catch (err: any) {

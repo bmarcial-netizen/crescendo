@@ -6,18 +6,18 @@
 import { build } from 'esbuild';
 
 await build({
-  entryPoints: ['server/entry.ts'],
+  entryPoints: ['src/index.ts'],
   bundle: true,
   platform: 'node',
   target: 'node18',
   format: 'esm',
-  outfile: 'api/index.mjs',
+  outfile: '_api-bundle.js',
   packages: 'external',          // keep node_modules imports external
-  sourcemap: true,
+  sourcemap: false,
   banner: {
     // Some npm packages use require(); provide a shim for ESM
     js: `import { createRequire as __cr } from 'module'; const require = __cr(import.meta.url);`,
   },
 });
 
-console.log('API function bundled → api/index.mjs');
+console.log('API bundle created → _api-bundle.js');
