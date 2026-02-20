@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import * as api from "./api";
+import { getTicker } from "./CrescendoDashboard";
 
 const C = {
   primary: "#4338CA",
@@ -77,7 +78,7 @@ export default function OrderHistory({ artistMap }) {
                     color: isBuy ? C.green : C.red,
                   }}>{isBuy ? "B" : "S"}</div>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{artistName}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}><span style={{ fontSize: 10, fontWeight: 700, color: isBuy ? "#38BDF8" : "#EF4444", fontFamily: "monospace", marginRight: 5 }}>{getTicker(artistName)}</span>{artistName}</div>
                     <div style={{ fontSize: 10, color: C.textMuted }}>{formatDate(order.createdAt)}</div>
                   </div>
                 </div>

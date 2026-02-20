@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import * as api from "./api";
+import { getTicker } from "./CrescendoDashboard";
 
 const C = {
   primary: "#4338CA",
@@ -50,7 +51,7 @@ export default function EarningsBand({ artistId }) {
         Earnings Estimate
       </div>
       <div style={{ fontSize: 12, color: C.textSec, marginBottom: 16 }}>
-        {data.stageName} · {(data.revenueSharePct * 100).toFixed(0)}% revenue share · {data.sharesOutstanding?.toLocaleString()} shares
+        <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#38BDF8", marginRight: 5 }}>{getTicker(data.stageName)}</span>{data.stageName} · {(data.revenueSharePct * 100).toFixed(0)}% revenue share · {data.sharesOutstanding?.toLocaleString()} shares
       </div>
 
       {/* Earnings per share bands */}
