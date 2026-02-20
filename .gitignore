@@ -1,4 +1,8 @@
 node_modules/
 dist/
+dist-ssr/
 .env
 *.js.map
+*.local
+*.log
+.DS_Store

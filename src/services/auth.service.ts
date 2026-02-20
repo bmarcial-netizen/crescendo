@@ -1,10 +1,13 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
 import { db } from '../db';
 import { users, ledgerAccounts } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { config } from '../config';
 import { BadRequestError, UnauthorizedError } from '../utils/errors';
+
+const googleClient = new OAuth2Client(config.google.clientId);
 
 export async function register(
   email: string,
@@ -51,6 +54,10 @@ export async function login(email: string, password: string) {
     throw new UnauthorizedError('Invalid email or password');
   }
 
+  if (!user.passwordHash) {
+    throw new UnauthorizedError('This account uses Google Sign-In. Please sign in with Google.');
+  }
+
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
     throw new UnauthorizedError('Invalid email or password');
@@ -59,6 +66,100 @@ export async function login(email: string, password: string) {
   const token = generateToken(user.id, user.role);
   return {
     user: { id: user.id, email: user.email, role: user.role, displayName: user.displayName },
+    token,
+  };
+}
+
+export async function googleAuth(credential: string) {
+  const ticket = await googleClient.verifyIdToken({
+    idToken: credential,
+    audience: config.google.clientId,
+  });
+  const payload = ticket.getPayload();
+  if (!payload || !payload.email) {
+    throw new BadRequestError('Invalid Google token');
+  }
+
+  const { sub: googleId, email, name, email_verified } = payload;
+
+  if (!email_verified) {
+    throw new BadRequestError('Google email not verified');
+  }
+
+  // Check if user with this googleId already exists
+  const [existingByGoogleId] = await db
+    .select()
+    .from(users)
+    .where(eq(users.googleId, googleId))
+    .limit(1);
+
+  if (existingByGoogleId) {
+    const token = generateToken(existingByGoogleId.id, existingByGoogleId.role);
+    return {
+      user: {
+        id: existingByGoogleId.id,
+        email: existingByGoogleId.email,
+        role: existingByGoogleId.role,
+        displayName: existingByGoogleId.displayName,
+      },
+      token,
+    };
+  }
+
+  // Check if user with this email exists (link Google to existing account)
+  const [existingByEmail] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+
+  if (existingByEmail) {
+    await db
+      .update(users)
+      .set({ googleId, updatedAt: new Date() })
+      .where(eq(users.id, existingByEmail.id));
+
+    const token = generateToken(existingByEmail.id, existingByEmail.role);
+    return {
+      user: {
+        id: existingByEmail.id,
+        email: existingByEmail.email,
+        role: existingByEmail.role,
+        displayName: existingByEmail.displayName,
+      },
+      token,
+    };
+  }
+
+  // New user — create account with wallet
+  const result = await db.transaction(async (tx) => {
+    const [user] = await tx
+      .insert(users)
+      .values({
+        email,
+        googleId,
+        role: 'investor',
+        displayName: name || email.split('@')[0],
+      })
+      .returning();
+
+    await tx.insert(ledgerAccounts).values({
+      name: `user:${user.id}:wallet`,
+      accountType: 'liability',
+      userId: user.id,
+    });
+
+    return user;
+  });
+
+  const token = generateToken(result.id, result.role);
+  return {
+    user: {
+      id: result.id,
+      email: result.email,
+      role: result.role,
+      displayName: result.displayName,
+    },
     token,
   };
 }
