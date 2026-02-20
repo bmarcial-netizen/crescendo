@@ -115,7 +115,7 @@ function ProgressBar({ value, max, color1, color2, label1, label2, val1, val2 })
       <div style={{ height: 10, borderRadius: 99, background: "rgba(0,0,0,0.04)", overflow: "hidden", position: "relative" }}>
         <div style={{
           height: "100%", borderRadius: 99, width: `${pct}%`,
-          background: `linear-gradient(90deg, ${color1}, ${color2})`,
+          background: color1,
           transition: "width 1.2s cubic-bezier(0.22, 1, 0.36, 1)"
         }} />
       </div>
@@ -363,6 +363,10 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
 
   return (
     <div style={fadeIn(0.1)}>
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: "clamp(36px, 5vw, 48px)", fontWeight: 900, letterSpacing: "-0.04em", marginBottom: 6, textTransform: "uppercase", lineHeight: 1.05 }}>Markets</h1>
+        <p style={{ fontSize: 11, color: C.textMuted, fontFamily: "monospace", letterSpacing: "0.12em", textTransform: "uppercase" }}>Trade artist tokens in real time</p>
+      </div>
       {/* Circuit breaker warning */}
       {isTripped && (
         <div style={{
@@ -380,8 +384,17 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                <img src={avatarUrl(selected.name, 44)} alt={selected.name} style={{ width: 22, height: 22, borderRadius: 6 }} />
-                <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em", textTransform: "uppercase" }}>{selected.name} / USD</span>
+                <img
+                  src={avatarUrl(selected.name, 44)} alt={selected.name}
+                  onClick={() => setSelectedArtist(selected)}
+                  style={{ width: 22, height: 22, borderRadius: 6, cursor: "pointer" }}
+                />
+                <span
+                  onClick={() => setSelectedArtist(selected)}
+                  style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em", textTransform: "uppercase", cursor: "pointer", transition: "color 0.2s" }}
+                  onMouseEnter={e => e.target.style.color = C.primary}
+                  onMouseLeave={e => e.target.style.color = C.text}
+                >{selected.name} / USD</span>
               </div>
               <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
                 <span style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1 }}>{lastPrice.toFixed(2)}</span>
@@ -477,7 +490,7 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
           </Card>
 
           <button
-            onClick={() => !isTripped && guardedClick(() => setSelectedArtist(selected))}
+            onClick={() => !isTripped && setSelectedArtist(selected)}
             disabled={isTripped}
             style={{
               width: "100%", padding: "13px 0", borderRadius: 14, border: "none", fontSize: 15, fontWeight: 700,
@@ -507,11 +520,17 @@ function MarketsPage({ artists, C, fadeIn, guardedClick, setSelectedArtist, Card
           <Card key={a.id} style={{ padding: 18, cursor: "pointer" }} hover>
             <div onClick={() => setSelectedIdx(i)}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <img src={avatarUrl(a.name, 52)} alt={a.name} style={{
-                  width: 26, height: 26, borderRadius: 8,
-                  border: "1px solid rgba(0,0,0,0.05)"
-                }} />
-                <span style={{ fontSize: 12, fontWeight: 600 }}>{a.name}/USD</span>
+                <img
+                  src={avatarUrl(a.name, 52)} alt={a.name}
+                  onClick={(e) => { e.stopPropagation(); setSelectedArtist(a); }}
+                  style={{ width: 26, height: 26, borderRadius: 8, border: "1px solid rgba(0,0,0,0.05)", cursor: "pointer" }}
+                />
+                <span
+                  onClick={(e) => { e.stopPropagation(); setSelectedArtist(a); }}
+                  style={{ fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "color 0.2s" }}
+                  onMouseEnter={e => e.target.style.color = C.primary}
+                  onMouseLeave={e => e.target.style.color = C.text}
+                >{a.name}/USD</span>
                 <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 600, color: a.change >= 0 ? "#38BDF8" : "#EF4444" }}>
                   {a.change >= 0 ? "▲" : "▼"} {Math.abs(a.change)}%
                 </span>
@@ -807,9 +826,9 @@ function DepositModal({ isOpen, onClose }) {
                 width: "100%", padding: "14px 0", borderRadius: 14, border: "none",
                 fontSize: 15, fontWeight: 700, cursor: amount && Number(amount) > 0 ? "pointer" : "not-allowed",
                 fontFamily: "'Inter', sans-serif",
-                background: amount && Number(amount) > 0 ? `linear-gradient(135deg, #635BFF, #7C3AED)` : "rgba(0,0,0,0.06)",
+                background: amount && Number(amount) > 0 ? C.primary : "rgba(0,0,0,0.06)",
                 color: amount && Number(amount) > 0 ? "#fff" : C.textMuted,
-                boxShadow: amount && Number(amount) > 0 ? "0 4px 20px rgba(99,91,255,0.35)" : "none",
+                boxShadow: amount && Number(amount) > 0 ? `0 4px 20px ${C.primary}35` : "none",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8
               }}>
               <span>Pay with Stripe</span>
@@ -1241,7 +1260,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
             <Card style={{ padding: 24 }}>
               <ProgressBar
                 value={totalValue} max={2500}
-                color1={C.primary} color2="#8B5CF6"
+                color1={C.primary} color2={C.accent}
                 label1="Invested Value" label2="Current|Goal"
                 val1={Math.round(totalValue)} val2={2500} />
             </Card>
@@ -1314,7 +1333,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
                         ];
                         const colors = [C.accent, "#3B82F6", C.primary, C.green];
                         return (
-                          <div key={a.id} onClick={() => guardedClick(() => setSelectedArtist(a))} style={{ position: "absolute", ...positions[i], textAlign: "center", cursor: "pointer" }}>
+                          <div key={a.id} onClick={() => setSelectedArtist(a)} style={{ position: "absolute", ...positions[i], textAlign: "center", cursor: "pointer" }}>
                             <div style={{
                               width: 10, height: 10, borderRadius: "50%",
                               background: colors[i], margin: "0 auto 4px",
@@ -1476,7 +1495,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
                 </div>
 
                 {artists.sort((a, b) => parseFloat(b.volume) - parseFloat(a.volume)).map((a, i) =>
-                  <div key={a.id} onClick={() => guardedClick(() => setSelectedArtist(a))} style={{
+                  <div key={a.id} onClick={() => setSelectedArtist(a)} style={{
                     display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 120px 70px",
                     alignItems: "center", padding: "12px 0",
                     borderBottom: i < artists.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none",
@@ -1746,7 +1765,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Portfolio",
                             padding: "5px 14px", borderRadius: 8, fontSize: 11, fontWeight: 600,
                             background: C.primary, color: "#fff", cursor: "pointer"
                           }}
-                          onClick={(e) => { e.stopPropagation(); guardedClick(() => setSelectedArtist(matchedArtist)); }}>
+                          onClick={(e) => { e.stopPropagation(); setSelectedArtist(matchedArtist); }}>
                             Invest →</span>
                         </div>
                       }

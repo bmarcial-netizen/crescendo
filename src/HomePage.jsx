@@ -287,7 +287,7 @@ export default function HomePage({ navigate, scrollTo, isLoggedIn, openAuth, use
                 letterSpacing: "0.1em",
                 transition: "all 0.4s"
               }}
-              onMouseEnter={(e) => {e.target.style.background = "#3dd4af";e.target.style.borderColor = "#3dd4af";}}
+              onMouseEnter={(e) => {e.target.style.background = "#60A5FA";e.target.style.borderColor = "#60A5FA";}}
               onMouseLeave={(e) => {e.target.style.background = COLORS.accent;e.target.style.borderColor = COLORS.accent;}}>
 
                                 SIGN UP

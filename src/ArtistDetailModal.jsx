@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Play, Disc3, Clock, ExternalLink, Music } from "lucide-react";
 import * as api from "./api";
 import EarningsBand from "./EarningsBand";
 
@@ -72,7 +72,91 @@ function generateOrderBook(price) {
     return { bids, asks };
 }
 
-function PriceChart({ data, color, width = "100%", height = 140 }) {
+// ─── Artist images map (placeholder keys — swap with real uploaded images) ───
+const artistImages = {};
+
+// ─── Top Tracks per artist ───
+const topTracks = {
+    "2hollis": [
+        { title: "Dissolve", duration: "3:22", streams: "1.2M", album: "Phantom Thread" },
+        { title: "Ghost Frequency", duration: "2:48", streams: "890K", album: "Phantom Thread" },
+        { title: "Vapor Trail", duration: "4:01", streams: "720K", album: "Vapor Trail (Single)" },
+        { title: "Liminal", duration: "3:35", streams: "650K", album: "Early Works" },
+        { title: "Static Bloom", duration: "2:56", streams: "410K", album: "Early Works" },
+    ],
+    "Snow Strippers": [
+        { title: "Pulse", duration: "3:44", streams: "3.8M", album: "Neon Vein" },
+        { title: "Cold Circuit", duration: "3:12", streams: "2.1M", album: "Neon Vein" },
+        { title: "Wired", duration: "2:58", streams: "1.9M", album: "Wired (Single)" },
+        { title: "Fracture", duration: "4:15", streams: "1.4M", album: "Neon Vein" },
+        { title: "Voltage", duration: "3:30", streams: "980K", album: "Debut EP" },
+    ],
+    "Malcom Todd": [
+        { title: "Amber Light", duration: "3:18", streams: "2.4M", album: "Soft Focus" },
+        { title: "Honey", duration: "3:52", streams: "1.8M", album: "Soft Focus" },
+        { title: "Velvet", duration: "2:44", streams: "1.1M", album: "Velvet (Single)" },
+        { title: "Sunday Morning", duration: "4:08", streams: "890K", album: "Soft Focus" },
+        { title: "Blue Hour", duration: "3:26", streams: "720K", album: "Early Demos" },
+    ],
+    "Men I Trust": [
+        { title: "Oncle Jazz", duration: "3:38", streams: "8.2M", album: "Oncle Jazz" },
+        { title: "Norton Commander", duration: "3:14", streams: "6.1M", album: "Oncle Jazz" },
+        { title: "Say, Can You Hear", duration: "4:22", streams: "5.4M", album: "Untourable Album" },
+        { title: "Tailwhip", duration: "2:56", streams: "4.8M", album: "Oncle Jazz" },
+        { title: "Billie Toppy", duration: "3:44", streams: "3.2M", album: "Headroom" },
+    ],
+    "King Krule": [
+        { title: "Easy Easy", duration: "3:28", streams: "4.5M", album: "6 Feet Beneath the Moon" },
+        { title: "Dum Surfer", duration: "3:02", streams: "3.8M", album: "The OOZ" },
+        { title: "Stoned Again", duration: "4:16", streams: "2.9M", album: "Man Alive!" },
+        { title: "Czech One", duration: "3:44", streams: "2.1M", album: "The OOZ" },
+        { title: "Seaforth", duration: "3:58", streams: "1.7M", album: "Space Heavy" },
+    ],
+    "Ian": [
+        { title: "RUNAWAY", duration: "2:52", streams: "1.8M", album: "RUNAWAY (Single)" },
+        { title: "Apartment", duration: "3:14", streams: "1.2M", album: "Lo-fi Diaries" },
+        { title: "2AM", duration: "3:40", streams: "890K", album: "Lo-fi Diaries" },
+        { title: "Bedroom Floor", duration: "2:58", streams: "650K", album: "Lo-fi Diaries" },
+        { title: "Quiet Storm", duration: "3:22", streams: "420K", album: "Early Works" },
+    ],
+};
+
+// ─── Recent Releases per artist ───
+const recentReleases = {
+    "2hollis": [
+        { title: "Phantom Thread", type: "EP", year: "2026", tracks: 5, cover: null },
+        { title: "Vapor Trail", type: "Single", year: "2025", tracks: 1, cover: null },
+        { title: "Early Works", type: "Album", year: "2024", tracks: 10, cover: null },
+    ],
+    "Snow Strippers": [
+        { title: "Neon Vein", type: "Album", year: "2026", tracks: 12, cover: null },
+        { title: "Wired", type: "Single", year: "2025", tracks: 1, cover: null },
+        { title: "Debut EP", type: "EP", year: "2024", tracks: 6, cover: null },
+    ],
+    "Malcom Todd": [
+        { title: "Soft Focus", type: "Album", year: "2026", tracks: 11, cover: null },
+        { title: "Velvet", type: "Single", year: "2025", tracks: 1, cover: null },
+        { title: "Early Demos", type: "EP", year: "2024", tracks: 7, cover: null },
+    ],
+    "Men I Trust": [
+        { title: "Headroom", type: "Album", year: "2026", tracks: 10, cover: null },
+        { title: "Untourable Album", type: "Album", year: "2025", tracks: 14, cover: null },
+        { title: "Oncle Jazz", type: "Album", year: "2024", tracks: 17, cover: null },
+    ],
+    "King Krule": [
+        { title: "Concrete Garden", type: "Album", year: "2026", tracks: 13, cover: null },
+        { title: "Space Heavy", type: "Album", year: "2025", tracks: 10, cover: null },
+        { title: "You Heat Me Up", type: "Film", year: "2024", tracks: 8, cover: null },
+    ],
+    "Ian": [
+        { title: "RUNAWAY", type: "Single", year: "2026", tracks: 1, cover: null },
+        { title: "Lo-fi Diaries", type: "Album", year: "2025", tracks: 9, cover: null },
+        { title: "Early Works", type: "EP", year: "2024", tracks: 5, cover: null },
+    ],
+};
+
+function InteractivePriceChart({ data, color, width = "100%", height = 140 }) {
+    const [hover, setHover] = useState(null);
     const max = Math.max(...data.map(d => d.v));
     const min = Math.min(...data.map(d => d.v));
     const range = max - min || 0.01;
@@ -81,13 +165,34 @@ function PriceChart({ data, color, width = "100%", height = 140 }) {
     const pts = data.map((d, i) => {
         const x = (i / (data.length - 1)) * w;
         const y = 8 + (1 - (d.v - min) / range) * (h - 16);
-        return { x, y };
+        return { x, y, v: d.v, d: d.d };
     });
     const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
     const area = line + ` L${pts[pts.length - 1].x.toFixed(1)},${h} L${pts[0].x.toFixed(1)},${h} Z`;
 
+    const handleMouseMove = (e) => {
+        const svg = e.currentTarget;
+        const rect = svg.getBoundingClientRect();
+        const mouseX = ((e.clientX - rect.left) / rect.width) * w;
+        let closest = 0;
+        let closestDist = Infinity;
+        pts.forEach((p, i) => {
+            const dist = Math.abs(p.x - mouseX);
+            if (dist < closestDist) { closestDist = dist; closest = i; }
+        });
+        setHover(closest);
+    };
+
+    const hp = hover !== null ? pts[hover] : null;
+    const dayLabel = hp ? `Day ${hp.d + 1}` : "";
+
     return (
-        <svg viewBox={`0 0 ${w} ${h}`} style={{ width, height, display: "block" }}>
+        <svg
+            viewBox={`0 0 ${w} ${h}`}
+            style={{ width, height, display: "block", cursor: "crosshair" }}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={() => setHover(null)}
+        >
             <defs>
                 <linearGradient id={`chart-fill-${color.replace("#", "")}`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={color} stopOpacity="0.25" />
@@ -98,12 +203,25 @@ function PriceChart({ data, color, width = "100%", height = 140 }) {
             <path d={line} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
             <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="4" fill={color} />
             <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="8" fill={color} fillOpacity="0.2" />
+            {hp && (
+                <>
+                    <line x1={hp.x} y1={0} x2={hp.x} y2={h} stroke={color} strokeWidth="1" strokeDasharray="3,3" opacity="0.5" />
+                    <line x1={0} y1={hp.y} x2={w} y2={hp.y} stroke={color} strokeWidth="1" strokeDasharray="3,3" opacity="0.3" />
+                    <circle cx={hp.x} cy={hp.y} r="5" fill={color} />
+                    <circle cx={hp.x} cy={hp.y} r="9" fill={color} fillOpacity="0.2" />
+                    <rect x={Math.min(hp.x + 8, w - 90)} y={Math.max(hp.y - 32, 2)} width="82" height="26" rx="6" fill="rgba(15,23,42,0.88)" />
+                    <text x={Math.min(hp.x + 14, w - 84)} y={Math.max(hp.y - 14, 18)} fill="#fff" fontSize="10" fontFamily="monospace" fontWeight="600">
+                        ${hp.v.toFixed(2)} · {dayLabel}
+                    </text>
+                </>
+            )}
         </svg>
     );
 }
 
-// Dual-axis traction chart
-function TractionChart({ data, width = "100%", height = 120 }) {
+// Interactive dual-axis traction chart
+function InteractiveTractionChart({ data, width = "100%", height = 120 }) {
+    const [hover, setHover] = useState(null);
     const w = 400;
     const h = height;
     const scoreMax = Math.max(...data.map(d => d.score));
@@ -113,22 +231,59 @@ function TractionChart({ data, width = "100%", height = 120 }) {
     const scoreRange = scoreMax - scoreMin || 1;
     const priceRange = priceMax - priceMin || 0.01;
 
-    const scorePts = data.map((d, i) => {
+    const scorePtsArr = data.map((d, i) => {
         const x = (i / (data.length - 1)) * w;
         const y = 8 + (1 - (d.score - scoreMin) / scoreRange) * (h - 16);
-        return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(" ");
-
-    const pricePts = data.map((d, i) => {
+        return { x, y, score: d.score, price: d.price };
+    });
+    const pricePtsArr = data.map((d, i) => {
         const x = (i / (data.length - 1)) * w;
         const y = 8 + (1 - (d.price - priceMin) / priceRange) * (h - 16);
-        return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(" ");
+        return { x, y };
+    });
+
+    const scorePtsStr = scorePtsArr.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+    const pricePtsStr = pricePtsArr.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+
+    const handleMouseMove = (e) => {
+        const svg = e.currentTarget;
+        const rect = svg.getBoundingClientRect();
+        const mouseX = ((e.clientX - rect.left) / rect.width) * w;
+        let closest = 0;
+        let closestDist = Infinity;
+        scorePtsArr.forEach((p, i) => {
+            const dist = Math.abs(p.x - mouseX);
+            if (dist < closestDist) { closestDist = dist; closest = i; }
+        });
+        setHover(closest);
+    };
+
+    const hp = hover !== null ? scorePtsArr[hover] : null;
+    const hpPrice = hover !== null ? pricePtsArr[hover] : null;
 
     return (
-        <svg viewBox={`0 0 ${w} ${h}`} style={{ width, height, display: "block" }}>
-            <polyline fill="none" stroke={C.primary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" points={scorePts} opacity="0.8" />
-            <polyline fill="none" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" points={pricePts} opacity="0.8" />
+        <svg
+            viewBox={`0 0 ${w} ${h}`}
+            style={{ width, height, display: "block", cursor: "crosshair" }}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={() => setHover(null)}
+        >
+            <polyline fill="none" stroke={C.primary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" points={scorePtsStr} opacity="0.8" />
+            <polyline fill="none" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" points={pricePtsStr} opacity="0.8" />
+            {hp && hpPrice && (
+                <>
+                    <line x1={hp.x} y1={0} x2={hp.x} y2={h} stroke={C.textMuted} strokeWidth="1" strokeDasharray="3,3" opacity="0.5" />
+                    <circle cx={hp.x} cy={hp.y} r="4" fill={C.primary} />
+                    <circle cx={hp.x} cy={hpPrice.y} r="4" fill={C.accent} />
+                    <rect x={Math.min(hp.x + 8, w - 120)} y={Math.max(Math.min(hp.y, hpPrice.y) - 38, 2)} width="112" height="34" rx="6" fill="rgba(15,23,42,0.88)" />
+                    <text x={Math.min(hp.x + 14, w - 114)} y={Math.max(Math.min(hp.y, hpPrice.y) - 20, 16)} fill={C.accent} fontSize="9" fontFamily="monospace" fontWeight="600">
+                        Score: {hp.score}
+                    </text>
+                    <text x={Math.min(hp.x + 14, w - 114)} y={Math.max(Math.min(hp.y, hpPrice.y) - 8, 28)} fill="#60A5FA" fontSize="9" fontFamily="monospace" fontWeight="600">
+                        Price: ${hp.price.toFixed(2)}
+                    </text>
+                </>
+            )}
         </svg>
     );
 }
@@ -145,8 +300,6 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
     const [showTraction, setShowTraction] = useState(false);
     const [tradeError, setTradeError] = useState("");
     const [tradeLoading, setTradeLoading] = useState(false);
-
-    // Live quote data
     const [liveQuote, setLiveQuote] = useState(null);
 
     useEffect(() => {
@@ -159,7 +312,6 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
             setLimitPrice(artist.price?.toFixed(2) || "0.00");
             setShowTraction(false);
             setLiveQuote(null);
-            // Fetch live quote
             api.getQuote(artist.id).then(q => setLiveQuote(q)).catch(() => {});
         } else {
             setVisible(false);
@@ -297,12 +449,13 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                     {/* ─── HEADER ─── */}
                     <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 8 }}>
                         <img
-                            src={avatarUrl(artist.name, 120)}
+                            src={artistImages[artist.name] || avatarUrl(artist.name, 200)}
                             alt={artist.name}
                             style={{
-                                width: 60, height: 60, borderRadius: 18,
+                                width: 80, height: 80, borderRadius: 22,
                                 border: "1px solid rgba(255,255,255,0.9)",
-                                boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+                                boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+                                objectFit: "cover",
                             }}
                         />
                         <div style={{ flex: 1 }}>
@@ -401,7 +554,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                         </div>
                         {!showTraction ? (
                             <>
-                                <PriceChart data={priceHistory} color={chartColor} height={130} />
+                                <InteractivePriceChart data={priceHistory} color={chartColor} height={130} />
                                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: C.textMuted }}>
                                     <span>30 days ago</span>
                                     <span>Today</span>
@@ -409,7 +562,7 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                             </>
                         ) : (
                             <>
-                                <TractionChart data={tractionHistory} height={130} />
+                                <InteractiveTractionChart data={tractionHistory} height={130} />
                                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: C.textMuted }}>
                                     <span>30 days ago</span>
                                     <span>Today</span>
@@ -617,6 +770,82 @@ export default function ArtistDetailModal({ artist, onClose, allNews, trendingSo
                                     </div>
                                 );
                             })}
+                        </div>
+                    )}
+
+                    {/* ─── TOP TRACKS ─── */}
+                    {(topTracks[artist.name] || []).length > 0 && (
+                        <div style={{
+                            background: C.card, backdropFilter: "blur(20px)",
+                            borderRadius: 18, border: `1px solid ${C.border}`,
+                            boxShadow: C.shadow, padding: 20, marginBottom: 16,
+                        }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                                <Music size={16} style={{ color: C.primary }} />
+                                <span style={{ fontSize: 14, fontWeight: 700 }}>Top Tracks</span>
+                            </div>
+                            {(topTracks[artist.name] || []).map((track, i) => (
+                                <div key={i} style={{
+                                    display: "grid", gridTemplateColumns: "24px 1fr auto auto",
+                                    alignItems: "center", gap: 12, padding: "10px 4px",
+                                    borderBottom: i < (topTracks[artist.name] || []).length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none",
+                                    cursor: "pointer",
+                                    borderRadius: 8,
+                                    transition: "background 0.15s",
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = "rgba(0,0,0,0.02)"}
+                                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                                >
+                                    <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 600, textAlign: "center", fontFamily: "monospace" }}>{i + 1}</span>
+                                    <div>
+                                        <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{track.title}</div>
+                                        <div style={{ fontSize: 11, color: C.textMuted }}>{track.album}</div>
+                                    </div>
+                                    <span style={{ fontSize: 11, color: C.textMuted, fontFamily: "monospace" }}>{track.streams}</span>
+                                    <span style={{ fontSize: 11, color: C.textMuted, fontFamily: "monospace", display: "flex", alignItems: "center", gap: 3 }}>
+                                        <Clock size={10} /> {track.duration}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* ─── RECENT RELEASES ─── */}
+                    {(recentReleases[artist.name] || []).length > 0 && (
+                        <div style={{
+                            background: C.card, backdropFilter: "blur(20px)",
+                            borderRadius: 18, border: `1px solid ${C.border}`,
+                            boxShadow: C.shadow, padding: 20, marginBottom: 16,
+                        }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                                <Disc3 size={16} style={{ color: C.primary }} />
+                                <span style={{ fontSize: 14, fontWeight: 700 }}>Discography</span>
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                                {(recentReleases[artist.name] || []).map((release, i) => (
+                                    <div key={i} style={{
+                                        borderRadius: 14, padding: 16, textAlign: "center",
+                                        background: "rgba(0,0,0,0.02)",
+                                        border: "1px solid rgba(0,0,0,0.04)",
+                                        cursor: "pointer",
+                                        transition: "all 0.2s",
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(0,0,0,0.02)"; e.currentTarget.style.transform = "translateY(0)"; }}
+                                    >
+                                        {release.cover ? (
+                                            <img src={release.cover} alt={release.title} style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover", marginBottom: 8 }} />
+                                        ) : (
+                                            <div style={{ width: 48, height: 48, borderRadius: 8, background: `${C.primary}12`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px" }}>
+                                                <Disc3 size={22} style={{ color: C.primary, opacity: 0.5 }} />
+                                            </div>
+                                        )}
+                                        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2, lineHeight: 1.2 }}>{release.title}</div>
+                                        <div style={{ fontSize: 11, color: C.textMuted }}>{release.type} · {release.year}</div>
+                                        <div style={{ fontSize: 10, color: C.textMuted, marginTop: 2 }}>{release.tracks} track{release.tracks !== 1 ? "s" : ""}</div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
 
