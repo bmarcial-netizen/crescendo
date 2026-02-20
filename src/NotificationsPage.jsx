@@ -44,6 +44,13 @@ const artistImages = {
   "JPEGMAFIA": "/artists/jpegmafia.jpeg",
   "Men I Trust": "/artists/menitrust.jpg",
   "Teezo Touchdown": "/artists/teezotouchdown.jpeg",
+  "Snow Strippers": "/artists/snowstrippers.jpg",
+  "King Krule": "/artists/kingkrule.jpg",
+  "Paris Texas": "/artists/paristexas.jpg",
+  "The Twolips": "/artists/thetwolips.jpg",
+  "Leon Thomas": "/artists/leonthomas.jpg",
+  "Dave Blunts": "/artists/daveblunts.jpg",
+  "malcolm todd": "/artists/malcolmtodd.jpg",
 };
 
 function avatarUrl(name, size = 64) {
