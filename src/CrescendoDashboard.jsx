@@ -123,6 +123,9 @@ const trendingSounds = [
   { id: 5, title: "Pulse (remix)", artist: "Snow Strippers", platform: "Reels", uses: "678K", growth: "+95%", growthNum: 95, duration: "0:17", snippet: "♪ feel the pulse, feel it drop...", priceImpact: +3.8, daysAgo: 3, tags: ["remix", "gym"], wave: [12, 18, 25, 32, 38, 42, 48, 52, 58, 60, 62, 65] }
 ];
 
+// "You Might Like" recommended artists — populated from live API data inside component
+const recommendedArtists = [];
+
 // NOTE: portfolioHoldings, totalValue, totalReturn, totalPct computed inside component from live data
 const totalRoyalties = royaltyPayments.reduce((s, r) => s + r.amount, 0);
 
@@ -2752,7 +2755,7 @@ export default function CrescendoDashboard({ navigate, initialTab = "Dashboard",
         artist={selectedArtist}
         onClose={() => setSelectedArtist(null)}
         allNews={news}
-        trendingSounds={recommendedArtists}
+        trendingSounds={trendingSounds}
         isLoggedIn={isLoggedIn}
         auth={auth}
         onTradeComplete={handleTradeComplete} />
