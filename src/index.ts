@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import { config } from './config';
 import { errorHandler } from './middleware/errorHandler';
+import { db } from './db';
+import { sql } from 'drizzle-orm';
 
 // Route imports
 import authRoutes from './routes/auth.routes';
@@ -25,9 +27,25 @@ app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 // JSON body parser for everything else
 app.use(express.json());
 
-// Health check
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Health check with DB connectivity
+app.get('/health', async (_req, res) => {
+  let dbStatus = 'ok';
+  let dbLatencyMs: number | null = null;
+
+  try {
+    const start = Date.now();
+    await db.execute(sql`SELECT 1`);
+    dbLatencyMs = Date.now() - start;
+  } catch {
+    dbStatus = 'unreachable';
+  }
+
+  const healthy = dbStatus === 'ok';
+  res.status(healthy ? 200 : 503).json({
+    status: healthy ? 'ok' : 'degraded',
+    timestamp: new Date().toISOString(),
+    database: { status: dbStatus, latencyMs: dbLatencyMs },
+  });
 });
 
 // Routes
