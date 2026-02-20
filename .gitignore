@@ -2,7 +2,9 @@ node_modules/
 dist/
 dist-ssr/
 .env
+.env.local
 *.js.map
 *.local
 *.log
 .DS_Store
+.claude/

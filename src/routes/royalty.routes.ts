@@ -7,7 +7,10 @@ import { royaltyStatements, dividendDistributions, dividendPayments } from '../d
 import { eq, desc } from 'drizzle-orm';
 import multer from 'multer';
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+});
 const router = Router();
 
 router.use(requireAuth('admin'));
